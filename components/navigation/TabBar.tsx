@@ -1,8 +1,16 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, Pressable, type View as RNView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { TabTriggerSlotProps } from 'expo-router/ui';
+import Animated, {
+  ReduceMotion,
+  ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 import { color, shadow } from '@/theme/tokens';
 import { useCartStore } from '@/store/cart';
 
@@ -21,27 +29,46 @@ interface TabButtonProps extends TabTriggerSlotProps {
   badge?: number;
 }
 
+const BADGE_POP_SPRING = { damping: 12, stiffness: 220, reduceMotion: ReduceMotion.System } as const;
+
 function IconBadge({ count, ringColor }: { count: number; ringColor: string }) {
+  const scale = useSharedValue(1);
+  const hasMounted = useRef(false);
+
+  useEffect(() => {
+    if (!hasMounted.current) {
+      // Skip the pop on first mount — only react to subsequent count changes.
+      hasMounted.current = true;
+      return;
+    }
+    scale.value = withSequence(withSpring(1.3, BADGE_POP_SPRING), withSpring(1, BADGE_POP_SPRING));
+  }, [count, scale]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
   if (count <= 0) return null;
   return (
-    <View
-      style={{
-        position: 'absolute',
-        top: -4,
-        right: -8,
-        minWidth: 16,
-        height: 16,
-        borderRadius: 8,
-        backgroundColor: color.accent,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 3,
-        borderWidth: 1.5,
-        borderColor: ringColor,
-      }}
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          top: -4,
+          right: -8,
+          minWidth: 16,
+          height: 16,
+          borderRadius: 8,
+          backgroundColor: color.accent,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 3,
+          borderWidth: 1.5,
+          borderColor: ringColor,
+        },
+        animatedStyle,
+      ]}
     >
       <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>{count > 99 ? '99+' : count}</Text>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -72,7 +99,8 @@ export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabBu
   }
   return (
     <Pressable ref={ref} {...props} style={{ flex: 1, alignItems: 'center', height: TAB_BAR_HEIGHT }}>
-      <View
+      <Animated.View
+        entering={ZoomIn.springify().damping(14).stiffness(180).reduceMotion(ReduceMotion.System)}
         pointerEvents="none"
         style={{
           position: 'absolute',
@@ -92,7 +120,7 @@ export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabBu
           <Ionicons name={iconOn} size={22} color={color.onInk} />
           <IconBadge count={badge} ringColor={color.bg} />
         </View>
-      </View>
+      </Animated.View>
       <Text style={{ position: 'absolute', bottom: 6, fontSize: 10, fontWeight: '700', color: color.accent }}>
         {label}
       </Text>
