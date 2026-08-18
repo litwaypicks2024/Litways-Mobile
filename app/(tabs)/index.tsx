@@ -203,7 +203,7 @@ export default function HomeScreen() {
                 <View style={{ alignSelf: 'flex-start', backgroundColor: color.accent, borderRadius: radius.sm, paddingHorizontal: 9, paddingVertical: 5, marginBottom: spacing.md }}>
                   <Text style={{ color: color.onAccent, fontSize: 11, fontWeight: '800', letterSpacing: 0.4 }}>WELCOME</Text>
                 </View>
-                <Text style={{ color: '#fff', fontSize: 30, fontFamily: font.displayHeavy, lineHeight: 32, letterSpacing: -0.6, marginBottom: spacing.md }}>
+                <Text style={{ color: '#fff', fontSize: 30, fontFamily: font.displayHeavy, lineHeight: 36, letterSpacing: -0.6, marginBottom: spacing.md }}>
                   Everything you{'\n'}need, delivered
                 </Text>
                 <View style={{ alignSelf: 'flex-start', backgroundColor: color.ink, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
@@ -265,50 +265,51 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* ─── Deals ─── */}
-        {(deals?.length ?? 0) > 0 && (
-          <Animated.View
-            entering={FadeInDown.duration(300).delay(3 * 60).reduceMotion(ReduceMotion.System)}
-            style={{ marginTop: spacing['2xl'] }}
-          >
-            {/* Bold statement — honest "up to X% off" from real discounts */}
-            <PressableScale
-              haptic
-              onPress={() => router.push({ pathname: '/(tabs)/shop', params: { sort: 'price_asc' } })}
-              style={{ marginHorizontal: gutter }}
-            >
-              <View style={{ backgroundColor: color.ink, borderRadius: radius.lg, padding: spacing.lg, overflow: 'hidden' }}>
-                <MotifOverlay color="#ffffff" opacity={0.05} cell={28} />
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                      <Ionicons name="pricetag" size={14} color={color.accent} />
-                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' }}>Deals on now</Text>
+        <Animated.View
+          entering={FadeInDown.duration(300).delay(3 * 60).reduceMotion(ReduceMotion.System)}
+        >
+          {(deals?.length ?? 0) > 0 && (
+            <View style={{ marginTop: spacing['2xl'] }}>
+              {/* Bold statement — honest "up to X% off" from real discounts */}
+              <PressableScale
+                haptic
+                onPress={() => router.push({ pathname: '/(tabs)/shop', params: { sort: 'price_asc' } })}
+                style={{ marginHorizontal: gutter }}
+              >
+                <View style={{ backgroundColor: color.ink, borderRadius: radius.lg, padding: spacing.lg, overflow: 'hidden' }}>
+                  <MotifOverlay color="#ffffff" opacity={0.05} cell={28} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                        <Ionicons name="pricetag" size={14} color={color.accent} />
+                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' }}>Deals on now</Text>
+                      </View>
+                      <Text style={{ color: '#fff', fontSize: 26, fontFamily: font.displayHeavy, letterSpacing: -0.5 }}>
+                        {maxDiscount > 0 ? `Up to ${maxDiscount}% off` : 'Save on selected items'}
+                      </Text>
+                      <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 3 }}>Selected items · while stocks last</Text>
                     </View>
-                    <Text style={{ color: '#fff', fontSize: 26, fontFamily: font.displayHeavy, letterSpacing: -0.5 }}>
-                      {maxDiscount > 0 ? `Up to ${maxDiscount}% off` : 'Save on selected items'}
-                    </Text>
-                    <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 3 }}>Selected items · while stocks last</Text>
-                  </View>
-                  <View style={{ width: 44, height: 44, borderRadius: radius.full, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="arrow-forward" size={20} color={color.onAccent} />
+                    <View style={{ width: 44, height: 44, borderRadius: radius.full, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="arrow-forward" size={20} color={color.onAccent} />
+                    </View>
                   </View>
                 </View>
-              </View>
-            </PressableScale>
+              </PressableScale>
 
-            <View style={{ height: spacing.lg }} />
-            <FlashList
-              data={deals ?? []}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              estimatedItemSize={172}
-              contentContainerStyle={{ paddingHorizontal: gutter }}
-              ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
-              renderItem={({ item }) => <ProductCard product={item} width={172} variant="horizontal" />}
-              keyExtractor={(item) => item.id ?? ''}
-            />
-          </Animated.View>
-        )}
+              <View style={{ height: spacing.lg }} />
+              <FlashList
+                data={deals ?? []}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                estimatedItemSize={172}
+                contentContainerStyle={{ paddingHorizontal: gutter }}
+                ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
+                renderItem={({ item }) => <ProductCard product={item} width={172} variant="horizontal" />}
+                keyExtractor={(item) => item.id ?? ''}
+              />
+            </View>
+          )}
+        </Animated.View>
 
         {/* ─── Popular right now ─── */}
         <Animated.View
@@ -332,34 +333,35 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* ─── New arrivals ─── */}
-        {(newest?.length ?? 0) > 0 && (
-          <Animated.View
-            entering={FadeInDown.duration(300).delay(5 * 60).reduceMotion(ReduceMotion.System)}
-            style={{ marginTop: spacing['2xl'] }}
-          >
-            <SectionHeader title="New arrivals" subtitle="Fresh in this week" onSeeAll={() => router.push('/(tabs)/shop')} />
-            <View style={{ paddingHorizontal: gutter - spacing.xs, flexDirection: 'row', flexWrap: 'wrap' }}>
-              {newest?.slice(0, 4).map((item) => (
-                <View key={item.id} style={{ width: '50%', padding: spacing.xs }}>
-                  <ProductCard product={item} />
-                </View>
-              ))}
+        <Animated.View
+          entering={FadeInDown.duration(300).delay(5 * 60).reduceMotion(ReduceMotion.System)}
+        >
+          {(newest?.length ?? 0) > 0 && (
+            <View style={{ marginTop: spacing['2xl'] }}>
+              <SectionHeader title="New arrivals" subtitle="Fresh in this week" onSeeAll={() => router.push('/(tabs)/shop')} />
+              <View style={{ paddingHorizontal: gutter - spacing.xs, flexDirection: 'row', flexWrap: 'wrap' }}>
+                {newest?.slice(0, 4).map((item) => (
+                  <View key={item.id} style={{ width: '50%', padding: spacing.xs }}>
+                    <ProductCard product={item} />
+                  </View>
+                ))}
+              </View>
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/shop')}
+                activeOpacity={0.85}
+                style={{
+                  marginHorizontal: gutter, marginTop: spacing.md,
+                  borderWidth: 1, borderColor: color.border, backgroundColor: color.surface,
+                  borderRadius: radius.full, paddingVertical: 14,
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+                }}
+              >
+                <Text style={{ color: color.text, fontWeight: '700', fontSize: 14 }}>See all products</Text>
+                <Ionicons name="arrow-forward" size={15} color={color.text} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/shop')}
-              activeOpacity={0.85}
-              style={{
-                marginHorizontal: gutter, marginTop: spacing.md,
-                borderWidth: 1, borderColor: color.border, backgroundColor: color.surface,
-                borderRadius: radius.full, paddingVertical: 14,
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-              }}
-            >
-              <Text style={{ color: color.text, fontWeight: '700', fontSize: 14 }}>See all products</Text>
-              <Ionicons name="arrow-forward" size={15} color={color.text} />
-            </TouchableOpacity>
-          </Animated.View>
-        )}
+          )}
+        </Animated.View>
       </ScrollView>
     </View>
   );

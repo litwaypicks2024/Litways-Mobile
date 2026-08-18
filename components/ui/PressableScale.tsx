@@ -5,6 +5,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   runOnJS,
+  ReduceMotion,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
@@ -27,7 +28,7 @@ export function PressableScale({
   const pressed = useSharedValue(false);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: withSpring(pressed.value ? scale : 1, { damping: 15, stiffness: 200 }) }],
+    transform: [{ scale: withSpring(pressed.value ? scale : 1, { damping: 15, stiffness: 200, reduceMotion: ReduceMotion.System }) }],
   }));
 
   function handleHaptic() {

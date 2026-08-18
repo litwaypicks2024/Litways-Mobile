@@ -50,7 +50,7 @@ export function InkHeader({ icon, onIconPress, title, subtitle }: Props) {
           color: color.onInk,
           fontSize: 34,
           fontFamily: font.displayHeavy,
-          lineHeight: 38,
+          lineHeight: 42,
           letterSpacing: -0.5,
           marginTop: 10,
         }}

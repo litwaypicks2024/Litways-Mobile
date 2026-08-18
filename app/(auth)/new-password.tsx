@@ -8,12 +8,11 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { color } from '@/theme/tokens';
+import { color, font } from '@/theme/tokens';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { InkHeader } from '@/components/auth/InkHeader';
@@ -153,7 +152,7 @@ export default function NewPasswordScreen() {
             {phase === 'invalid' && (
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 8 }}>
                 <BrokenLinkIllustration />
-                <Text style={{ fontSize: 18, fontWeight: '800', color: color.ink, textAlign: 'center' }}>
+                <Text style={{ fontSize: 18, fontFamily: font.display, color: color.ink, textAlign: 'center' }}>
                   Reset link invalid or expired
                 </Text>
                 <Text style={{ fontSize: 14, color: color.inkMuted, textAlign: 'center', lineHeight: 20 }}>

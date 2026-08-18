@@ -314,6 +314,7 @@ export default function ProductDetailScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}
+            style={{ backgroundColor: color.surface }}
             keyExtractor={(_, i) => `thumb-${i}`}
             renderItem={({ item, index }) => (
               <TouchableOpacity onPress={() => scrollToImage(index)}>
@@ -336,7 +337,7 @@ export default function ProductDetailScreen() {
         )}
 
         {/* ─── Product info ─── */}
-        <View style={{ paddingHorizontal: 20 }}>
+        <View style={{ paddingHorizontal: 20, backgroundColor: color.surface }}>
 
           {/* Brand + badges row */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>

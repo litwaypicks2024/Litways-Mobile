@@ -45,7 +45,7 @@ export default function AccountScreen() {
     return (
       <View className="flex-1" style={{ backgroundColor: color.bg }}>
         <View className="bg-white border-b border-gray-100 px-5 pb-4" style={{ paddingTop: insets.top + 12 }}>
-          <Text className="text-xl font-bold" style={{ color: color.ink }}>Account</Text>
+          <Text className="text-xl" style={{ color: color.ink, fontFamily: font.display }}>Account</Text>
         </View>
         <EmptyState
           icon="person-circle-outline"

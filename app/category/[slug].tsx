@@ -10,7 +10,7 @@ import { ProductGridSkeleton } from '@/components/ui/SkeletonLoader';
 import type { Product } from '@/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/ui/IconButton';
-import { color } from '@/theme/tokens';
+import { color, font } from '@/theme/tokens';
 
 const PAGE_SIZE = 24;
 
@@ -53,7 +53,7 @@ export default function CategoryScreen() {
         style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}
       >
         <IconButton icon="arrow-back" onPress={() => router.back()} />
-        <Text style={{ fontSize: 18, fontWeight: '800', color: color.ink, flex: 1 }} numberOfLines={1}>
+        <Text style={{ fontSize: 18, fontFamily: font.display, color: color.ink, flex: 1 }} numberOfLines={1}>
           {categoryName ?? 'Category'}
         </Text>
         {isFetching && !isLoading && <ActivityIndicator size="small" color={color.accent} />}

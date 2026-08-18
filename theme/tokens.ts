@@ -161,7 +161,7 @@ export const weight = {
 
 /** Reusable text presets. Spread into a Text style. */
 export const type = {
-  display: { fontSize: 26, lineHeight: 32, fontFamily: font.display, letterSpacing: -0.2, color: color.text },
+  display: { fontSize: 26, lineHeight: 34, fontFamily: font.display, letterSpacing: -0.2, color: color.text },
   h1: { fontSize: 20, lineHeight: 26, fontFamily: font.display, letterSpacing: -0.1, color: color.text },
   h2: { fontSize: 17, lineHeight: 22, fontFamily: font.display, letterSpacing: 0, color: color.text },
   h3: { fontSize: 15, lineHeight: 20, fontWeight: weight.semibold, color: color.text },

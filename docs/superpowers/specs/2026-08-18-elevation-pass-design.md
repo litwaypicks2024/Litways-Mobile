@@ -21,7 +21,7 @@ Phase 1 made the app consistent. This pass makes it distinctive — four levers 
 
 All Reanimated (already installed), all passing `ReduceMotion.System` so OS-level reduced-motion is respected automatically. Five moments, nothing else:
 
-1. **Tab circle spring** — the active tab's raised circle animates in with a spring (scale + rise) when focus changes; the cart badge does a scale-pop whenever the item count changes (global add-to-cart feedback).
+1. **Tab circle spring** — the active tab's raised circle animates in with a spring (scale + rise) when focus changes; the cart badge does a scale-pop whenever the item count changes (visible wherever the tab bar is on screen when the count changes — most prominently on the cart screen's quantity steppers; product-detail adds happen while the tab bar is covered).
 2. **Product-detail parallax** — hero gallery drifts at half scroll speed; stretches on iOS overscroll.
 3. **Home entrance** — main sections stagger in (fade + rise, ~60ms stagger) on first mount only.
 4. **Confirmation moment** — checkmark badge springs in with a radiating ring; content below cascades.

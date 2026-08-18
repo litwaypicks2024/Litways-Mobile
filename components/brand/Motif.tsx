@@ -33,6 +33,7 @@ interface OverlayProps {
 
 export function MotifOverlay({ color = '#ffffff', opacity = 0.05, cell = 34 }: OverlayProps) {
   const [size, setSize] = React.useState({ w: 0, h: 0 });
+  const d = React.useMemo(() => latticePath(size.w, size.h, cell), [size.w, size.h, cell]);
   return (
     <View
       pointerEvents="none"
@@ -41,7 +42,7 @@ export function MotifOverlay({ color = '#ffffff', opacity = 0.05, cell = 34 }: O
     >
       {size.w > 0 && (
         <Svg width={size.w} height={size.h}>
-          <Path d={latticePath(size.w, size.h, cell)} fill={color} opacity={opacity} />
+          <Path d={d} fill={color} opacity={opacity} />
         </Svg>
       )}
     </View>
@@ -58,14 +59,17 @@ interface BandProps {
    country-cloth panel. */
 export function MotifBand({ height = 14, colors = [tokens.accent, tokens.peachTint], cell = 14 }: BandProps) {
   const [width, setWidth] = React.useState(0);
-  const r = cell * 0.42;
-  const cols = Math.ceil(width / cell) + 1;
-  let dA = '';
-  let dB = '';
-  for (let col = 0; col < cols; col++) {
-    const cx = col * cell + cell / 2;
-    (col % 2 === 0 ? (dA += diamondPath(cx, height / 2, r) + ' ') : (dB += diamondPath(cx, height / 2, r) + ' '));
-  }
+  const { dA, dB } = React.useMemo(() => {
+    const r = cell * 0.42;
+    const cols = Math.ceil(width / cell) + 1;
+    let dA = '';
+    let dB = '';
+    for (let col = 0; col < cols; col++) {
+      const cx = col * cell + cell / 2;
+      (col % 2 === 0 ? (dA += diamondPath(cx, height / 2, r) + ' ') : (dB += diamondPath(cx, height / 2, r) + ' '));
+    }
+    return { dA, dB };
+  }, [width, height, cell]);
   return (
     <View style={{ height }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)} pointerEvents="none">
       {width > 0 && (
