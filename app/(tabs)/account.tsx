@@ -162,7 +162,7 @@ function ProfileTab() {
             value={form[f.key]}
             onChangeText={(v) => setForm((s) => ({ ...s, [f.key]: v }))}
             editable={editing}
-            style={!editing ? { backgroundColor: color.surfaceSunken } : undefined}
+            containerStyle={!editing ? { backgroundColor: color.surfaceSunken } : undefined}
           />
         ))}
 

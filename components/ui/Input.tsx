@@ -4,6 +4,7 @@ import {
   View,
   Text,
   type TextInputProps,
+  type ViewStyle,
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,10 +17,16 @@ interface Props extends TextInputProps {
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightIconPress?: () => void;
   isPassword?: boolean;
+  /**
+   * Styles the outer pill container (e.g. tinting a read-only field grey).
+   * `style` only reaches the inner TextInput, which would leave the pill white
+   * around a square-cornered tinted text area.
+   */
+  containerStyle?: ViewStyle;
 }
 
 export const Input = forwardRef<TextInput, Props>(function Input(
-  { label, error, leftIcon, rightIcon, onRightIconPress, isPassword, style, ...rest },
+  { label, error, leftIcon, rightIcon, onRightIconPress, isPassword, style, containerStyle, ...rest },
   ref
 ) {
   const [focused, setFocused] = useState(false);
@@ -33,16 +40,20 @@ export const Input = forwardRef<TextInput, Props>(function Input(
         <Text style={{ fontSize: 13, fontWeight: '600', color: color.inkMuted, marginBottom: 6 }}>{label}</Text>
       )}
       <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          backgroundColor: color.surface,
-          borderRadius: radius.full,
-          borderWidth: 1.5,
-          borderColor,
-          paddingHorizontal: 16,
-          minHeight: 50,
-        }}
+        style={[
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: color.surface,
+            borderRadius: radius.full,
+            borderWidth: 1.5,
+            paddingHorizontal: 16,
+            minHeight: 50,
+          },
+          containerStyle,
+          /* Applied last so the focus/error border color is never overridden. */
+          { borderColor },
+        ]}
       >
         {leftIcon && (
           <Ionicons
