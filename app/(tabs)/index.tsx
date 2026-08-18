@@ -22,6 +22,7 @@ import { discountPercent } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/ui/IconButton';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
+import { MotifOverlay } from '@/components/brand/Motif';
 import type { Product, Category } from '@/types';
 
 const HERO_IMAGE =
@@ -264,6 +265,7 @@ export default function HomeScreen() {
               style={{ marginHorizontal: gutter }}
             >
               <View style={{ backgroundColor: color.ink, borderRadius: radius.lg, padding: spacing.lg, overflow: 'hidden' }}>
+                <MotifOverlay color="#ffffff" opacity={0.05} cell={28} />
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>

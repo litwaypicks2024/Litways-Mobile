@@ -8,6 +8,7 @@ import { formatCurrency } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, font, shadow } from '@/theme/tokens';
 import { Card } from '@/components/ui/Card';
+import { MotifBand } from '@/components/brand/Motif';
 
 export default function ConfirmationScreen() {
   const { referenceId } = useLocalSearchParams<{ referenceId: string }>();
@@ -46,6 +47,10 @@ export default function ConfirmationScreen() {
           <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
             We received your order and it's now being processed.
           </Text>
+        </View>
+
+        <View style={{ marginBottom: 24, borderRadius: 4, overflow: 'hidden' }}>
+          <MotifBand />
         </View>
 
         {loading ? (

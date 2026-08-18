@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, font, radius } from '@/theme/tokens';
 import { IconButton } from '@/components/ui/IconButton';
+import { MotifOverlay } from '@/components/brand/Motif';
 
 interface Props {
   /** Top-left action — 'close' on modally-presented screens, 'arrow-back' on pushed ones. */
@@ -29,8 +30,10 @@ export function InkHeader({ icon, onIconPress, title, subtitle }: Props) {
         paddingBottom: 32,
         borderBottomLeftRadius: radius['2xl'],
         borderBottomRightRadius: radius['2xl'],
+        overflow: 'hidden',
       }}
     >
+      <MotifOverlay />
       <StatusBar barStyle="light-content" backgroundColor={color.ink} />
       <IconButton
         icon={icon}
