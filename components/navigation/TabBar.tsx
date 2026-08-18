@@ -18,42 +18,60 @@ interface TabButtonProps extends TabTriggerSlotProps {
   iconOn: keyof typeof Ionicons.glyphMap;
   iconOff: keyof typeof Ionicons.glyphMap;
   label: string;
+  badge?: number;
 }
 
-export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabButton(
-  { isFocused, iconOn, iconOff, label, ...props },
-  ref
-) {
+function IconBadge({ count, ringColor }: { count: number; ringColor: string }) {
+  if (count <= 0) return null;
   return (
-    <Pressable
-      ref={ref}
-      {...props}
-      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, height: TAB_BAR_HEIGHT }}
+    <View
+      style={{
+        position: 'absolute',
+        top: -4,
+        right: -8,
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: color.accent,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 3,
+        borderWidth: 1.5,
+        borderColor: ringColor,
+      }}
     >
-      <Ionicons name={isFocused ? iconOn : iconOff} size={22} color={isFocused ? color.onInk : 'rgba(255,255,255,0.45)'} />
-      <Text style={{ fontSize: 10, fontWeight: '600', color: isFocused ? color.onInk : 'rgba(255,255,255,0.45)' }}>
-        {label}
-      </Text>
-    </Pressable>
+      <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>{count > 99 ? '99+' : count}</Text>
+    </View>
   );
-});
+}
 
-export const CartTabButton = React.forwardRef<RNView, TabTriggerSlotProps>(function CartTabButton(
-  { isFocused, ...props },
+/* The raised circle is the ACTIVE-tab indicator: whichever tab is focused pops
+   up as the ink circle; the rest render flat. Because the circle only ever
+   marks the already-active tab, taps on it are a no-op, so its slight overhang
+   above the bar's touch bounds (Android drops touches outside a parent's
+   layout box) can't cost a navigation — every navigable target is a flat,
+   fully-in-bounds cell. */
+export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabButton(
+  { isFocused, iconOn, iconOff, label, badge = 0, ...props },
   ref
 ) {
-  const itemCount = useCartStore((s) => s.itemCount());
+  if (!isFocused) {
+    return (
+      <Pressable
+        ref={ref}
+        {...props}
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, height: TAB_BAR_HEIGHT }}
+      >
+        <View>
+          <Ionicons name={iconOff} size={22} color="rgba(255,255,255,0.45)" />
+          <IconBadge count={badge} ringColor={color.ink} />
+        </View>
+        <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.45)' }}>{label}</Text>
+      </Pressable>
+    );
+  }
   return (
-    /* The Pressable itself is the full-height tab cell (same box as the sibling
-       TabButton) so the touch target is always inside the tab bar's layout
-       bounds — Android does not deliver touches to a child rendered outside its
-       parent's bounds, so the raised circle must be a *visual* child of a
-       properly-sized pressable, not the pressable itself. */
-    <Pressable
-      ref={ref}
-      {...props}
-      style={{ flex: 1, alignItems: 'center', height: TAB_BAR_HEIGHT }}
-    >
+    <Pressable ref={ref} {...props} style={{ flex: 1, alignItems: 'center', height: TAB_BAR_HEIGHT }}>
       <View
         pointerEvents="none"
         style={{
@@ -70,33 +88,24 @@ export const CartTabButton = React.forwardRef<RNView, TabTriggerSlotProps>(funct
           ...shadow.card,
         }}
       >
-        <Ionicons name={isFocused ? 'bag' : 'bag-outline'} size={22} color={color.onInk} />
-        {itemCount > 0 && (
-          <View
-            style={{
-              position: 'absolute',
-              top: -2,
-              right: -2,
-              minWidth: 16,
-              height: 16,
-              borderRadius: 8,
-              backgroundColor: color.accent,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: 3,
-              borderWidth: 1.5,
-              borderColor: color.bg,
-            }}
-          >
-            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>
-              {itemCount > 99 ? '99+' : itemCount}
-            </Text>
-          </View>
-        )}
+        <View>
+          <Ionicons name={iconOn} size={22} color={color.onInk} />
+          <IconBadge count={badge} ringColor={color.bg} />
+        </View>
       </View>
       <Text style={{ position: 'absolute', bottom: 6, fontSize: 10, fontWeight: '700', color: color.accent }}>
-        Cart
+        {label}
       </Text>
     </Pressable>
   );
+});
+
+/* Cart is a plain tab like the others now — it just carries the live item-count
+   badge in both states. */
+export const CartTabButton = React.forwardRef<RNView, TabTriggerSlotProps>(function CartTabButton(
+  props,
+  ref
+) {
+  const itemCount = useCartStore((s) => s.itemCount());
+  return <TabButton ref={ref} {...props} iconOn="bag" iconOff="bag-outline" label="Cart" badge={itemCount} />;
 });
