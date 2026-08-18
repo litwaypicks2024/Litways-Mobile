@@ -44,10 +44,18 @@ export const CartTabButton = React.forwardRef<RNView, TabTriggerSlotProps>(funct
 ) {
   const itemCount = useCartStore((s) => s.itemCount());
   return (
-    <View style={{ flex: 1, alignItems: 'center' }}>
-      <Pressable
-        ref={ref}
-        {...props}
+    /* The Pressable itself is the full-height tab cell (same box as the sibling
+       TabButton) so the touch target is always inside the tab bar's layout
+       bounds — Android does not deliver touches to a child rendered outside its
+       parent's bounds, so the raised circle must be a *visual* child of a
+       properly-sized pressable, not the pressable itself. */
+    <Pressable
+      ref={ref}
+      {...props}
+      style={{ flex: 1, alignItems: 'center', height: TAB_BAR_HEIGHT }}
+    >
+      <View
+        pointerEvents="none"
         style={{
           position: 'absolute',
           bottom: TAB_BAR_HEIGHT - TAB_BAR_FAB_SIZE / 2 - 4,
@@ -85,10 +93,10 @@ export const CartTabButton = React.forwardRef<RNView, TabTriggerSlotProps>(funct
             </Text>
           </View>
         )}
-      </Pressable>
+      </View>
       <Text style={{ position: 'absolute', bottom: 6, fontSize: 10, fontWeight: '700', color: color.accent }}>
         Cart
       </Text>
-    </View>
+    </Pressable>
   );
 });
