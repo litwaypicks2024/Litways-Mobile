@@ -44,8 +44,8 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: color.surface, paddingTop: insets.top }}>
-      <StatusBar barStyle="dark-content" backgroundColor={color.surface} />
+    <View style={{ flex: 1, backgroundColor: color.bg, paddingTop: insets.top }}>
+      <StatusBar barStyle="dark-content" backgroundColor={color.bg} />
 
       {/* Skip */}
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: spacing.xl, paddingTop: spacing.sm }}>
