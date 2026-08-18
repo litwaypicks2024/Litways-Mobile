@@ -1,4 +1,4 @@
-import { Platform, TextStyle } from 'react-native';
+import { TextStyle } from 'react-native';
 
 /**
  * Design tokens for LitwaysPicks.
@@ -142,13 +142,14 @@ export const shadow = {
 
 /* ── Typography ────────────────────────────────────────────────────────── */
 /**
- * Uses the platform system face (SF Pro on iOS, Roboto on Android) — both are
- * clean, professional and require no bundled assets. To adopt a custom face
- * (e.g. Inter), load it in app/_layout.tsx and set `fontFamily.regular` etc.
- * here; every screen that uses the `type` presets picks it up automatically.
+ * Display face: Bricolage Grotesque, loaded in app/_layout.tsx. RN binds
+ * weight into the custom family name, so each cut is its own family — NEVER
+ * pair these with a fontWeight in the same style object (breaks Android).
+ * Body text intentionally stays on the platform system font.
  */
-export const fontFamily = {
-  regular: Platform.select({ ios: undefined, default: undefined }),
+export const font = {
+  display: 'BricolageGrotesque_700Bold',
+  displayHeavy: 'BricolageGrotesque_800ExtraBold',
 } as const;
 
 export const weight = {
@@ -160,9 +161,9 @@ export const weight = {
 
 /** Reusable text presets. Spread into a Text style. */
 export const type = {
-  display: { fontSize: 26, lineHeight: 32, fontWeight: weight.bold, letterSpacing: -0.2, color: color.text },
-  h1: { fontSize: 20, lineHeight: 26, fontWeight: weight.bold, letterSpacing: -0.1, color: color.text },
-  h2: { fontSize: 17, lineHeight: 22, fontWeight: weight.bold, letterSpacing: 0, color: color.text },
+  display: { fontSize: 26, lineHeight: 32, fontFamily: font.display, letterSpacing: -0.2, color: color.text },
+  h1: { fontSize: 20, lineHeight: 26, fontFamily: font.display, letterSpacing: -0.1, color: color.text },
+  h2: { fontSize: 17, lineHeight: 22, fontFamily: font.display, letterSpacing: 0, color: color.text },
   h3: { fontSize: 15, lineHeight: 20, fontWeight: weight.semibold, color: color.text },
   body: { fontSize: 14, lineHeight: 20, fontWeight: weight.regular, color: color.text },
   bodyStrong: { fontSize: 14, lineHeight: 20, fontWeight: weight.semibold, color: color.text },
@@ -171,5 +172,5 @@ export const type = {
   overline: { fontSize: 10, lineHeight: 12, fontWeight: weight.bold, letterSpacing: 0.8, textTransform: 'uppercase', color: color.textFaint },
 } as const satisfies Record<string, TextStyle>;
 
-export const theme = { spacing, gutter, radius, palette, color, shadow, type, weight, fontFamily } as const;
+export const theme = { spacing, gutter, radius, palette, color, shadow, type, weight, font } as const;
 export default theme;
