@@ -1,70 +1,42 @@
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
-
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import React from 'react';
+import { Tabs, TabList, TabTrigger, TabSlot } from 'expo-router/ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { color, radius, shadow } from '@/theme/tokens';
+import { TabButton, CartTabButton, TAB_BAR_HEIGHT } from '@/components/navigation/TabBar';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
+  const insets = useSafeAreaInsets();
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+    <Tabs>
+      <TabSlot />
+      <TabList
+        style={{
+          position: 'absolute',
+          left: 16,
+          right: 16,
+          bottom: insets.bottom + 12,
+          height: TAB_BAR_HEIGHT,
+          backgroundColor: color.ink,
+          borderRadius: radius.full,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 6,
+          ...shadow.card,
         }}
-      />
-      <Tabs.Screen
-        name="two"
-        options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-        }}
-      />
+      >
+        <TabTrigger name="index" href="/" asChild>
+          <TabButton iconOn="home" iconOff="home-outline" label="Home" />
+        </TabTrigger>
+        <TabTrigger name="shop" href="/shop" asChild>
+          <TabButton iconOn="grid" iconOff="grid-outline" label="Shop" />
+        </TabTrigger>
+        <TabTrigger name="cart" href="/cart" asChild>
+          <CartTabButton />
+        </TabTrigger>
+        <TabTrigger name="account" href="/account" asChild>
+          <TabButton iconOn="person" iconOff="person-outline" label="Account" />
+        </TabTrigger>
+      </TabList>
     </Tabs>
   );
 }
