@@ -42,9 +42,9 @@ export default function AccountScreen() {
 
   if (!user) {
     return (
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1" style={{ backgroundColor: color.bg }}>
         <View className="bg-white border-b border-gray-100 px-5 pb-4" style={{ paddingTop: insets.top + 12 }}>
-          <Text className="text-xl font-bold text-gray-900">Account</Text>
+          <Text className="text-xl font-bold" style={{ color: color.ink }}>Account</Text>
         </View>
         <EmptyState
           icon="person-circle-outline"
@@ -65,7 +65,7 @@ export default function AccountScreen() {
   ];
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1" style={{ backgroundColor: color.bg }}>
       <View className="bg-white border-b border-gray-100" style={{ paddingTop: insets.top + 12 }}>
         {/* Profile header */}
         <View className="flex-row items-center px-5 pb-4 gap-4">
@@ -75,10 +75,10 @@ export default function AccountScreen() {
             </Text>
           </View>
           <View className="flex-1">
-            <Text className="text-base font-bold text-gray-900">
+            <Text className="text-base font-bold" style={{ color: color.ink }}>
               {profile ? `${profile.first_name} ${profile.last_name ?? ''}`.trim() : 'Welcome back'}
             </Text>
-            <Text className="text-sm text-gray-500">{user.email}</Text>
+            <Text className="text-sm" style={{ color: color.inkMuted }}>{user.email}</Text>
           </View>
         </View>
 
@@ -92,7 +92,7 @@ export default function AccountScreen() {
               style={{ gap: 6 }}
             >
               <Ionicons name={t.icon as any} size={14} color={activeTab === t.key ? '#fff' : color.inkMuted} />
-              <Text className={`text-sm font-medium ${activeTab === t.key ? 'text-white' : 'text-gray-600'}`}>{t.label}</Text>
+              <Text className="text-sm font-medium" style={{ color: activeTab === t.key ? color.onAccent : color.inkMuted }}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -233,11 +233,11 @@ function ReviewModal({ state, onClose }: { state: ReviewState | null; onClose: (
               <View className="w-10 h-1 bg-gray-200 rounded-full" />
             </View>
 
-            <Text className="text-base font-bold text-gray-900 mb-1">Write a Review</Text>
-            <Text className="text-sm text-gray-500 mb-5" numberOfLines={1}>{state.item.name}</Text>
+            <Text className="text-base font-bold mb-1" style={{ color: color.ink }}>Write a Review</Text>
+            <Text className="text-sm mb-5" numberOfLines={1} style={{ color: color.inkMuted }}>{state.item.name}</Text>
 
             {/* Star rating */}
-            <Text className="text-sm font-semibold text-gray-700 mb-2">Your Rating</Text>
+            <Text className="text-sm font-semibold mb-2" style={{ color: color.ink }}>Your Rating</Text>
             <View className="flex-row gap-2 mb-5">
               {[1, 2, 3, 4, 5].map((star) => (
                 <TouchableOpacity key={star} onPress={() => setRating(star)} hitSlop={8}>
@@ -251,7 +251,7 @@ function ReviewModal({ state, onClose }: { state: ReviewState | null; onClose: (
             </View>
 
             {/* Comment */}
-            <Text className="text-sm font-semibold text-gray-700 mb-2">Comment (optional)</Text>
+            <Text className="text-sm font-semibold mb-2" style={{ color: color.ink }}>Comment (optional)</Text>
             <Input
               value={comment}
               onChangeText={setComment}
@@ -332,8 +332,8 @@ function OrdersTab({ userId }: { userId: string }) {
             >
               <View className="flex-row items-center justify-between mb-3">
                 <View>
-                  <Text className="text-xs text-gray-400 font-medium">{order.external_id}</Text>
-                  <Text className="text-xs text-gray-400 mt-0.5">
+                  <Text className="text-xs font-medium" style={{ color: color.inkFaint }}>{order.external_id}</Text>
+                  <Text className="text-xs mt-0.5" style={{ color: color.inkFaint }}>
                     {new Date(order.created_at!).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </Text>
                 </View>
@@ -347,7 +347,7 @@ function OrdersTab({ userId }: { userId: string }) {
                   </View>
                 )}
                 <View className="flex-1">
-                  <Text className="text-sm text-gray-600" numberOfLines={1}>
+                  <Text className="text-sm" numberOfLines={1} style={{ color: color.inkMuted }}>
                     {items.length} {items.length === 1 ? 'item' : 'items'} · {order.delivery_state}
                   </Text>
                   <Text className="text-base font-bold text-primary-600 mt-1">
@@ -359,13 +359,13 @@ function OrdersTab({ userId }: { userId: string }) {
               {/* Write review for completed orders */}
               {isCompleted && items.length > 0 && (
                 <View className="mt-3 pt-3 border-t border-gray-50">
-                  <Text className="text-xs text-gray-400 mb-2 font-medium">Leave a review:</Text>
+                  <Text className="text-xs mb-2 font-medium" style={{ color: color.inkFaint }}>Leave a review:</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                     {items.map((item: any) => (
                       <TouchableOpacity
                         key={item.id}
                         onPress={() => setReviewState({ order, item: { id: item.id, name: item.name, imageUrl: item.imageUrl } })}
-                        className="flex-row items-center gap-2 bg-primary-50 border border-primary-100 rounded-xl px-3 py-2"
+                        className="flex-row items-center gap-2 bg-primary-50 border border-primary-100 rounded-full px-3 py-2"
                       >
                         <Ionicons name="star-outline" size={13} color={color.accent} />
                         <Text className="text-xs font-semibold text-primary-700" numberOfLines={1} style={{ maxWidth: 120 }}>
@@ -460,14 +460,14 @@ function SettingsTab({ onSignOut }: { onSignOut: () => void }) {
     <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: tabBarClearance }}>
       <Card padded={false} style={{ overflow: 'hidden', marginBottom: 16 }}>
         <View className="px-4 py-3 border-b border-gray-50">
-          <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Account</Text>
+          <Text className="text-xs font-semibold uppercase tracking-wide" style={{ color: color.inkFaint }}>Account</Text>
         </View>
         <View className="px-4 py-3 border-b border-gray-50">
-          <Text className="text-xs text-gray-500">Email</Text>
-          <Text className="text-sm font-medium text-gray-900 mt-0.5">{user?.email}</Text>
+          <Text className="text-xs" style={{ color: color.inkMuted }}>Email</Text>
+          <Text className="text-sm font-medium mt-0.5" style={{ color: color.ink }}>{user?.email}</Text>
         </View>
         <TouchableOpacity onPress={() => setChangingPw(!changingPw)} className="px-4 py-3 flex-row items-center justify-between">
-          <Text className="text-sm font-medium text-gray-800">Change Password</Text>
+          <Text className="text-sm font-medium" style={{ color: color.ink }}>Change Password</Text>
           <Ionicons name={changingPw ? 'chevron-up' : 'chevron-down'} size={16} color={color.inkFaint} />
         </TouchableOpacity>
         {changingPw && (
