@@ -4,7 +4,6 @@ import { FlashList } from '@/components/ui/List';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { Colors } from '@/constants/Colors';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ProductGridSkeleton } from '@/components/ui/SkeletonLoader';
@@ -57,7 +56,7 @@ export default function CategoryScreen() {
         <Text style={{ fontSize: 18, fontWeight: '800', color: color.ink, flex: 1 }} numberOfLines={1}>
           {categoryName ?? 'Category'}
         </Text>
-        {isFetching && !isLoading && <ActivityIndicator size="small" color={Colors.primary[500]} />}
+        {isFetching && !isLoading && <ActivityIndicator size="small" color={color.accent} />}
       </View>
 
       {isLoading ? (
@@ -91,7 +90,7 @@ export default function CategoryScreen() {
           ListFooterComponent={
             isFetchingNextPage ? (
               <View className="py-4 items-center">
-                <ActivityIndicator color={Colors.primary[500]} />
+                <ActivityIndicator color={color.accent} />
               </View>
             ) : null
           }
