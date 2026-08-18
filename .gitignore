@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# brainstorming visual companion scratch files
+.superpowers/
+
+assets/design-inspo
