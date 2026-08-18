@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,16 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
-import Animated from 'react-native-reanimated';
+import Animated, {
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  interpolate,
+  Extrapolation,
+  withSequence,
+  withSpring,
+  ReduceMotion,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -46,6 +55,37 @@ export default function ProductDetailScreen() {
   const [addedToCart, setAddedToCart] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
   const thumbListRef = useRef<FlatList>(null);
+
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  const galleryAnimatedStyle = useAnimatedStyle(() => {
+    const y = scrollY.value;
+    // Overscroll (pulling down past the top): stretch the hero image.
+    const scale = interpolate(y, [-200, 0], [1.35, 1], Extrapolation.CLAMP);
+    // Normal scroll down: lag the image behind the scroll at half speed
+    // (parallax) so the content below slides up and over it.
+    const parallaxTranslateY = interpolate(y, [0, IMAGE_HEIGHT], [0, IMAGE_HEIGHT * 0.5], Extrapolation.CLAMP);
+    // When stretching, compensate translateY by half the extra height so the
+    // growth extends upward (filling the pulled-down gap) instead of also
+    // pushing into the content below.
+    const stretchTranslateY = (IMAGE_HEIGHT * (scale - 1)) / 2;
+    return {
+      transform: [
+        { translateY: y < 0 ? stretchTranslateY : parallaxTranslateY },
+        { scale },
+      ],
+    };
+  });
+
+  const ctaScale = useSharedValue(1);
+  const ctaAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: ctaScale.value }],
+  }));
 
   const { data: product, isLoading } = useQuery({
     queryKey: ['product', slug],
@@ -133,6 +173,15 @@ export default function ProductDetailScreen() {
     });
   }
 
+  useEffect(() => {
+    if (addedToCart) {
+      ctaScale.value = withSequence(
+        withSpring(1.06, { reduceMotion: ReduceMotion.System }),
+        withSpring(1, { reduceMotion: ReduceMotion.System }),
+      );
+    }
+  }, [addedToCart, ctaScale]);
+
   if (isLoading || !product) {
     return (
       <View style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -176,9 +225,14 @@ export default function ProductDetailScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+      >
         {/* ─── Image gallery ─── */}
-        <View style={{ height: IMAGE_HEIGHT }}>
+        <Animated.View style={[{ height: IMAGE_HEIGHT }, galleryAnimatedStyle]}>
           <FlatList
             data={images.length ? images : ['placeholder']}
             horizontal
@@ -244,7 +298,7 @@ export default function ProductDetailScreen() {
               ))}
             </View>
           )}
-        </View>
+        </Animated.View>
 
         {/* Thumbnail strip */}
         {images.length > 1 && (
@@ -480,7 +534,7 @@ export default function ProductDetailScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* ─── Sticky CTA bar ─── */}
       <View
@@ -523,27 +577,27 @@ export default function ProductDetailScreen() {
             height: 52,
             borderRadius: radius.full,
             backgroundColor: addedToCart ? color.success : (inStock ? color.accent : color.surfaceSunken),
-            flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
           }}
         >
-          <Ionicons
-            name={addedToCart ? 'checkmark-circle-outline' : 'bag-add-outline'}
-            size={20}
-            color={inStock || addedToCart ? '#fff' : color.inkFaint}
-          />
-          <View>
-            <Text style={{ color: inStock || addedToCart ? '#fff' : color.inkFaint, fontSize: 16, fontWeight: '800' }}>
-              {addedToCart ? 'Added to Cart!' : inStock ? 'Add to Cart' : 'Out of Stock'}
-            </Text>
-            {inStock && !addedToCart && (
-              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600' }}>
-                {formatCurrency(displayPrice)}
+          <Animated.View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, ctaAnimatedStyle]}>
+            <Ionicons
+              name={addedToCart ? 'checkmark-circle-outline' : 'bag-add-outline'}
+              size={20}
+              color={inStock || addedToCart ? '#fff' : color.inkFaint}
+            />
+            <View>
+              <Text style={{ color: inStock || addedToCart ? '#fff' : color.inkFaint, fontSize: 16, fontWeight: '800' }}>
+                {addedToCart ? 'Added to Cart!' : inStock ? 'Add to Cart' : 'Out of Stock'}
               </Text>
-            )}
-          </View>
+              {inStock && !addedToCart && (
+                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600' }}>
+                  {formatCurrency(displayPrice)}
+                </Text>
+              )}
+            </View>
+          </Animated.View>
         </TouchableOpacity>
       </View>
     </View>
