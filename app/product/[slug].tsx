@@ -72,8 +72,14 @@ export default function ProductDetailScreen() {
     const parallaxTranslateY = interpolate(y, [0, IMAGE_HEIGHT], [0, IMAGE_HEIGHT * 0.5], Extrapolation.CLAMP);
     // When stretching, compensate translateY by half the extra height so the
     // growth extends upward (filling the pulled-down gap) instead of also
-    // pushing into the content below.
-    const stretchTranslateY = (IMAGE_HEIGHT * (scale - 1)) / 2;
+    // pushing into the content below. transform: [{ translateY }, { scale }]
+    // applies scale first (about center) then translateY in the parent's
+    // coordinate space, so after scaling the bottom edge has already moved
+    // down by +H(s-1)/2; translating by the NEGATIVE of that pulls it back
+    // to pin the bottom edge and pushes the top edge up by the full extra
+    // height, filling the overscroll gap above instead of ballooning down
+    // over the thumbnail strip / product info below.
+    const stretchTranslateY = -(IMAGE_HEIGHT * (scale - 1)) / 2;
     return {
       transform: [
         { translateY: y < 0 ? stretchTranslateY : parallaxTranslateY },
