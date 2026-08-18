@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { HeartIllustration, ReceiptIllustration } from '@/components/illustrations';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
 import { formatCurrency } from '@/lib/currency';
@@ -301,7 +302,7 @@ function OrdersTab({ userId }: { userId: string }) {
   if (!orders?.length) {
     return (
       <EmptyState
-        icon="receipt-outline"
+        illustration={<ReceiptIllustration />}
         title="No orders yet"
         description="Your order history will appear here."
         actionLabel="Start Shopping"
@@ -393,7 +394,7 @@ function WishlistTab() {
   if (!items.length) {
     return (
       <EmptyState
-        icon="heart-outline"
+        illustration={<HeartIllustration />}
         title="Your wishlist is empty"
         description="Save items you love and come back later."
         actionLabel="Browse Shop"

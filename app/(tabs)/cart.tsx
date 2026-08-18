@@ -15,6 +15,7 @@ import { useCartStore } from '@/store/cart';
 import { useAuthStore } from '@/store/auth';
 import { color, font, radius } from '@/theme/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { EmptyBagIllustration } from '@/components/illustrations';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -66,7 +67,7 @@ export default function CartScreen() {
           <Text style={{ fontSize: 20, fontFamily: font.display, color: color.ink }}>My Cart</Text>
         </View>
         <EmptyState
-          icon="bag-outline"
+          illustration={<EmptyBagIllustration />}
           title="Your cart is empty"
           description="Looks like you haven't added anything yet. Start shopping!"
           actionLabel="Browse Shop"

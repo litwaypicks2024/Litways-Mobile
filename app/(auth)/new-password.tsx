@@ -17,6 +17,7 @@ import { color } from '@/theme/tokens';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { InkHeader } from '@/components/auth/InkHeader';
+import { BrokenLinkIllustration } from '@/components/illustrations';
 
 // Extract key=value pairs from BOTH the query string and the hash fragment of a
 // deep link. Implicit-flow recovery links (our default) put tokens after '#',
@@ -151,18 +152,7 @@ export default function NewPasswordScreen() {
 
             {phase === 'invalid' && (
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 8 }}>
-                <View
-                  style={{
-                    width: 72,
-                    height: 72,
-                    borderRadius: 36,
-                    backgroundColor: '#fee2e2',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Ionicons name="alert-circle-outline" size={34} color={color.danger} />
-                </View>
+                <BrokenLinkIllustration />
                 <Text style={{ fontSize: 18, fontWeight: '800', color: color.ink, textAlign: 'center' }}>
                   Reset link invalid or expired
                 </Text>

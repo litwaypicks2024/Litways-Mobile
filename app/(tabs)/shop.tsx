@@ -19,6 +19,7 @@ import { ProductCard } from '@/components/shop/ProductCard';
 import { FilterSheet } from '@/components/shop/FilterSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ProductGridSkeleton } from '@/components/ui/SkeletonLoader';
+import { NoResultsIllustration } from '@/components/illustrations';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
 import type { Product, ProductFilters, SortOption } from '@/types';
@@ -327,7 +328,7 @@ export default function ShopScreen() {
         </View>
       ) : !products.length ? (
         <EmptyState
-          icon="search-outline"
+          illustration={<NoResultsIllustration />}
           title="No products found"
           description={query ? `No results for "${query}".` : 'No products match your filters.'}
           actionLabel="Clear filters"

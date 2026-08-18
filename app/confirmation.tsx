@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, font, shadow } from '@/theme/tokens';
 import { Card } from '@/components/ui/Card';
 import { MotifBand } from '@/components/brand/Motif';
+import { DeliveryBikeIllustration } from '@/components/illustrations';
 
 export default function ConfirmationScreen() {
   const { referenceId } = useLocalSearchParams<{ referenceId: string }>();
@@ -60,12 +61,15 @@ export default function ConfirmationScreen() {
           </View>
         ) : order ? (
           <>
-            <View style={{ backgroundColor: color.peachTint, borderRadius: 20, padding: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Ionicons name="document-text-outline" size={22} color={color.accentPressed} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 11, color: color.accentPressed, fontWeight: '700', marginBottom: 2 }}>ORDER ID</Text>
-                <Text style={{ fontSize: 14, fontWeight: '800', color: color.ink }}>{order.external_id}</Text>
+            <View style={{ flexDirection: 'row', marginBottom: 12, gap: 12, alignItems: 'center' }}>
+              <View style={{ backgroundColor: color.peachTint, borderRadius: 20, padding: 16, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Ionicons name="document-text-outline" size={22} color={color.accentPressed} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, color: color.accentPressed, fontWeight: '700', marginBottom: 2 }}>ORDER ID</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: color.ink }}>{order.external_id}</Text>
+                </View>
               </View>
+              <DeliveryBikeIllustration size={96} />
             </View>
 
             <Card style={{ marginBottom: 12 }}>
