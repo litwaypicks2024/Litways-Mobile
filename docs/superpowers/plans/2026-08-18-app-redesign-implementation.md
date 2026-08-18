@@ -1231,7 +1231,7 @@ git commit -m "Make ProductCard borderless and match its loading skeletons"
 - Modify: `app/(tabs)/index.tsx`
 
 **Interfaces:**
-- Consumes: `color`, `radius`, `spacing`, `gutter`, `shadow`, `type` (Task 1); `IconButton` (Task 3); `useTabBarClearance` (Task 8); `ProductCard` (Task 10, unchanged call sites); `Button` (Task 2, for the hero CTA).
+- Consumes: `color`, `radius`, `spacing`, `gutter`, `shadow`, `type` (Task 1); `IconButton` (Task 3); `useTabBarClearance` (Task 8); `ProductCard` (Task 10, unchanged call sites). The hero CTA is re-tinted inline (Step 2), not routed through the shared `Button` — it's a decorative element inside an already-pressable `PressableScale`, not its own separate tap target.
 
 - [ ] **Step 1: Update the header's search field and add clearance padding**
 
@@ -1321,7 +1321,7 @@ git commit -m "Re-skin Home: floating search pill, IconButton, tab-bar clearance
 - Modify: `app/(tabs)/shop.tsx`
 
 **Interfaces:**
-- Consumes: `color`, `radius` (Task 1); `useTabBarClearance` (Task 8). The search bar stays a bespoke inline field (not the shared `Input`) — it's a compact live-search-with-inline-clear pattern embedded in a header, not a labeled form field, so `Input`'s label/wrapper assumptions don't fit; only its colors/radius are re-skinned. The filter button stays bespoke too — it toggles between an accent-filled "active" state and a muted "idle" state with a count badge, which doesn't map onto `IconButton`'s `light`/`dark` variant pair without stretching that component's scope for one caller.
+- Consumes: `color`, `radius`, `shadow` (Task 1); `useTabBarClearance` (Task 8). The search bar stays a bespoke inline field (not the shared `Input`) — it's a compact live-search-with-inline-clear pattern embedded in a header, not a labeled form field, so `Input`'s label/wrapper assumptions don't fit; only its colors/radius are re-skinned. The filter button stays bespoke too — it toggles between an accent-filled "active" state and a muted "idle" state with a count badge, which doesn't map onto `IconButton`'s `light`/`dark` variant pair without stretching that component's scope for one caller.
 
 - [ ] **Step 1: Replace the header block (search bar, filter button, sort pills)**
 
