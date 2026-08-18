@@ -20,7 +20,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { ProgressStepper } from '@/components/ui/ProgressStepper';
-import { color, radius, shadow } from '@/theme/tokens';
+import { color, font, radius, shadow } from '@/theme/tokens';
 import { LIBERIAN_COUNTIES } from '@/constants/counties';
 import { momoAPI } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
@@ -255,7 +255,7 @@ export default function CheckoutScreen() {
             onPress={() => (step === 1 ? router.back() : setStep(1))}
             style={isProcessing ? { opacity: 0.4 } : undefined}
           />
-          <Text style={{ fontSize: 18, fontWeight: '800', color: color.ink }}>Checkout</Text>
+          <Text style={{ fontSize: 18, fontFamily: font.display, color: color.ink }}>Checkout</Text>
         </View>
 
         <ProgressStepper
@@ -442,7 +442,7 @@ export default function CheckoutScreen() {
               ))}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 12 }}>
                 <Text style={{ fontSize: 15, fontWeight: '800', color: color.ink }}>Total</Text>
-                <Text style={{ fontSize: 15, fontWeight: '900', color: color.accent }}>{formatCurrency(total)}</Text>
+                <Text style={{ fontSize: 15, fontFamily: font.displayHeavy, color: color.accent }}>{formatCurrency(total)}</Text>
               </View>
             </SectionCard>
 

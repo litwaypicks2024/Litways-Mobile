@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import Animated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { color, radius, type } from '@/theme/tokens';
+import { color, font, radius, type } from '@/theme/tokens';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useWishlistStore } from '@/store/wishlist';
 import { formatCurrency, discountPercent } from '@/lib/currency';
@@ -136,7 +136,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
             </Text>
           </View>
         )}
-        <Text style={{ fontSize: 16, fontWeight: '800', color: color.accent, letterSpacing: -0.2 }}>
+        <Text style={{ fontSize: 16, fontFamily: font.displayHeavy, color: color.accent, letterSpacing: -0.2 }}>
           {formatCurrency(displayPrice)}
           {hasDiscount && (
             <Text style={{ fontSize: 12, fontWeight: '500', color: color.inkFaint, textDecorationLine: 'line-through' }}>

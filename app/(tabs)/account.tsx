@@ -18,7 +18,7 @@ import { Image } from 'expo-image';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useWishlistStore } from '@/store/wishlist';
-import { color } from '@/theme/tokens';
+import { color, font } from '@/theme/tokens';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
@@ -75,7 +75,7 @@ export default function AccountScreen() {
             </Text>
           </View>
           <View className="flex-1">
-            <Text className="text-base font-bold" style={{ color: color.ink }}>
+            <Text className="text-base" style={{ color: color.ink, fontFamily: font.display }}>
               {profile ? `${profile.first_name} ${profile.last_name ?? ''}`.trim() : 'Welcome back'}
             </Text>
             <Text className="text-sm" style={{ color: color.inkMuted }}>{user.email}</Text>
@@ -350,7 +350,7 @@ function OrdersTab({ userId }: { userId: string }) {
                   <Text className="text-sm" numberOfLines={1} style={{ color: color.inkMuted }}>
                     {items.length} {items.length === 1 ? 'item' : 'items'} · {order.delivery_state}
                   </Text>
-                  <Text className="text-base font-bold text-primary-600 mt-1">
+                  <Text className="text-base text-primary-600 mt-1" style={{ fontFamily: font.displayHeavy }}>
                     {formatCurrency(order.final_total)}
                   </Text>
                 </View>

@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCartStore } from '@/store/cart';
 import { useAuthStore } from '@/store/auth';
-import { color, radius } from '@/theme/tokens';
+import { color, font, radius } from '@/theme/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Card } from '@/components/ui/Card';
@@ -63,7 +63,7 @@ export default function CartScreen() {
           paddingBottom: 14,
           paddingTop: insets.top + 12,
         }}>
-          <Text style={{ fontSize: 20, fontWeight: '800', color: color.ink }}>My Cart</Text>
+          <Text style={{ fontSize: 20, fontFamily: font.display, color: color.ink }}>My Cart</Text>
         </View>
         <EmptyState
           icon="bag-outline"
@@ -91,7 +91,7 @@ export default function CartScreen() {
         justifyContent: 'space-between',
       }}>
         <View>
-          <Text style={{ fontSize: 20, fontWeight: '800', color: color.ink }}>My Cart</Text>
+          <Text style={{ fontSize: 20, fontFamily: font.display, color: color.ink }}>My Cart</Text>
           <Text style={{ fontSize: 13, color: color.inkMuted, marginTop: 1 }}>
             {items.length} {items.length === 1 ? 'item' : 'items'}
           </Text>
@@ -133,7 +133,7 @@ export default function CartScreen() {
         )}
         ListFooterComponent={
           <Card style={{ marginTop: 4 }}>
-            <Text style={{ fontSize: 15, fontWeight: '800', color: color.ink, marginBottom: 14 }}>Order Summary</Text>
+            <Text style={{ fontSize: 15, fontFamily: font.display, color: color.ink, marginBottom: 14 }}>Order Summary</Text>
 
             <View style={{ gap: 10 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -151,7 +151,7 @@ export default function CartScreen() {
               <View style={{ height: 1, backgroundColor: color.border, marginVertical: 4 }} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 16, fontWeight: '800', color: color.ink }}>Total</Text>
-                <Text style={{ fontSize: 16, fontWeight: '900', color: color.accent }}>{formatCurrency(total)}</Text>
+                <Text style={{ fontSize: 16, fontFamily: font.displayHeavy, color: color.accent }}>{formatCurrency(total)}</Text>
               </View>
             </View>
 
@@ -229,7 +229,7 @@ function CartItemRow({
         )}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 15, fontWeight: '900', color: color.accent }}>
+          <Text style={{ fontSize: 15, fontFamily: font.displayHeavy, color: color.accent }}>
             {formatCurrency(item.price * item.quantity)}
           </Text>
           <QuantityStepper

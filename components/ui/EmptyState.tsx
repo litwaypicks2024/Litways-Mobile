@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { color } from '@/theme/tokens';
+import { color, font } from '@/theme/tokens';
 import { Button } from './Button';
 
 interface Props {
@@ -18,7 +18,7 @@ export function EmptyState({ icon = 'cube-outline', title, description, actionLa
       <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
         <Ionicons name={icon} size={36} color={color.accent} />
       </View>
-      <Text style={{ fontSize: 19, fontWeight: '800', color: color.ink, textAlign: 'center', marginBottom: 8 }}>{title}</Text>
+      <Text style={{ fontSize: 19, fontFamily: font.display, color: color.ink, textAlign: 'center', marginBottom: 8 }}>{title}</Text>
       {description && (
         <Text style={{ fontSize: 14, color: color.inkMuted, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>{description}</Text>
       )}

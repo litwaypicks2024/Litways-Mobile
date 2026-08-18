@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { momoAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { color, shadow } from '@/theme/tokens';
+import { color, font, shadow } from '@/theme/tokens';
 import { Card } from '@/components/ui/Card';
 
 export default function ConfirmationScreen() {
@@ -41,8 +41,8 @@ export default function ConfirmationScreen() {
               <Ionicons name="checkmark" size={40} color={color.onAccent} />
             </View>
           </View>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: color.ink }}>Thank You!</Text>
-          <Text style={{ fontSize: 17, fontWeight: '700', color: color.accent, marginTop: 2 }}>Your Order is Confirmed</Text>
+          <Text style={{ fontSize: 22, fontFamily: font.displayHeavy, color: color.ink }}>Thank You!</Text>
+          <Text style={{ fontSize: 17, fontFamily: font.display, color: color.accent, marginTop: 2 }}>Your Order is Confirmed</Text>
           <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
             We received your order and it's now being processed.
           </Text>

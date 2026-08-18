@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { color, radius } from '@/theme/tokens';
+import { color, font, radius } from '@/theme/tokens';
 import { IconButton } from '@/components/ui/IconButton';
 
 interface Props {
@@ -46,7 +46,7 @@ export function InkHeader({ icon, onIconPress, title, subtitle }: Props) {
         style={{
           color: color.onInk,
           fontSize: 34,
-          fontWeight: '800',
+          fontFamily: font.displayHeavy,
           lineHeight: 38,
           letterSpacing: -0.5,
           marginTop: 10,

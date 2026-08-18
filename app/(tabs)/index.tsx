@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { FlashList } from '@/components/ui/List';
 import { supabase } from '@/lib/supabase';
-import { color, radius, spacing, gutter, shadow, type as t } from '@/theme/tokens';
+import { color, font, radius, spacing, gutter, shadow, type as t } from '@/theme/tokens';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { ProductCardSkeleton, SkeletonBlock } from '@/components/ui/SkeletonLoader';
@@ -130,7 +130,7 @@ export default function HomeScreen() {
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 20, fontWeight: '800', color: color.text, letterSpacing: -0.6 }}>
+          <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.text, letterSpacing: -0.6 }}>
             LITWAYS<Text style={{ color: color.accent }}>.</Text>
           </Text>
 
@@ -197,7 +197,7 @@ export default function HomeScreen() {
               <View style={{ alignSelf: 'flex-start', backgroundColor: color.accent, borderRadius: radius.sm, paddingHorizontal: 9, paddingVertical: 5, marginBottom: spacing.md }}>
                 <Text style={{ color: color.onAccent, fontSize: 11, fontWeight: '800', letterSpacing: 0.4 }}>WELCOME</Text>
               </View>
-              <Text style={{ color: '#fff', fontSize: 30, fontWeight: '800', lineHeight: 32, letterSpacing: -0.6, marginBottom: spacing.md }}>
+              <Text style={{ color: '#fff', fontSize: 30, fontFamily: font.displayHeavy, lineHeight: 32, letterSpacing: -0.6, marginBottom: spacing.md }}>
                 Everything you{'\n'}need, delivered
               </Text>
               <View style={{ alignSelf: 'flex-start', backgroundColor: color.ink, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
@@ -270,7 +270,7 @@ export default function HomeScreen() {
                       <Ionicons name="pricetag" size={14} color={color.accent} />
                       <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' }}>Deals on now</Text>
                     </View>
-                    <Text style={{ color: '#fff', fontSize: 26, fontWeight: '800', letterSpacing: -0.5 }}>
+                    <Text style={{ color: '#fff', fontSize: 26, fontFamily: font.displayHeavy, letterSpacing: -0.5 }}>
                       {maxDiscount > 0 ? `Up to ${maxDiscount}% off` : 'Save on selected items'}
                     </Text>
                     <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 3 }}>Selected items · while stocks last</Text>
@@ -349,7 +349,7 @@ function SectionHeader({ title, subtitle, onSeeAll }: { title: string; subtitle?
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: gutter, marginBottom: spacing.lg }}>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 20, fontWeight: '800', color: color.text, letterSpacing: -0.4 }}>{title}</Text>
+        <Text style={{ fontSize: 20, fontFamily: font.display, color: color.text, letterSpacing: -0.4 }}>{title}</Text>
         {subtitle && <Text style={{ fontSize: 12.5, color: color.textMuted, fontWeight: '500', marginTop: 3 }}>{subtitle}</Text>}
       </View>
       {onSeeAll && (

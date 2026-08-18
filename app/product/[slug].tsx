@@ -19,7 +19,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { FlashList } from '@/components/ui/List';
 import { supabase } from '@/lib/supabase';
-import { color, radius } from '@/theme/tokens';
+import { color, font, radius } from '@/theme/tokens';
 import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
 import { PressableScale } from '@/components/ui/PressableScale';
@@ -297,7 +297,7 @@ export default function ProductDetailScreen() {
             </View>
           </View>
 
-          <Text style={{ fontSize: 20, fontWeight: '800', color: color.ink, lineHeight: 27, marginBottom: 10 }}>
+          <Text style={{ fontSize: 20, fontFamily: font.display, color: color.ink, lineHeight: 27, marginBottom: 10 }}>
             {product.name}
           </Text>
 
@@ -316,7 +316,7 @@ export default function ProductDetailScreen() {
 
           {/* Price block */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginBottom: 20, backgroundColor: color.accentSoft, borderRadius: 14, padding: 14 }}>
-            <Text style={{ fontSize: 28, fontWeight: '900', color: color.accent }}>
+            <Text style={{ fontSize: 28, fontFamily: font.displayHeavy, color: color.accent }}>
               {formatCurrency(displayPrice)}
             </Text>
             {hasDiscount && (
@@ -445,7 +445,7 @@ export default function ProductDetailScreen() {
             <View style={{ marginBottom: 24 }}>
               {/* Rating summary */}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <Text style={{ fontSize: 15, fontWeight: '800', color: color.ink }}>
+                <Text style={{ fontSize: 15, fontFamily: font.display, color: color.ink }}>
                   Reviews ({reviewCount})
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: color.star + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
