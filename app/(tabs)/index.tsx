@@ -331,7 +331,7 @@ export default function HomeScreen() {
               style={{
                 marginHorizontal: gutter, marginTop: spacing.md,
                 borderWidth: 1, borderColor: color.border, backgroundColor: color.surface,
-                borderRadius: radius.md, paddingVertical: 14,
+                borderRadius: radius.full, paddingVertical: 14,
                 flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
               }}
             >

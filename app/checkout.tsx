@@ -20,7 +20,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { ProgressStepper } from '@/components/ui/ProgressStepper';
-import { color, shadow } from '@/theme/tokens';
+import { color, radius, shadow } from '@/theme/tokens';
 import { LIBERIAN_COUNTIES } from '@/constants/counties';
 import { momoAPI } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
@@ -286,7 +286,7 @@ export default function CheckoutScreen() {
                     <Text style={{ fontSize: 13, fontWeight: '800', color: color.ink }}>Have an account?</Text>
                     <Text style={{ fontSize: 12, color: color.inkMuted, marginTop: 1 }}>Sign in for faster checkout & order tracking</Text>
                   </View>
-                  <TouchableOpacity onPress={() => router.push('/(auth)/login')} style={{ backgroundColor: color.accent, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 }}>
+                  <TouchableOpacity onPress={() => router.push('/(auth)/login')} style={{ backgroundColor: color.accent, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 9 }}>
                     <Text style={{ color: color.onAccent, fontSize: 13, fontWeight: '800' }}>Sign in</Text>
                   </TouchableOpacity>
                 </View>
@@ -320,14 +320,14 @@ export default function CheckoutScreen() {
 
               {/* County picker */}
               <View style={{ marginBottom: 8 }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: color.ink, marginBottom: 6 }}>County *</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: color.inkMuted, marginBottom: 6 }}>County *</Text>
                 <TouchableOpacity
                   onPress={() => setShowCountyPicker(!showCountyPicker)}
                   style={{
                     flexDirection: 'row', alignItems: 'center',
-                    backgroundColor: color.surface, borderRadius: 12, borderWidth: 1.5,
-                    borderColor: showCountyPicker ? color.accent : color.border,
-                    paddingHorizontal: 12, height: 48, gap: 8,
+                    backgroundColor: color.surface, borderRadius: radius.full, borderWidth: 1.5,
+                    borderColor: showCountyPicker ? color.accent : 'transparent',
+                    paddingHorizontal: 16, height: 50, gap: 8,
                   }}
                 >
                   <Ionicons name="map-outline" size={18} color={color.inkFaint} />
