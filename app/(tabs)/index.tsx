@@ -8,6 +8,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { Image } from 'expo-image';
+import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -167,50 +168,58 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: tabBarClearance }}
       >
         {/* Announce bar — free-delivery threshold nudges basket size */}
-        <View style={{
-          backgroundColor: color.accentSoft,
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-          paddingVertical: spacing.sm,
-        }}>
+        <Animated.View
+          entering={FadeInDown.duration(300).delay(0 * 60).reduceMotion(ReduceMotion.System)}
+          style={{
+            backgroundColor: color.accentSoft,
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+            paddingVertical: spacing.sm,
+          }}
+        >
           <Ionicons name="bicycle-outline" size={16} color={color.accentPressed} />
           <Text style={{ fontSize: 12, fontWeight: '700', color: color.accentPressed }}>
             Free delivery on orders over $25
           </Text>
-        </View>
+        </Animated.View>
 
         {/* ─── Hero ─── */}
-        <PressableScale haptic onPress={() => router.push('/(tabs)/shop')} style={{ marginTop: spacing.lg, marginHorizontal: gutter }}>
-          <View style={{ height: 230, borderRadius: radius.lg, overflow: 'hidden' }}>
-            <Image
-              source={{ uri: HERO_IMAGE }}
-              style={{ width: '100%', height: '100%' }}
-              contentFit="cover"
-              transition={300}
-              placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
-            />
-            <LinearGradient
-              colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.72)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            />
-            <View style={{ position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.lg }}>
-              <View style={{ alignSelf: 'flex-start', backgroundColor: color.accent, borderRadius: radius.sm, paddingHorizontal: 9, paddingVertical: 5, marginBottom: spacing.md }}>
-                <Text style={{ color: color.onAccent, fontSize: 11, fontWeight: '800', letterSpacing: 0.4 }}>WELCOME</Text>
-              </View>
-              <Text style={{ color: '#fff', fontSize: 30, fontFamily: font.displayHeavy, lineHeight: 32, letterSpacing: -0.6, marginBottom: spacing.md }}>
-                Everything you{'\n'}need, delivered
-              </Text>
-              <View style={{ alignSelf: 'flex-start', backgroundColor: color.ink, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-                <Text style={{ color: color.onInk, fontWeight: '800', fontSize: 13 }}>Start shopping</Text>
-                <Ionicons name="arrow-forward" size={15} color={color.onInk} />
+        <Animated.View entering={FadeInDown.duration(300).delay(1 * 60).reduceMotion(ReduceMotion.System)}>
+          <PressableScale haptic onPress={() => router.push('/(tabs)/shop')} style={{ marginTop: spacing.lg, marginHorizontal: gutter }}>
+            <View style={{ height: 230, borderRadius: radius.lg, overflow: 'hidden' }}>
+              <Image
+                source={{ uri: HERO_IMAGE }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+                transition={300}
+                placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+              />
+              <LinearGradient
+                colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.72)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+              />
+              <View style={{ position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.lg }}>
+                <View style={{ alignSelf: 'flex-start', backgroundColor: color.accent, borderRadius: radius.sm, paddingHorizontal: 9, paddingVertical: 5, marginBottom: spacing.md }}>
+                  <Text style={{ color: color.onAccent, fontSize: 11, fontWeight: '800', letterSpacing: 0.4 }}>WELCOME</Text>
+                </View>
+                <Text style={{ color: '#fff', fontSize: 30, fontFamily: font.displayHeavy, lineHeight: 32, letterSpacing: -0.6, marginBottom: spacing.md }}>
+                  Everything you{'\n'}need, delivered
+                </Text>
+                <View style={{ alignSelf: 'flex-start', backgroundColor: color.ink, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                  <Text style={{ color: color.onInk, fontWeight: '800', fontSize: 13 }}>Start shopping</Text>
+                  <Ionicons name="arrow-forward" size={15} color={color.onInk} />
+                </View>
               </View>
             </View>
-          </View>
-        </PressableScale>
+          </PressableScale>
+        </Animated.View>
 
         {/* ─── Shop by category ─── */}
-        <View style={{ marginTop: spacing['2xl'] }}>
+        <Animated.View
+          entering={FadeInDown.duration(300).delay(2 * 60).reduceMotion(ReduceMotion.System)}
+          style={{ marginTop: spacing['2xl'] }}
+        >
           <SectionHeader title="Shop by category" />
           <ScrollView
             horizontal
@@ -253,11 +262,14 @@ export default function HomeScreen() {
                   </PressableScale>
                 ))}
           </ScrollView>
-        </View>
+        </Animated.View>
 
         {/* ─── Deals ─── */}
         {(deals?.length ?? 0) > 0 && (
-          <View style={{ marginTop: spacing['2xl'] }}>
+          <Animated.View
+            entering={FadeInDown.duration(300).delay(3 * 60).reduceMotion(ReduceMotion.System)}
+            style={{ marginTop: spacing['2xl'] }}
+          >
             {/* Bold statement — honest "up to X% off" from real discounts */}
             <PressableScale
               haptic
@@ -295,11 +307,14 @@ export default function HomeScreen() {
               renderItem={({ item }) => <ProductCard product={item} width={172} variant="horizontal" />}
               keyExtractor={(item) => item.id ?? ''}
             />
-          </View>
+          </Animated.View>
         )}
 
         {/* ─── Popular right now ─── */}
-        <View style={{ marginTop: spacing['2xl'] }}>
+        <Animated.View
+          entering={FadeInDown.duration(300).delay(4 * 60).reduceMotion(ReduceMotion.System)}
+          style={{ marginTop: spacing['2xl'] }}
+        >
           <SectionHeader title="Popular right now" subtitle="What people are buying" onSeeAll={() => router.push('/(tabs)/shop')} />
           {loadingFeatured ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: spacing.md }}>
@@ -314,11 +329,14 @@ export default function HomeScreen() {
               ))}
             </View>
           )}
-        </View>
+        </Animated.View>
 
         {/* ─── New arrivals ─── */}
         {(newest?.length ?? 0) > 0 && (
-          <View style={{ marginTop: spacing['2xl'] }}>
+          <Animated.View
+            entering={FadeInDown.duration(300).delay(5 * 60).reduceMotion(ReduceMotion.System)}
+            style={{ marginTop: spacing['2xl'] }}
+          >
             <SectionHeader title="New arrivals" subtitle="Fresh in this week" onSeeAll={() => router.push('/(tabs)/shop')} />
             <View style={{ paddingHorizontal: gutter - spacing.xs, flexDirection: 'row', flexWrap: 'wrap' }}>
               {newest?.slice(0, 4).map((item) => (
@@ -340,7 +358,7 @@ export default function HomeScreen() {
               <Text style={{ color: color.text, fontWeight: '700', fontSize: 14 }}>See all products</Text>
               <Ionicons name="arrow-forward" size={15} color={color.text} />
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         )}
       </ScrollView>
     </View>
