@@ -167,13 +167,12 @@ export default function ProductDetailScreen() {
         <IconButton icon="arrow-back" variant="dark" onPress={() => router.back()} />
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <IconButton icon="share-outline" variant="dark" onPress={handleShare} />
-          <PressableScale haptic onPress={handleWishlist} style={navBtnStyle}>
-            <Ionicons
-              name={wishlisted ? 'heart' : 'heart-outline'}
-              size={20}
-              color={wishlisted ? '#fca5a5' : '#fff'}
-            />
-          </PressableScale>
+          <IconButton
+            icon={wishlisted ? 'heart' : 'heart-outline'}
+            variant="dark"
+            iconColor={wishlisted ? '#fca5a5' : undefined}
+            onPress={handleWishlist}
+          />
         </View>
       </View>
 
@@ -550,12 +549,3 @@ export default function ProductDetailScreen() {
     </View>
   );
 }
-
-const navBtnStyle = {
-  width: 40,
-  height: 40,
-  backgroundColor: 'rgba(0,0,0,0.38)',
-  borderRadius: 20,
-  alignItems: 'center' as const,
-  justifyContent: 'center' as const,
-};

@@ -10,11 +10,13 @@ interface Props {
   size?: number;
   iconSize?: number;
   variant?: 'light' | 'dark';
+  /** Overrides the variant's default icon color (e.g. a filled wishlist heart). */
+  iconColor?: string;
   badge?: number;
   style?: ViewStyle;
 }
 
-export function IconButton({ icon, onPress, size = 42, iconSize = 19, variant = 'light', badge, style }: Props) {
+export function IconButton({ icon, onPress, size = 42, iconSize = 19, variant = 'light', iconColor, badge, style }: Props) {
   const isLight = variant === 'light';
   return (
     <PressableScale
@@ -35,7 +37,7 @@ export function IconButton({ icon, onPress, size = 42, iconSize = 19, variant = 
         style,
       ]}
     >
-      <Ionicons name={icon} size={iconSize} color={isLight ? color.ink : color.onInk} />
+      <Ionicons name={icon} size={iconSize} color={iconColor ?? (isLight ? color.ink : color.onInk)} />
       {typeof badge === 'number' && badge > 0 && (
         <View
           style={{
