@@ -50,38 +50,57 @@ async function removeChunkedItem(key: string): Promise<void> {
   await SecureStore.deleteItemAsync(`${key}.count`);
 }
 
-// Supabase's default GoTrue storage key (we never override `storageKey`), used
-// by the AsyncStorage adapter this file previously used. Existing signed-in
-// users have a live session sitting under this key — the migration below
-// moves it into SecureStore on first read so nobody gets signed out.
-const LEGACY_ASYNC_STORAGE_KEY = 'supabase.auth.token';
-
+// NOTE: we do NOT hardcode Supabase's default storage key. supabase-js
+// (SupabaseClient, dist/index.cjs ~line 1208) computes it per-project as
+// `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token` and passes
+// that as `storageKey` to the auth client — it's whatever key this adapter
+// is actually invoked with, not GoTrueClient's raw internal default. The
+// adapter therefore migrates generically: on any SecureStore miss, it falls
+// back to AsyncStorage using the SAME key it was called with, so existing
+// sessions (under whatever key supabase-js derives) are picked up.
 const SecureStoreAdapter = {
   async getItem(key: string): Promise<string | null> {
-    const existing = await getChunkedItem(key);
+    let existing: string | null = null;
+    try {
+      existing = await getChunkedItem(key);
+    } catch (e) {
+      console.warn('[supabase] SecureStore read failed for', key, e);
+    }
     if (existing !== null) return existing;
 
     // One-time migration: fall back to the old AsyncStorage value (unencrypted),
     // then copy it into SecureStore and delete the AsyncStorage copy so future
     // reads go through the encrypted path only.
-    if (key === LEGACY_ASYNC_STORAGE_KEY) {
-      const legacyValue = await AsyncStorage.getItem(key);
-      if (legacyValue !== null) {
+    const legacyValue = await AsyncStorage.getItem(key).catch(() => null);
+    if (legacyValue !== null) {
+      try {
         await setChunkedItem(key, legacyValue);
         await AsyncStorage.removeItem(key);
-        return legacyValue;
+      } catch (e) {
+        // A failed SecureStore write (or AsyncStorage cleanup) during
+        // migration must not lose the value we already read — the session
+        // just won't be durably moved to SecureStore yet; it'll retry on
+        // the next read/write.
+        console.warn('[supabase] Failed to migrate legacy session into SecureStore for', key, e);
       }
+      return legacyValue;
     }
     return null;
   },
   async setItem(key: string, value: string): Promise<void> {
-    await setChunkedItem(key, value);
+    try {
+      await setChunkedItem(key, value);
+    } catch (e) {
+      console.warn('[supabase] SecureStore write failed for', key, e);
+    }
   },
   async removeItem(key: string): Promise<void> {
-    await removeChunkedItem(key);
-    if (key === LEGACY_ASYNC_STORAGE_KEY) {
-      await AsyncStorage.removeItem(key).catch(() => {});
+    try {
+      await removeChunkedItem(key);
+    } catch (e) {
+      console.warn('[supabase] SecureStore remove failed for', key, e);
     }
+    await AsyncStorage.removeItem(key).catch(() => {});
   },
 };
 

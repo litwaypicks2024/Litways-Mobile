@@ -42,6 +42,8 @@ function getAuthParams(url: string): Record<string, string> {
 // before they reach exchangeCodeForSession/setSession.
 const CODE_PATTERN = /^[A-Za-z0-9-]{8,128}$/;
 const JWT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+// Supabase refresh tokens are opaque random strings (no dots) — not JWTs.
+const OPAQUE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{8,512}$/;
 
 function isPlausibleCode(value: string): boolean {
   return CODE_PATTERN.test(value);
@@ -49,6 +51,10 @@ function isPlausibleCode(value: string): boolean {
 
 function isPlausibleJwt(value: string): boolean {
   return value.length < 4096 && JWT_PATTERN.test(value);
+}
+
+function isPlausibleOpaqueToken(value: string): boolean {
+  return OPAQUE_TOKEN_PATTERN.test(value);
 }
 
 // Establishes a short-lived recovery session from the reset link so the user can
@@ -60,7 +66,7 @@ async function establishRecoverySession(url: string): Promise<boolean> {
       const { error } = await supabase.auth.exchangeCodeForSession(p.code);
       return !error;
     }
-    if (p.access_token && p.refresh_token && isPlausibleJwt(p.access_token) && isPlausibleJwt(p.refresh_token)) {
+    if (p.access_token && p.refresh_token && isPlausibleJwt(p.access_token) && isPlausibleOpaqueToken(p.refresh_token)) {
       const { error } = await supabase.auth.setSession({
         access_token: p.access_token,
         refresh_token: p.refresh_token,
