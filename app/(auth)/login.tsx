@@ -25,7 +25,7 @@ import { LogoMark } from '@/components/brand/LogoMark';
 
 type Mode = 'login' | 'signup';
 
-const HERO_H = Math.round(Dimensions.get('window').height * 0.34);
+const HERO_H = Math.round(Dimensions.get('window').height * 0.4);
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -122,11 +122,14 @@ export default function LoginScreen() {
               source={require('@/assets/images/auth-hero.jpg')}
               style={{ width: '100%', height: '100%' }}
               contentFit="cover"
+              /* Anchor the crop to the top of the frame — the subject's face is
+                 the picture; cover's default center-crop cuts it off. */
+              contentPosition="top center"
               transition={300}
             />
             <LinearGradient
               colors={['rgba(236,236,236,0)', color.bg]}
-              style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 110 }}
+              style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 72 }}
             />
             <View style={{ position: 'absolute', top: insets.top + 8, left: 16 }}>
               <IconButton icon="close" variant="dark" onPress={() => router.back()} />
@@ -138,7 +141,7 @@ export default function LoginScreen() {
             style={{
               flex: 1,
               paddingHorizontal: 24,
-              paddingTop: 4,
+              paddingTop: 14,
               paddingBottom: Math.max(insets.bottom + 24, 40),
             }}
           >
