@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { color, font } from '@/theme/tokens';
 import { Button } from './Button';
+import { IdleFloat } from '@/components/motion/IdleFloat';
 
 interface Props {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -18,7 +19,9 @@ export function EmptyState({ icon = 'cube-outline', illustration, title, descrip
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingVertical: 64 }}>
       {illustration ? (
-        <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>{illustration}</View>
+        <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <IdleFloat>{illustration}</IdleFloat>
+        </View>
       ) : (
         <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
           <Ionicons name={icon} size={36} color={color.accent} />

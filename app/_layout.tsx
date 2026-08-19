@@ -14,6 +14,7 @@ import { onboarding } from '@/lib/storage';
 import { registerForPushNotifications, savePushToken, useNotificationListener } from '@/lib/notifications';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { BrandSplash } from '@/components/BrandSplash';
+import { FlyToCartOverlay } from '@/components/motion/FlyToCart';
 
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ fade: true, duration: 300 });
@@ -149,6 +150,7 @@ function AppContent() {
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
     </Stack>
+    <FlyToCartOverlay />
     {showSplash && <BrandSplash visible={!appReady} onHidden={() => setShowSplash(false)} />}
     </>
   );

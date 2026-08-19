@@ -6,7 +6,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
@@ -17,6 +16,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { InkHeader } from '@/components/auth/InkHeader';
 import { BrokenLinkIllustration } from '@/components/illustrations';
+import { BrandLoader } from '@/components/motion/BrandLoader';
 
 // Extract key=value pairs from BOTH the query string and the hash fragment of a
 // deep link. Implicit-flow recovery links (our default) put tokens after '#',
@@ -143,9 +143,8 @@ export default function NewPasswordScreen() {
             }}
           >
             {phase === 'verifying' && (
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-                <ActivityIndicator color={color.accent} />
-                <Text style={{ fontSize: 14, color: color.inkMuted }}>Verifying your reset link…</Text>
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <BrandLoader size={56} label="Verifying your reset link…" />
               </View>
             )}
 

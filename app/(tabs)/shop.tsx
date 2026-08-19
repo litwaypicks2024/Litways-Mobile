@@ -20,6 +20,8 @@ import { FilterSheet } from '@/components/shop/FilterSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ProductGridSkeleton } from '@/components/ui/SkeletonLoader';
 import { NoResultsIllustration } from '@/components/illustrations';
+import { BrandLoader } from '@/components/motion/BrandLoader';
+import Animated, { FadeIn, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
 import type { Product, ProductFilters, SortOption } from '@/types';
@@ -335,6 +337,10 @@ export default function ShopScreen() {
           onAction={() => { handleClear(); setFilters({}); }}
         />
       ) : (
+        <Animated.View
+          style={{ flex: 1 }}
+          entering={FadeIn.duration(240).reduceMotion(ReduceMotion.System)}
+        >
         <FlashList
           data={products}
           numColumns={2}
@@ -351,12 +357,12 @@ export default function ShopScreen() {
           ListFooterComponent={
             isFetchingNextPage ? (
               <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-                <ActivityIndicator color={color.accent} />
-                <Text style={{ fontSize: 12, color: color.inkFaint, marginTop: 6 }}>Loading more...</Text>
+                <BrandLoader size={44} label="Loading more…" />
               </View>
             ) : null
           }
         />
+        </Animated.View>
       )}
 
       <FilterSheet

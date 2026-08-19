@@ -11,6 +11,8 @@ import type { Product } from '@/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/ui/IconButton';
 import { color, font } from '@/theme/tokens';
+import { BrandLoader } from '@/components/motion/BrandLoader';
+import Animated, { FadeIn, ReduceMotion } from 'react-native-reanimated';
 
 const PAGE_SIZE = 24;
 
@@ -72,6 +74,10 @@ export default function CategoryScreen() {
           onAction={() => router.push('/(tabs)/shop')}
         />
       ) : (
+        <Animated.View
+          style={{ flex: 1 }}
+          entering={FadeIn.duration(240).reduceMotion(ReduceMotion.System)}
+        >
         <FlashList
           data={products}
           numColumns={2}
@@ -90,11 +96,12 @@ export default function CategoryScreen() {
           ListFooterComponent={
             isFetchingNextPage ? (
               <View className="py-4 items-center">
-                <ActivityIndicator color={color.accent} />
+                <BrandLoader size={44} />
               </View>
             ) : null
           }
         />
+        </Animated.View>
       )}
     </View>
   );

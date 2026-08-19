@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { TabTriggerSlotProps } from 'expo-router/ui';
 import Animated, {
+  Easing,
+  Keyframe,
   ReduceMotion,
-  ZoomIn,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -30,6 +31,16 @@ interface TabButtonProps extends TabTriggerSlotProps {
 }
 
 const BADGE_POP_SPRING = { damping: 12, stiffness: 220, reduceMotion: ReduceMotion.System } as const;
+
+/* The active circle rises out of the bar and overshoots slightly, like it
+   physically landed there. */
+const CIRCLE_RISE = new Keyframe({
+  0: { opacity: 0, transform: [{ translateY: 16 }, { scale: 0.55 }] },
+  55: { opacity: 1, transform: [{ translateY: -3 }, { scale: 1.04 }], easing: Easing.out(Easing.quad) },
+  100: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }], easing: Easing.inOut(Easing.quad) },
+})
+  .duration(300)
+  .reduceMotion(ReduceMotion.System);
 
 function IconBadge({ count, ringColor }: { count: number; ringColor: string }) {
   const scale = useSharedValue(1);
@@ -100,7 +111,7 @@ export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabBu
   return (
     <Pressable ref={ref} {...props} style={{ flex: 1, alignItems: 'center', height: TAB_BAR_HEIGHT }}>
       <Animated.View
-        entering={ZoomIn.springify().damping(14).stiffness(180).reduceMotion(ReduceMotion.System)}
+        entering={CIRCLE_RISE}
         pointerEvents="none"
         style={{
           position: 'absolute',

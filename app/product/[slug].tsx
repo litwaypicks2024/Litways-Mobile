@@ -10,7 +10,9 @@ import {
   Share,
   Platform,
   ActivityIndicator,
+  type GestureResponderEvent,
 } from 'react-native';
+import { flyToCart } from '@/components/motion/FlyToCart';
 import { Image } from 'expo-image';
 import Animated, {
   useAnimatedScrollHandler,
@@ -131,7 +133,7 @@ export default function ProductDetailScreen() {
     thumbListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
   }
 
-  function handleAddToCart() {
+  function handleAddToCart(e?: GestureResponderEvent) {
     if (!product) return;
     if (product.sizes?.length && !selectedSize) {
       Alert.alert('Select a size', 'Please choose a size before adding to cart.');
@@ -140,6 +142,9 @@ export default function ProductDetailScreen() {
     if (product.colors?.length && !selectedColor) {
       Alert.alert('Select a color', 'Please choose a color before adding to cart.');
       return;
+    }
+    if (e?.nativeEvent) {
+      flyToCart(e.nativeEvent.pageX, e.nativeEvent.pageY);
     }
     addItem({
       productId: product.id!,

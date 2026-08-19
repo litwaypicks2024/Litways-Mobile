@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Platform } from 'react-native';
 import { Image } from 'expo-image';
+import { BrandLoader } from '@/components/motion/BrandLoader';
+import { DrawnCheckmark } from '@/components/motion/DrawnCheckmark';
+import { IdleFloat } from '@/components/motion/IdleFloat';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, {
@@ -74,7 +77,7 @@ export default function ConfirmationScreen() {
               }}
             >
               <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="checkmark" size={40} color={color.onAccent} />
+                <DrawnCheckmark size={44} delay={250} />
               </View>
             </Animated.View>
           </View>
@@ -94,8 +97,7 @@ export default function ConfirmationScreen() {
 
         {loading ? (
           <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-            <ActivityIndicator color={color.accent} />
-            <Text style={{ fontSize: 13, color: color.inkMuted, marginTop: 12 }}>Loading order details...</Text>
+            <BrandLoader size={56} label="Loading order details…" />
           </View>
         ) : order ? (
           <>
@@ -112,14 +114,16 @@ export default function ConfirmationScreen() {
               </View>
               {/* Clay-render rider; container matches the artwork's own bg (#e9e8e7)
                   so the square edge disappears into a deliberate rounded card. */}
-              <View style={{ backgroundColor: '#e9e8e7', borderRadius: 20, overflow: 'hidden' }}>
-                <Image
-                  source={require('@/assets/images/delivery-illustration.jpg')}
-                  style={{ width: 104, height: 104 }}
-                  contentFit="cover"
-                  transition={250}
-                />
-              </View>
+              <IdleFloat>
+                <View style={{ backgroundColor: '#e9e8e7', borderRadius: 20, overflow: 'hidden' }}>
+                  <Image
+                    source={require('@/assets/images/delivery-illustration.jpg')}
+                    style={{ width: 104, height: 104 }}
+                    contentFit="cover"
+                    transition={250}
+                  />
+                </View>
+              </IdleFloat>
             </Animated.View>
 
             <Animated.View entering={FadeInDown.duration(280).delay(120 + 2 * 70).reduceMotion(ReduceMotion.System)}>
