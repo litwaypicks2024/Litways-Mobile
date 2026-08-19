@@ -38,7 +38,14 @@ function AppContent() {
   // display font finishes loading, then fades.
   const [startupDone, setStartupDone] = useState(false);
   const [fontsLoaded] = useFonts({ BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold });
-  const appReady = startupDone && fontsLoaded;
+  // Hold the splash long enough for its assembly choreography (~1.4s) to
+  // land, even when fonts/session resolve instantly (dev, warm caches).
+  const [splashMinHoldDone, setSplashMinHoldDone] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSplashMinHoldDone(true), 1700);
+    return () => clearTimeout(timer);
+  }, []);
+  const appReady = startupDone && fontsLoaded && splashMinHoldDone;
   const [showSplash, setShowSplash] = useState(true);
 
   // Persist the cart back to the server (debounced) whenever it changes while
