@@ -485,7 +485,7 @@ export default function ProductDetailScreen() {
                 <Ionicons name="car-outline" size={18} color="#fff" />
               </View>
               <View>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#15803d' }}>Free Delivery Nationwide</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#15803d' }}>Nationwide Delivery</Text>
                 <Text style={{ fontSize: 11, color: '#16a34a', marginTop: 1 }}>All 15 Liberian counties · MTN MoMo</Text>
               </View>
             </View>

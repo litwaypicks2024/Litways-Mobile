@@ -25,8 +25,6 @@ import { formatCurrency } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CartItem } from '@/types';
 
-const FREE_SHIPPING_THRESHOLD = 50;
-
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -34,9 +32,6 @@ export default function CartScreen() {
   const user = useAuthStore((s) => s.user);
 
   const total = subtotal();
-  const shippingProgress = Math.min((total / FREE_SHIPPING_THRESHOLD) * 100, 100);
-  const remaining = Math.max(FREE_SHIPPING_THRESHOLD - total, 0);
-  const freeShipping = remaining === 0;
 
   function handleCheckout() {
     if (!user) {
@@ -102,28 +97,6 @@ export default function CartScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ─── Free shipping progress ─── */}
-      <View style={{ backgroundColor: color.surface, marginBottom: 8, paddingHorizontal: 20, paddingVertical: 12 }}>
-        {freeShipping ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{ width: 28, height: 28, backgroundColor: '#dcfce7', borderRadius: 14, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="checkmark" size={16} color="#16a34a" />
-            </View>
-            <Text style={{ fontSize: 13, color: '#15803d', fontWeight: '700' }}>Free shipping unlocked!</Text>
-          </View>
-        ) : (
-          <View>
-            <Text style={{ fontSize: 12, color: color.inkMuted, marginBottom: 6 }}>
-              Add <Text style={{ fontWeight: '800', color: color.accent }}>{formatCurrency(remaining)}</Text> more for{' '}
-              <Text style={{ fontWeight: '700', color: '#15803d' }}>FREE shipping</Text>
-            </Text>
-            <View style={{ height: 6, backgroundColor: color.surfaceSunken, borderRadius: 3, overflow: 'hidden' }}>
-              <View style={{ height: '100%', width: `${shippingProgress}%`, backgroundColor: color.accent, borderRadius: 3 }} />
-            </View>
-          </View>
-        )}
-      </View>
-
       <FlashList
         data={items}
         estimatedItemSize={108}
@@ -145,8 +118,8 @@ export default function CartScreen() {
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 14, color: color.inkMuted }}>Shipping</Text>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: freeShipping ? '#16a34a' : color.inkMuted }}>
-                  {freeShipping ? 'FREE' : 'Calculated at checkout'}
+                <Text style={{ fontSize: 14, fontWeight: '600', color: color.inkMuted }}>
+                  Calculated at checkout
                 </Text>
               </View>
               <View style={{ height: 1, backgroundColor: color.border, marginVertical: 4 }} />

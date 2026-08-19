@@ -24,6 +24,8 @@ import { IconButton } from '@/components/ui/IconButton';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
 import { MotifOverlay } from '@/components/brand/Motif';
 import { LogoLockup } from '@/components/brand/LogoMark';
+import { Marquee } from '@/components/brand/Marquee';
+import { RotatingBadge } from '@/components/brand/RotatingBadge';
 import type { Product, Category } from '@/types';
 
 /* Bundled brand campaign shot — subjects right, quiet left half for the copy. */
@@ -165,22 +167,34 @@ export default function HomeScreen() {
         }
         contentContainerStyle={{ paddingBottom: tabBarClearance }}
       >
-        {/* Announce bar — free-delivery threshold nudges basket size */}
-        <Animated.View
-          entering={FadeInDown.duration(300).delay(0 * 60).reduceMotion(ReduceMotion.System)}
-          style={{
-            backgroundColor: color.accentSoft,
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-            paddingVertical: spacing.sm,
-          }}
-        >
-          <Ionicons name="bicycle-outline" size={16} color={color.accentPressed} />
-          <Text style={{ fontSize: 12, fontWeight: '700', color: color.accentPressed }}>
-            Free delivery on orders over $25
-          </Text>
+        {/* ─── Kinetic marquee — the brand's promises on a moving ink band ─── */}
+        <Animated.View entering={FadeInDown.duration(300).delay(0 * 60).reduceMotion(ReduceMotion.System)}>
+          <Marquee style={{ backgroundColor: color.ink, paddingVertical: 9 }}>
+            {['New season drops', 'Pay with MTN MoMo', 'Delivering to all 15 counties', 'Monrovia & beyond'].map(
+              (phrase) => (
+                <View key={phrase} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text
+                    style={{
+                      color: color.onInk, fontSize: 11, fontWeight: '800',
+                      letterSpacing: 1.2, textTransform: 'uppercase',
+                    }}
+                  >
+                    {phrase}
+                  </Text>
+                  {/* country-cloth lozenge as separator */}
+                  <View
+                    style={{
+                      width: 6, height: 6, backgroundColor: color.accent,
+                      transform: [{ rotate: '45deg' }], marginHorizontal: 14,
+                    }}
+                  />
+                </View>
+              )
+            )}
+          </Marquee>
         </Animated.View>
 
-        {/* ─── Hero — editorial split: type on canvas, photo kept clean ─── */}
+        {/* ─── Hero — arch-framed campaign shot under editorial type ─── */}
         <Animated.View
           entering={FadeInDown.duration(300).delay(1 * 60).reduceMotion(ReduceMotion.System)}
           style={{ marginTop: spacing.lg, marginHorizontal: gutter }}
@@ -191,51 +205,35 @@ export default function HomeScreen() {
               <View style={{ width: 18, height: 3.5, borderRadius: 2, backgroundColor: color.accent }} />
               <View style={{ width: 12, height: 3.5, borderRadius: 2, backgroundColor: color.ink, marginRight: 3 }} />
             </View>
-            <Text style={{ ...t.overline, color: color.accent, fontSize: 11 }}>New season</Text>
+            <Text style={{ ...t.overline, color: color.accent, fontSize: 11 }}>New season · Monrovia</Text>
           </View>
 
-          <Text style={{ fontSize: 32, fontFamily: font.displayHeavy, lineHeight: 37, letterSpacing: -0.8, color: color.ink }}>
+          <Text style={{ fontSize: 34, fontFamily: font.displayHeavy, lineHeight: 39, letterSpacing: -0.8, color: color.ink }}>
             Everything you{'\n'}need, <Text style={{ color: color.accent }}>delivered.</Text>
           </Text>
 
-          {/* Photo card — no scrim, no text; chips carry the UI */}
-          <PressableScale haptic onPress={() => router.push('/(tabs)/shop')} style={{ marginTop: spacing.md, paddingBottom: 20 }}>
-            <View style={{ height: 192, borderRadius: radius.lg, overflow: 'hidden' }}>
+          {/* Arch-framed photo — a doorway into the shop; no text on the image */}
+          <PressableScale haptic onPress={() => router.push('/(tabs)/shop')} style={{ marginTop: spacing.lg }}>
+            <View
+              style={{
+                height: 250,
+                borderTopLeftRadius: 999,
+                borderTopRightRadius: 999,
+                borderBottomLeftRadius: radius.lg,
+                borderBottomRightRadius: radius.lg,
+                overflow: 'hidden',
+              }}
+            >
               <Image
                 source={HERO_IMAGE}
                 style={{ width: '100%', height: '100%' }}
                 contentFit="cover"
                 transition={300}
               />
-              {/* Delivery promise chip floats on the image's quiet half */}
-              <View
-                style={{
-                  position: 'absolute', top: 12, left: 12,
-                  flexDirection: 'row', alignItems: 'center', gap: 5,
-                  backgroundColor: color.surface, borderRadius: radius.full,
-                  paddingHorizontal: 11, paddingVertical: 6,
-                  ...shadow.card,
-                }}
-              >
-                <Ionicons name="checkmark-circle" size={13} color={color.accent} />
-                <Text style={{ fontSize: 11, fontWeight: '700', color: color.ink }}>
-                  Free delivery · all 15 counties
-                </Text>
-              </View>
             </View>
-
-            {/* CTA straddles the photo's bottom edge for depth */}
-            <View
-              style={{
-                position: 'absolute', bottom: 0, left: spacing.lg,
-                flexDirection: 'row', alignItems: 'center', gap: 7,
-                backgroundColor: color.ink, borderRadius: radius.full,
-                paddingHorizontal: spacing.lg, paddingVertical: 12,
-                ...shadow.card,
-              }}
-            >
-              <Text style={{ color: color.onInk, fontWeight: '800', fontSize: 13 }}>Start shopping</Text>
-              <Ionicons name="arrow-forward" size={15} color={color.onInk} />
+            {/* Rotating editorial badge rides the arch's shoulder */}
+            <View style={{ position: 'absolute', top: 10, right: 10 }}>
+              <RotatingBadge />
             </View>
           </PressableScale>
         </Animated.View>

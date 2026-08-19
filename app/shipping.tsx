@@ -21,8 +21,8 @@ export default function ShippingScreen() {
         <View className="bg-primary-50 rounded-2xl p-5 mb-5 flex-row items-start gap-3">
           <Ionicons name="car" size={24} color={Colors.primary[600]} />
           <View className="flex-1">
-            <Text className="text-base font-bold text-primary-800 mb-1">Free Delivery Available</Text>
-            <Text className="text-sm text-primary-700 leading-5">We deliver to all 15 Liberian counties. Spend $50+ for free shipping on your order.</Text>
+            <Text className="text-base font-bold text-primary-800 mb-1">Nationwide Delivery</Text>
+            <Text className="text-sm text-primary-700 leading-5">We deliver to all 15 Liberian counties. Delivery fees are calculated at checkout based on your location.</Text>
           </View>
         </View>
         {[

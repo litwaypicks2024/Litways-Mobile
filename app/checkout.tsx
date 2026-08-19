@@ -360,7 +360,7 @@ export default function CheckoutScreen() {
             <View style={{ backgroundColor: '#f0fdf4', borderRadius: 14, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Ionicons name="car-outline" size={20} color="#16a34a" />
               <Text style={{ flex: 1, fontSize: 13, color: '#15803d', fontWeight: '600' }}>
-                Free delivery across all 15 Liberian counties
+                We deliver across all 15 Liberian counties
               </Text>
             </View>
 
