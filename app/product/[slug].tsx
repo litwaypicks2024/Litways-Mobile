@@ -342,7 +342,7 @@ export default function ProductDetailScreen() {
         )}
 
         {/* ─── Product info ─── */}
-        <View style={{ paddingHorizontal: 20, backgroundColor: color.surface }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 18, backgroundColor: color.surface }}>
 
           {/* Brand + badges row */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -593,23 +593,36 @@ export default function ProductDetailScreen() {
             justifyContent: 'center',
           }}
         >
-          <Animated.View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, ctaAnimatedStyle]}>
-            <Ionicons
-              name={addedToCart ? 'checkmark-circle-outline' : 'bag-add-outline'}
-              size={20}
-              color={inStock || addedToCart ? '#fff' : color.inkFaint}
-            />
-            <View>
-              <Text style={{ color: inStock || addedToCart ? '#fff' : color.inkFaint, fontSize: 16, fontWeight: '800' }}>
-                {addedToCart ? 'Added to Cart!' : inStock ? 'Add to Cart' : 'Out of Stock'}
+          {inStock && !addedToCart ? (
+            /* Label left, price right — one line, no stacking */
+            <Animated.View
+              style={[
+                { flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 22 },
+                ctaAnimatedStyle,
+              ]}
+            >
+              <Ionicons name="bag-add-outline" size={20} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', marginLeft: 9 }}>
+                Add to Cart
               </Text>
-              {inStock && !addedToCart && (
-                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600' }}>
-                  {formatCurrency(displayPrice)}
-                </Text>
-              )}
-            </View>
-          </Animated.View>
+              <View style={{ flex: 1 }} />
+              <View style={{ width: 1, height: 18, backgroundColor: 'rgba(255,255,255,0.35)', marginRight: 14 }} />
+              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>
+                {formatCurrency(displayPrice)}
+              </Text>
+            </Animated.View>
+          ) : (
+            <Animated.View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, ctaAnimatedStyle]}>
+              <Ionicons
+                name={addedToCart ? 'checkmark-circle-outline' : 'bag-add-outline'}
+                size={20}
+                color={inStock || addedToCart ? '#fff' : color.inkFaint}
+              />
+              <Text style={{ color: inStock || addedToCart ? '#fff' : color.inkFaint, fontSize: 16, fontWeight: '800' }}>
+                {addedToCart ? 'Added to Cart!' : 'Out of Stock'}
+              </Text>
+            </Animated.View>
+          )}
         </TouchableOpacity>
       </View>
     </View>
