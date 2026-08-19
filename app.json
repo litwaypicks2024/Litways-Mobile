@@ -58,6 +58,15 @@
         {
           "faceIDPermission": "Litway Picks uses Face ID so you can sign in quickly and securely."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
       ]
     ],
     "experiments": {
