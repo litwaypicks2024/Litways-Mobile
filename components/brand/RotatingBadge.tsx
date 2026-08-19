@@ -19,7 +19,9 @@ import { color } from '@/theme/tokens';
  */
 export function RotatingBadge({
   size = 78,
-  text = 'SHOP THE DROP • NEW SEASON • ',
+  /* Must fit the ring's circumference (2π·29 ≈ 182px at this glyph size) —
+     longer strings collide with their own tail. */
+  text = 'SHOP THE DROP • NEW IN • ',
 }: {
   size?: number;
   text?: string;
@@ -58,7 +60,7 @@ export function RotatingBadge({
           <Defs>
             <Path id="badge-ring" d="M 39 10 A 29 29 0 1 1 38.99 10" fill="none" />
           </Defs>
-          <SvgText fill="#ffffff" fontSize="9" fontWeight="700" letterSpacing="1.6">
+          <SvgText fill="#ffffff" fontSize="9" fontWeight="700" letterSpacing="1.2">
             <TextPath href="#badge-ring">{text}</TextPath>
           </SvgText>
         </Svg>

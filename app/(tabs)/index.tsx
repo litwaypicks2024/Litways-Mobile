@@ -8,7 +8,15 @@ import {
   StatusBar,
 } from 'react-native';
 import { Image } from 'expo-image';
-import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  ReduceMotion,
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -51,11 +59,32 @@ function getCategoryIcon(slug: string, name: string): keyof typeof Ionicons.glyp
   return key ? CATEGORY_ICONS[key] : 'pricetags-outline';
 }
 
+/** "Good morning" / "Good afternoon" / "Good evening" by device clock. */
+function daypartGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const tabBarClearance = useTabBarClearance();
+
+  /* Scroll-driven parallax: the photo drifts inside its arch as you scroll. */
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
+  const parallaxStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: interpolate(scrollY.value, [-120, 0, 360], [26, 0, -34], Extrapolation.CLAMP),
+      },
+    ],
+  }));
 
   const { data: featured, isLoading: loadingFeatured, refetch: refetchFeatured } = useQuery({
     queryKey: ['featured-products'],
@@ -160,12 +189,14 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} />
         }
         contentContainerStyle={{ paddingBottom: tabBarClearance }}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
       >
         {/* ─── Kinetic marquee — the brand's promises on a moving ink band ─── */}
         <Animated.View entering={FadeInDown.duration(300).delay(0 * 60).reduceMotion(ReduceMotion.System)}>
@@ -194,25 +225,37 @@ export default function HomeScreen() {
           </Marquee>
         </Animated.View>
 
-        {/* ─── Hero — arch-framed campaign shot under editorial type ─── */}
-        <Animated.View
-          entering={FadeInDown.duration(300).delay(1 * 60).reduceMotion(ReduceMotion.System)}
-          style={{ marginTop: spacing.lg, marginHorizontal: gutter }}
-        >
-          {/* Overline with the logo's speed-lines DNA */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        {/* ─── Hero — arch-framed campaign shot under editorial type.
+               Children stagger their own entrances. ─── */}
+        <View style={{ marginTop: spacing.lg, marginHorizontal: gutter }}>
+          {/* Overline with the logo's speed-lines DNA — greets by time of day */}
+          <Animated.View
+            entering={FadeInDown.duration(300).delay(1 * 60).reduceMotion(ReduceMotion.System)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}
+          >
             <View style={{ alignItems: 'flex-end', gap: 3 }}>
               <View style={{ width: 18, height: 3.5, borderRadius: 2, backgroundColor: color.accent }} />
               <View style={{ width: 12, height: 3.5, borderRadius: 2, backgroundColor: color.ink, marginRight: 3 }} />
             </View>
-            <Text style={{ ...t.overline, color: color.accent, fontSize: 11 }}>New season · Monrovia</Text>
-          </View>
+            <Text style={{ ...t.overline, color: color.accent, fontSize: 11 }}>
+              {daypartGreeting()} · Monrovia
+            </Text>
+          </Animated.View>
 
-          <Text style={{ fontSize: 34, fontFamily: font.displayHeavy, lineHeight: 39, letterSpacing: -0.8, color: color.ink }}>
-            Everything you{'\n'}need, <Text style={{ color: color.accent }}>delivered.</Text>
-          </Text>
+          {/* Headline lines land one after the other */}
+          <Animated.View entering={FadeInDown.duration(320).delay(2 * 60).reduceMotion(ReduceMotion.System)}>
+            <Text style={{ fontSize: 34, fontFamily: font.displayHeavy, lineHeight: 39, letterSpacing: -0.8, color: color.ink }}>
+              Everything you
+            </Text>
+          </Animated.View>
+          <Animated.View entering={FadeInDown.duration(320).delay(3 * 60).reduceMotion(ReduceMotion.System)}>
+            <Text style={{ fontSize: 34, fontFamily: font.displayHeavy, lineHeight: 39, letterSpacing: -0.8, color: color.ink }}>
+              need, <Text style={{ color: color.accent }}>delivered.</Text>
+            </Text>
+          </Animated.View>
 
           {/* Arch-framed photo — a doorway into the shop; no text on the image */}
+          <Animated.View entering={FadeInDown.duration(340).delay(4 * 60).reduceMotion(ReduceMotion.System)}>
           <PressableScale haptic onPress={() => router.push('/(tabs)/shop')} style={{ marginTop: spacing.lg }}>
             <View
               style={{
@@ -224,19 +267,23 @@ export default function HomeScreen() {
                 overflow: 'hidden',
               }}
             >
-              <Image
-                source={HERO_IMAGE}
-                style={{ width: '100%', height: '100%' }}
-                contentFit="cover"
-                transition={300}
-              />
+              {/* Oversized so the parallax drift never exposes an edge */}
+              <Animated.View style={[{ height: 320, marginTop: -35 }, parallaxStyle]}>
+                <Image
+                  source={HERO_IMAGE}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                  transition={300}
+                />
+              </Animated.View>
             </View>
-            {/* Rotating editorial badge rides the arch's shoulder */}
-            <View style={{ position: 'absolute', top: 10, right: 10 }}>
+            {/* Rotating editorial badge on the arch's quiet shoulder (faces stay clear) */}
+            <View style={{ position: 'absolute', top: 10, left: 10 }}>
               <RotatingBadge />
             </View>
           </PressableScale>
-        </Animated.View>
+          </Animated.View>
+        </View>
 
         {/* ─── Shop by category ─── */}
         <Animated.View
@@ -385,7 +432,7 @@ export default function HomeScreen() {
             </View>
           )}
         </Animated.View>
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
