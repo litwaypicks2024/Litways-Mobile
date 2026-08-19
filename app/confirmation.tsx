@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Platform, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, {
@@ -17,7 +18,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, font, shadow } from '@/theme/tokens';
 import { Card } from '@/components/ui/Card';
 import { MotifBand } from '@/components/brand/Motif';
-import { DeliveryBikeIllustration } from '@/components/illustrations';
 
 export default function ConfirmationScreen() {
   const { referenceId } = useLocalSearchParams<{ referenceId: string }>();
@@ -110,7 +110,16 @@ export default function ConfirmationScreen() {
                   <Text style={{ fontSize: 14, fontWeight: '800', color: color.ink }}>{order.external_id}</Text>
                 </View>
               </View>
-              <DeliveryBikeIllustration size={96} />
+              {/* Clay-render rider; container matches the artwork's own bg (#e9e8e7)
+                  so the square edge disappears into a deliberate rounded card. */}
+              <View style={{ backgroundColor: '#e9e8e7', borderRadius: 20, overflow: 'hidden' }}>
+                <Image
+                  source={require('@/assets/images/delivery-illustration.jpg')}
+                  style={{ width: 104, height: 104 }}
+                  contentFit="cover"
+                  transition={250}
+                />
+              </View>
             </Animated.View>
 
             <Animated.View entering={FadeInDown.duration(280).delay(120 + 2 * 70).reduceMotion(ReduceMotion.System)}>

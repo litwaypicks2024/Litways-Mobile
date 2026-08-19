@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -181,36 +180,62 @@ export default function HomeScreen() {
           </Text>
         </Animated.View>
 
-        {/* ─── Hero ─── */}
-        <Animated.View entering={FadeInDown.duration(300).delay(1 * 60).reduceMotion(ReduceMotion.System)}>
-          <PressableScale haptic onPress={() => router.push('/(tabs)/shop')} style={{ marginTop: spacing.lg, marginHorizontal: gutter }}>
-            <View style={{ height: 230, borderRadius: radius.lg, overflow: 'hidden' }}>
+        {/* ─── Hero — editorial split: type on canvas, photo kept clean ─── */}
+        <Animated.View
+          entering={FadeInDown.duration(300).delay(1 * 60).reduceMotion(ReduceMotion.System)}
+          style={{ marginTop: spacing.lg, marginHorizontal: gutter }}
+        >
+          {/* Overline with the logo's speed-lines DNA */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <View style={{ alignItems: 'flex-end', gap: 3 }}>
+              <View style={{ width: 18, height: 3.5, borderRadius: 2, backgroundColor: color.accent }} />
+              <View style={{ width: 12, height: 3.5, borderRadius: 2, backgroundColor: color.ink, marginRight: 3 }} />
+            </View>
+            <Text style={{ ...t.overline, color: color.accent, fontSize: 11 }}>New season</Text>
+          </View>
+
+          <Text style={{ fontSize: 32, fontFamily: font.displayHeavy, lineHeight: 37, letterSpacing: -0.8, color: color.ink }}>
+            Everything you{'\n'}need, <Text style={{ color: color.accent }}>delivered.</Text>
+          </Text>
+
+          {/* Photo card — no scrim, no text; chips carry the UI */}
+          <PressableScale haptic onPress={() => router.push('/(tabs)/shop')} style={{ marginTop: spacing.md, paddingBottom: 20 }}>
+            <View style={{ height: 192, borderRadius: radius.lg, overflow: 'hidden' }}>
               <Image
                 source={HERO_IMAGE}
                 style={{ width: '100%', height: '100%' }}
                 contentFit="cover"
                 transition={300}
               />
-              {/* Text sits over the image's quiet left half; scrim runs left→right. */}
-              <LinearGradient
-                colors={['rgba(0,0,0,0.62)', 'rgba(0,0,0,0.24)', 'rgba(0,0,0,0)']}
-                locations={[0, 0.55, 1]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-              />
-              <View style={{ position: 'absolute', left: spacing.lg, right: '38%', bottom: spacing.lg }}>
-                <View style={{ alignSelf: 'flex-start', backgroundColor: color.accent, borderRadius: radius.sm, paddingHorizontal: 9, paddingVertical: 5, marginBottom: spacing.md }}>
-                  <Text style={{ color: color.onAccent, fontSize: 11, fontWeight: '800', letterSpacing: 0.4 }}>WELCOME</Text>
-                </View>
-                <Text style={{ color: '#fff', fontSize: 30, fontFamily: font.displayHeavy, lineHeight: 36, letterSpacing: -0.6, marginBottom: spacing.md }}>
-                  Everything you{'\n'}need, delivered
+              {/* Delivery promise chip floats on the image's quiet half */}
+              <View
+                style={{
+                  position: 'absolute', top: 12, left: 12,
+                  flexDirection: 'row', alignItems: 'center', gap: 5,
+                  backgroundColor: color.surface, borderRadius: radius.full,
+                  paddingHorizontal: 11, paddingVertical: 6,
+                  ...shadow.card,
+                }}
+              >
+                <Ionicons name="checkmark-circle" size={13} color={color.accent} />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: color.ink }}>
+                  Free delivery · all 15 counties
                 </Text>
-                <View style={{ alignSelf: 'flex-start', backgroundColor: color.ink, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-                  <Text style={{ color: color.onInk, fontWeight: '800', fontSize: 13 }}>Start shopping</Text>
-                  <Ionicons name="arrow-forward" size={15} color={color.onInk} />
-                </View>
               </View>
+            </View>
+
+            {/* CTA straddles the photo's bottom edge for depth */}
+            <View
+              style={{
+                position: 'absolute', bottom: 0, left: spacing.lg,
+                flexDirection: 'row', alignItems: 'center', gap: 7,
+                backgroundColor: color.ink, borderRadius: radius.full,
+                paddingHorizontal: spacing.lg, paddingVertical: 12,
+                ...shadow.card,
+              }}
+            >
+              <Text style={{ color: color.onInk, fontWeight: '800', fontSize: 13 }}>Start shopping</Text>
+              <Ionicons name="arrow-forward" size={15} color={color.onInk} />
             </View>
           </PressableScale>
         </Animated.View>
