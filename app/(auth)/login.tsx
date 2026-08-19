@@ -267,6 +267,18 @@ export default function LoginScreen() {
               style={{ marginTop: mode === 'signup' ? 8 : 0 }}
             />
 
+            {/* Legal note — belongs to the button ("by continuing"), not the screen edge */}
+            <Text style={{ fontSize: 11, color: color.inkFaint, textAlign: 'center', marginTop: 12, lineHeight: 16 }}>
+              By continuing, you agree to our{' '}
+              <Text style={{ color: color.inkMuted, fontWeight: '600' }} onPress={() => router.push('/terms')}>
+                Terms of Service
+              </Text>
+              {' '}and{' '}
+              <Text style={{ color: color.inkMuted, fontWeight: '600' }} onPress={() => router.push('/privacy')}>
+                Privacy Policy
+              </Text>
+            </Text>
+
             {mode === 'login' && biometricAvailable && (
               <Button
                 title="Sign in with Biometrics"
@@ -289,14 +301,6 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-
-            {/* Legal note */}
-            <Text style={{ fontSize: 11, color: color.inkFaint, textAlign: 'center', marginTop: 16, lineHeight: 16 }}>
-              By continuing, you agree to our{' '}
-              <Text style={{ color: color.inkMuted }}>Terms of Service</Text>
-              {' '}and{' '}
-              <Text style={{ color: color.inkMuted }}>Privacy Policy</Text>
-            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
