@@ -27,8 +27,8 @@ import { MotifOverlay } from '@/components/brand/Motif';
 import { LogoLockup } from '@/components/brand/LogoMark';
 import type { Product, Category } from '@/types';
 
-const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1000&fit=crop&crop=center&q=80';
+/* Bundled brand campaign shot — subjects right, quiet left half for the copy. */
+const HERO_IMAGE = require('@/assets/images/home-hero.jpg');
 
 const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   clothing: 'shirt-outline',
@@ -186,19 +186,20 @@ export default function HomeScreen() {
           <PressableScale haptic onPress={() => router.push('/(tabs)/shop')} style={{ marginTop: spacing.lg, marginHorizontal: gutter }}>
             <View style={{ height: 230, borderRadius: radius.lg, overflow: 'hidden' }}>
               <Image
-                source={{ uri: HERO_IMAGE }}
+                source={HERO_IMAGE}
                 style={{ width: '100%', height: '100%' }}
                 contentFit="cover"
                 transition={300}
-                placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
               />
+              {/* Text sits over the image's quiet left half; scrim runs left→right. */}
               <LinearGradient
-                colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.72)']}
+                colors={['rgba(0,0,0,0.62)', 'rgba(0,0,0,0.24)', 'rgba(0,0,0,0)']}
+                locations={[0, 0.55, 1]}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
+                end={{ x: 1, y: 0 }}
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
               />
-              <View style={{ position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.lg }}>
+              <View style={{ position: 'absolute', left: spacing.lg, right: '38%', bottom: spacing.lg }}>
                 <View style={{ alignSelf: 'flex-start', backgroundColor: color.accent, borderRadius: radius.sm, paddingHorizontal: 9, paddingVertical: 5, marginBottom: spacing.md }}>
                   <Text style={{ color: color.onAccent, fontSize: 11, fontWeight: '800', letterSpacing: 0.4 }}>WELCOME</Text>
                 </View>

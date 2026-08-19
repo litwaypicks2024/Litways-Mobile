@@ -8,18 +8,24 @@ import {
   Platform,
   Alert,
   TextInput,
+  Dimensions,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { color, radius, shadow } from '@/theme/tokens';
+import { color, radius, shadow, type as t } from '@/theme/tokens';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { InkHeader } from '@/components/auth/InkHeader';
+import { IconButton } from '@/components/ui/IconButton';
+import { LogoMark } from '@/components/brand/LogoMark';
 
 type Mode = 'login' | 'signup';
+
+const HERO_H = Math.round(Dimensions.get('window').height * 0.34);
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -110,26 +116,43 @@ export default function LoginScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
           bounces={false}
         >
-          <InkHeader
-            icon="close"
-            onIconPress={() => router.back()}
-            title={mode === 'login' ? 'Welcome\nback.' : 'Create\naccount.'}
-            subtitle={
-              mode === 'login'
-                ? 'Sign in to continue shopping'
-                : 'Join thousands of happy shoppers'
-            }
-          />
+          {/* ─── Photo hero — melts into the canvas; all text lives below ─── */}
+          <View style={{ height: HERO_H }}>
+            <Image
+              source={require('@/assets/images/auth-hero.jpg')}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
+              transition={300}
+            />
+            <LinearGradient
+              colors={['rgba(236,236,236,0)', color.bg]}
+              style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 110 }}
+            />
+            <View style={{ position: 'absolute', top: insets.top + 8, left: 16 }}>
+              <IconButton icon="close" variant="dark" onPress={() => router.back()} />
+            </View>
+          </View>
 
-          {/* ─── Form ─── */}
+          {/* ─── Form — the brand mark leads the content ─── */}
           <View
             style={{
               flex: 1,
               paddingHorizontal: 24,
-              paddingTop: 24,
+              paddingTop: 4,
               paddingBottom: Math.max(insets.bottom + 24, 40),
             }}
           >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+              <LogoMark size={44} variant="onLight" />
+              <Text style={{ ...t.display, fontSize: 28, lineHeight: 34 }}>
+                {mode === 'login' ? 'Welcome back.' : 'Create account.'}
+              </Text>
+            </View>
+            <Text style={{ ...t.body, color: color.inkMuted, marginBottom: 20 }}>
+              {mode === 'login'
+                ? 'Sign in to continue shopping'
+                : 'Join thousands of happy shoppers'}
+            </Text>
             {/* Pill segmented toggle */}
             <View
               style={{
