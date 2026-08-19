@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -91,6 +91,29 @@ export default function NewPasswordScreen() {
   const [confirm, setConfirm] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Mirrors `phase` for the unmount cleanup below, which needs the latest
+  // value without re-subscribing its effect on every phase change.
+  const phaseRef = useRef<Phase>(phase);
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
+  // Tracks whether the password update actually completed (that path already
+  // signs out itself) so the unmount cleanup below doesn't double-sign-out.
+  const completedRef = useRef(false);
+
+  // establishRecoverySession() creates a real, fully authenticated session —
+  // not a scoped recovery token. If the user backs out or otherwise leaves
+  // this screen (unmount) without completing the password update, end that
+  // session so it doesn't linger signed-in on the device.
+  useEffect(() => {
+    return () => {
+      if (phaseRef.current === 'ready' && !completedRef.current) {
+        supabase.auth.signOut();
+      }
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -128,6 +151,9 @@ export default function NewPasswordScreen() {
       {
         text: 'OK',
         onPress: async () => {
+          // Mark completed first so the unmount cleanup above doesn't also
+          // try to sign out once this screen navigates away.
+          completedRef.current = true;
           // End the recovery session so the user signs in fresh.
           await supabase.auth.signOut();
           router.replace('/(auth)/login');

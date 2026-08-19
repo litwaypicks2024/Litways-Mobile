@@ -11,6 +11,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { FlashList } from '@/components/ui/List';
+import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -42,9 +43,16 @@ const DEBOUNCE_MS = 350;
 
 export default function ShopScreen() {
   const insets = useSafeAreaInsets();
+  // Lets callers (e.g. the Home "Deals on now" banner) deep-link straight
+  // into a sorted view — read once as the initial sort, not re-applied on
+  // every re-render so in-screen sort taps aren't fought.
+  const { sort: initialSortParam } = useLocalSearchParams<{ sort?: string }>();
   const [inputValue, setInputValue] = useState('');
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<SortOption>('featured');
+  const [sort, setSort] = useState<SortOption>(() => {
+    const valid = SORT_OPTIONS.map((o) => o.value);
+    return valid.includes(initialSortParam as SortOption) ? (initialSortParam as SortOption) : 'featured';
+  });
   const [filters, setFilters] = useState<ProductFilters>({});
   const [filterVisible, setFilterVisible] = useState(false);
   const [showRecent, setShowRecent] = useState(false);

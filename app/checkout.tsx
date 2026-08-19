@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { useCartStore } from '@/store/cart';
 import { useAuthStore } from '@/store/auth';
 import { Input } from '@/components/ui/Input';
@@ -37,6 +37,7 @@ const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
 export default function CheckoutScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const navigation = useNavigation();
   const { items, subtotal, clearCart, reconcile } = useCartStore();
   const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
@@ -58,6 +59,38 @@ export default function CheckoutScreen() {
 
   const total = subtotal();
   const isProcessing = paymentStatus === 'processing' || paymentStatus === 'polling';
+
+  // Header back button (above) is already disabled while processing, but that
+  // only covers a tap on our own IconButton. Android hardware back and iOS
+  // swipe-back bypass it entirely and can still unmount this screen mid
+  // payment, tearing down the realtime/poll tracking before we know whether
+  // the MoMo charge succeeded. Intercept navigation-away at the router level
+  // while processing/polling and require an explicit confirmation.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!isProcessing) return;
+      e.preventDefault();
+      Alert.alert(
+        'Payment in progress',
+        'Leaving now can abandon it. Are you sure you want to leave?',
+        [
+          { text: 'Stay', style: 'cancel' },
+          {
+            text: 'Leave anyway',
+            style: 'destructive',
+            onPress: () => {
+              // TODO(wave5): Wave 5 adds pending-payment persistence so a
+              // payment left in flight here is recoverable (e.g. resumable
+              // status lookup) instead of orphaned. Until then, leaving mid
+              // payment means the app loses track of this reference locally.
+              navigation.dispatch(e.data.action);
+            },
+          },
+        ]
+      );
+    });
+    return unsubscribe;
+  }, [navigation, isProcessing]);
 
   // If the shopper signs in during checkout, backfill any details they haven't
   // typed yet — without clobbering what they've already entered as a guest.
@@ -231,6 +264,11 @@ export default function CheckoutScreen() {
           quantity: i.quantity,
           size: i.size,
           color: i.color,
+          // Order History (account.tsx) and Order Detail (order/[id].tsx)
+          // render thumbnails from imageUrl and gate tap-to-view-product on
+          // slug — both must round-trip through the backend's stored order.
+          slug: i.slug,
+          imageUrl: i.imageUrl,
         })),
       };
 

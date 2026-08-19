@@ -12,7 +12,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FlashList } from '@/components/ui/List';
 import { Image } from 'expo-image';
@@ -41,7 +41,14 @@ export default function AccountScreen() {
   const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
-  const [activeTab, setActiveTab] = useState<Tab>('profile');
+  // Lets callers (e.g. confirmation.tsx's "Track Your Order") land directly
+  // on a specific tab — read once as the initial tab, not re-applied on
+  // every re-render so in-screen tab taps aren't fought.
+  const { tab: initialTabParam } = useLocalSearchParams<{ tab?: string }>();
+  const VALID_TABS: Tab[] = ['profile', 'orders', 'wishlist', 'settings'];
+  const [activeTab, setActiveTab] = useState<Tab>(
+    VALID_TABS.includes(initialTabParam as Tab) ? (initialTabParam as Tab) : 'profile'
+  );
 
   if (!user) {
     return (

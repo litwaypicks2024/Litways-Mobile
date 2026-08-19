@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useCartStore } from '@/store/cart';
+import { useWishlistStore } from '@/store/wishlist';
 import { onboarding } from '@/lib/storage';
 import { registerForPushNotifications, savePushToken, useNotificationListener } from '@/lib/notifications';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
@@ -71,16 +72,33 @@ function AppContent() {
     });
   }
 
+  // Tracks whether we've observed a signed-in session, so we only purge local
+  // cart/wishlist on a genuine sign-out transition — not on every guest launch
+  // where session is null from the start.
+  const hadSessionRef = useRef(false);
+
   // Auth + cart hydration
   useEffect(() => {
     function hydrate(session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) {
       setSession(session);
       if (session?.user) {
+        hadSessionRef.current = true;
         fetchProfile(session.user.id);
         loadFromDb(session.user.id);
         registerPushOnce(session.user.id);
       } else {
         registeredUserRef.current = null;
+        if (hadSessionRef.current) {
+          // Session transitioned from signed-in to signed-out — covers
+          // token-expiry/forced sign-outs that never call the store's
+          // signOut() action. Purge local cart/wishlist so the next
+          // sign-in on this device can't inherit stale items (see
+          // wave2b-ux-flows.md — cross-account cart bleed).
+          useCartStore.getState().cancelSync();
+          useCartStore.getState().clearCart();
+          useWishlistStore.getState().clear();
+        }
+        hadSessionRef.current = false;
       }
     }
 

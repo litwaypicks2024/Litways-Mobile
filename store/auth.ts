@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
 import type { UserProfile } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { useCartStore } from '@/store/cart';
+import { useWishlistStore } from '@/store/wishlist';
 
 interface AuthState {
   session: Session | null;
@@ -40,7 +42,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
+    // Cancel any pending debounced cart sync first so a stale write from the
+    // outgoing user can't land after we've cleared local state.
+    useCartStore.getState().cancelSync();
     await supabase.auth.signOut();
     set({ session: null, user: null, profile: null });
+    // Purge local cart/wishlist so the next sign-in on this device doesn't
+    // merge/see this user's items — cross-account data leak on shared
+    // devices (wave2b-ux-flows.md).
+    useCartStore.getState().clearCart();
+    useWishlistStore.getState().clear();
   },
 }));

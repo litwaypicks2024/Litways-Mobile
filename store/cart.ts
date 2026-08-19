@@ -15,6 +15,10 @@ interface CartState {
   updateQuantity: (productId: string, quantity: number, size?: string, color?: string) => void;
   reconcile: (fresh: { productId: string; price: number; stock: number }[]) => void;
   clearCart: () => void;
+  /** Cancels a pending debounced syncToDb write without performing it. Used on
+   * sign-out so a stale in-flight write can't resurrect the previous user's
+   * cart onto the next signed-in user's row. */
+  cancelSync: () => void;
   syncToDb: (userId: string) => Promise<void>;
   loadFromDb: (userId: string) => Promise<void>;
   itemCount: () => number;
@@ -79,6 +83,13 @@ export const useCartStore = create<CartState>()(
       },
 
       clearCart: () => set({ items: [] }),
+
+      cancelSync: () => {
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
+          debounceTimer = null;
+        }
+      },
 
       syncToDb: async (userId) => {
         if (debounceTimer) clearTimeout(debounceTimer);

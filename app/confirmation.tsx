@@ -15,6 +15,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Button } from '@/components/ui/Button';
+import { useAuthStore } from '@/store/auth';
 import { momoAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +26,7 @@ import { MotifBand } from '@/components/brand/Motif';
 export default function ConfirmationScreen() {
   const { referenceId } = useLocalSearchParams<{ referenceId: string }>();
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const insets = useSafeAreaInsets();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -216,7 +218,22 @@ export default function ConfirmationScreen() {
         )}
 
         <Animated.View entering={FadeInDown.duration(280).delay(120 + 5 * 70).reduceMotion(ReduceMotion.System)}>
-          <Button title="Track Your Order" onPress={() => router.replace('/(tabs)/account')} variant="primary" fullWidth size="lg" />
+          {user ? (
+            <Button
+              title="Track Your Order"
+              onPress={() => router.replace({ pathname: '/(tabs)/account', params: { tab: 'orders' } })}
+              variant="primary"
+              fullWidth
+              size="lg"
+            />
+          ) : (
+            <>
+              <Button title="Done" onPress={() => router.replace('/(tabs)')} variant="primary" fullWidth size="lg" />
+              <Text style={{ fontSize: 12, color: color.inkMuted, textAlign: 'center', marginTop: 10, lineHeight: 17 }}>
+                Track this order anytime with the link in your confirmation email.
+              </Text>
+            </>
+          )}
         </Animated.View>
         <Animated.View entering={FadeInDown.duration(280).delay(120 + 6 * 70).reduceMotion(ReduceMotion.System)}>
           <Button title="Continue Shopping" variant="outline" onPress={() => router.replace('/(tabs)')} fullWidth size="md" style={{ marginTop: 12 }} />

@@ -14,7 +14,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { color, radius, shadow, type as t } from '@/theme/tokens';
@@ -27,9 +27,23 @@ type Mode = 'login' | 'signup';
 
 const HERO_H = Math.round(Dimensions.get('window').height * 0.4);
 
+// Security: `next` is a caller-supplied route param — validate it against an
+// allowlist rather than navigating to it blindly.
+const NEXT_ALLOWLIST = ['/checkout'];
+
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { next } = useLocalSearchParams<{ next?: string }>();
+
+  function navigateAfterAuth() {
+    if (next && NEXT_ALLOWLIST.includes(next)) {
+      router.replace(next as any);
+    } else {
+      router.back();
+    }
+  }
+
   const [mode, setMode] = useState<Mode>('login');
   const [loading, setLoading] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
@@ -64,7 +78,7 @@ export default function LoginScreen() {
     });
     if (result.success) {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) router.back();
+      if (session) navigateAfterAuth();
       else Alert.alert('Session expired', 'Please sign in with your email and password.');
     }
   }
@@ -80,7 +94,7 @@ export default function LoginScreen() {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       setLoading(false);
       if (error) { Alert.alert('Sign In Failed', error.message); return; }
-      router.back();
+      navigateAfterAuth();
     } else {
       if (!firstName) { Alert.alert('Missing fields', 'Please enter your first name.'); setLoading(false); return; }
       // Pass the name via user metadata. A DB trigger on auth.users creates the
@@ -100,7 +114,7 @@ export default function LoginScreen() {
       if (error) { setLoading(false); Alert.alert('Sign Up Failed', error.message); return; }
       setLoading(false);
       Alert.alert('Account Created', 'Welcome to Litway Picks! Check your email to verify your account.');
-      router.back();
+      navigateAfterAuth();
     }
   }
 

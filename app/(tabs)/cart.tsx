@@ -35,7 +35,9 @@ export default function CartScreen() {
 
   function handleCheckout() {
     if (!user) {
-      router.push('/(auth)/login');
+      // `next` tells login.tsx where to land after a successful sign-in, so
+      // the shopper returns to Checkout instead of back here at Cart.
+      router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } });
       return;
     }
     router.push('/checkout');
@@ -209,7 +211,20 @@ function CartItemRow({
           <QuantityStepper
             quantity={item.quantity}
             max={item.stock}
-            onDecrement={() => onUpdate(item.productId, item.quantity - 1, item.size, item.color)}
+            onDecrement={() => {
+              if (item.quantity === 1) {
+                Alert.alert('Remove item?', `Remove "${item.name}" from your cart?`, [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Remove',
+                    style: 'destructive',
+                    onPress: () => onUpdate(item.productId, 0, item.size, item.color),
+                  },
+                ]);
+                return;
+              }
+              onUpdate(item.productId, item.quantity - 1, item.size, item.color);
+            }}
             onIncrement={() => onUpdate(item.productId, item.quantity + 1, item.size, item.color)}
           />
         </View>
