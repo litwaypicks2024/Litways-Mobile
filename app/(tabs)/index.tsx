@@ -26,6 +26,7 @@ import { color, font, radius, spacing, gutter, shadow, type as t } from '@/theme
 import { ProductCard } from '@/components/shop/ProductCard';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { ProductCardSkeleton, SkeletonBlock } from '@/components/ui/SkeletonLoader';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { discountPercent } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/ui/IconButton';
@@ -86,7 +87,7 @@ export default function HomeScreen() {
     ],
   }));
 
-  const { data: featured, isLoading: loadingFeatured, refetch: refetchFeatured } = useQuery({
+  const { data: featured, isLoading: loadingFeatured, isError: errorFeatured, refetch: refetchFeatured } = useQuery({
     queryKey: ['featured-products'],
     queryFn: async () => {
       const { data, error } = await supabase.from('featured_products').select('*').limit(10);
@@ -95,7 +96,7 @@ export default function HomeScreen() {
     },
   });
 
-  const { data: newest } = useQuery({
+  const { data: newest, isError: errorNewest, refetch: refetchNewest } = useQuery({
     queryKey: ['newest-products'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -108,7 +109,7 @@ export default function HomeScreen() {
     },
   });
 
-  const { data: deals } = useQuery({
+  const { data: deals, isError: errorDeals, refetch: refetchDeals } = useQuery({
     queryKey: ['deal-products'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -122,7 +123,7 @@ export default function HomeScreen() {
     },
   });
 
-  const { data: categories, isLoading: loadingCats, refetch: refetchCats } = useQuery({
+  const { data: categories, isLoading: loadingCats, isError: errorCats, refetch: refetchCats } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -136,9 +137,9 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchFeatured(), refetchCats()]);
+    await Promise.all([refetchFeatured(), refetchCats(), refetchNewest(), refetchDeals()]);
     setRefreshing(false);
-  }, [refetchFeatured, refetchCats]);
+  }, [refetchFeatured, refetchCats, refetchNewest, refetchDeals]);
 
   // Biggest genuine discount across the deal products — honest urgency, no fake timers.
   const maxDiscount = (deals ?? []).reduce((best, p) => {
@@ -291,6 +292,14 @@ export default function HomeScreen() {
           style={{ marginTop: spacing['2xl'] }}
         >
           <SectionHeader title="Shop by category" />
+          {errorCats ? (
+            <View style={{ paddingHorizontal: gutter }}>
+              <ErrorState
+                message="Couldn't load categories. Check your connection and try again."
+                onRetry={() => refetchCats()}
+              />
+            </View>
+          ) : (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -332,13 +341,21 @@ export default function HomeScreen() {
                   </PressableScale>
                 ))}
           </ScrollView>
+          )}
         </Animated.View>
 
         {/* ─── Deals ─── */}
         <Animated.View
           entering={FadeInDown.duration(300).delay(3 * 60).reduceMotion(ReduceMotion.System)}
         >
-          {(deals?.length ?? 0) > 0 && (
+          {errorDeals ? (
+            <View style={{ marginTop: spacing['2xl'], paddingHorizontal: gutter }}>
+              <ErrorState
+                message="Couldn't load deals. Check your connection and try again."
+                onRetry={() => refetchDeals()}
+              />
+            </View>
+          ) : (deals?.length ?? 0) > 0 && (
             <View style={{ marginTop: spacing['2xl'] }}>
               {/* Bold statement — honest "up to X% off" from real discounts */}
               <PressableScale
@@ -391,6 +408,13 @@ export default function HomeScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: spacing.md }}>
               {Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
             </ScrollView>
+          ) : errorFeatured ? (
+            <View style={{ paddingHorizontal: gutter }}>
+              <ErrorState
+                message="Couldn't load popular products. Check your connection and try again."
+                onRetry={() => refetchFeatured()}
+              />
+            </View>
           ) : (
             <View style={{ paddingHorizontal: gutter - spacing.xs, flexDirection: 'row', flexWrap: 'wrap' }}>
               {featured?.slice(0, 4).map((item) => (
@@ -406,7 +430,14 @@ export default function HomeScreen() {
         <Animated.View
           entering={FadeInDown.duration(300).delay(5 * 60).reduceMotion(ReduceMotion.System)}
         >
-          {(newest?.length ?? 0) > 0 && (
+          {errorNewest ? (
+            <View style={{ marginTop: spacing['2xl'], paddingHorizontal: gutter }}>
+              <ErrorState
+                message="Couldn't load new arrivals. Check your connection and try again."
+                onRetry={() => refetchNewest()}
+              />
+            </View>
+          ) : (newest?.length ?? 0) > 0 && (
             <View style={{ marginTop: spacing['2xl'] }}>
               <SectionHeader title="New arrivals" subtitle="Fresh in this week" onSeeAll={() => router.push('/(tabs)/shop')} />
               <View style={{ paddingHorizontal: gutter - spacing.xs, flexDirection: 'row', flexWrap: 'wrap' }}>

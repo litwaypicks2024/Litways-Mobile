@@ -26,11 +26,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   setProfile: (profile) => set({ profile }),
 
   fetchProfile: async (userId) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
       .single();
+    if (error) {
+      console.warn('fetchProfile: failed to load profile', error);
+      set({ profile: null });
+      return;
+    }
     set({ profile: data });
   },
 

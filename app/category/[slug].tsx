@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, Platform, ActivityIndicator, RefreshControl } from 'react-native';
 import { FlashList } from '@/components/ui/List';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { ProductGridSkeleton } from '@/components/ui/SkeletonLoader';
 import type { Product } from '@/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +25,8 @@ export default function CategoryScreen() {
   const {
     data,
     isLoading,
+    isError,
+    refetch,
     isFetching,
     isFetchingNextPage,
     hasNextPage,
@@ -65,6 +68,11 @@ export default function CategoryScreen() {
         <View className="flex-row flex-wrap px-3 pt-2">
           <ProductGridSkeleton count={6} />
         </View>
+      ) : isError ? (
+        <ErrorState
+          message="Couldn't load products in this category. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
       ) : !products.length ? (
         <EmptyState
           icon="cube-outline"
@@ -84,6 +92,13 @@ export default function CategoryScreen() {
           estimatedItemSize={290}
           keyExtractor={(item) => item.id ?? ''}
           contentContainerStyle={{ padding: 12 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isFetching && !isFetchingNextPage}
+              onRefresh={() => refetch()}
+              tintColor={color.accent}
+            />
+          }
           renderItem={({ item }) => (
             <View style={{ flex: 1, margin: 4 }}>
               <ProductCard product={item} />

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -24,6 +25,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { HeartIllustration, ReceiptIllustration } from '@/components/illustrations';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
@@ -138,10 +140,17 @@ function ProfileTab() {
   async function handleSave() {
     if (!user) return;
     setSaving(true);
-    await supabase.from('users').update(form).eq('id', user.id);
-    await fetchProfile(user.id);
-    setSaving(false);
-    setEditing(false);
+    try {
+      const { error } = await supabase.from('users').update(form).eq('id', user.id);
+      if (error) {
+        Alert.alert("Couldn't save changes", error.message);
+        return;
+      }
+      await fetchProfile(user.id);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
   }
 
   const fields = [
@@ -278,7 +287,7 @@ function OrdersTab({ userId }: { userId: string }) {
   const tabBarClearance = useTabBarClearance();
   const [reviewState, setReviewState] = useState<ReviewState | null>(null);
 
-  const { data: orders, isLoading } = useQuery({
+  const { data: orders, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['my-orders', userId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -296,6 +305,15 @@ function OrdersTab({ userId }: { userId: string }) {
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator color={color.accent} />
       </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        message="Couldn't load your orders. Check your connection and try again."
+        onRetry={() => refetch()}
+      />
     );
   }
 
@@ -320,6 +338,9 @@ function OrdersTab({ userId }: { userId: string }) {
         estimatedItemSize={140}
         keyExtractor={(o) => o.id}
         contentContainerStyle={{ padding: 16, paddingBottom: tabBarClearance }}
+        refreshControl={
+          <RefreshControl refreshing={isFetching} onRefresh={() => refetch()} tintColor={color.accent} />
+        }
         renderItem={({ item: order }) => {
           const items = (order.items as any[]) ?? [];
           const firstImg = items[0]?.imageUrl;

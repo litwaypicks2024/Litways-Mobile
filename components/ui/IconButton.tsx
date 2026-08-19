@@ -14,15 +14,18 @@ interface Props {
   iconColor?: string;
   badge?: number;
   style?: ViewStyle;
+  /** When true, the button no-ops on press and dims its icon — a real disabled state, not just visual. */
+  disabled?: boolean;
 }
 
-export function IconButton({ icon, onPress, size = 42, iconSize = 19, variant = 'light', iconColor, badge, style }: Props) {
+export function IconButton({ icon, onPress, size = 42, iconSize = 19, variant = 'light', iconColor, badge, style, disabled }: Props) {
   const isLight = variant === 'light';
   return (
     <PressableScale
-      haptic
+      haptic={!disabled}
       scale={0.92}
       onPress={onPress}
+      disabled={disabled}
       hitSlop={8}
       style={[
         {
@@ -34,6 +37,7 @@ export function IconButton({ icon, onPress, size = 42, iconSize = 19, variant = 
           justifyContent: 'center',
         },
         isLight ? shadow.card : undefined,
+        disabled ? { opacity: 0.4 } : undefined,
         style,
       ]}
     >

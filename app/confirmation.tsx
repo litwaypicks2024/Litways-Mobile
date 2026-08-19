@@ -28,14 +28,41 @@ export default function ConfirmationScreen() {
   const insets = useSafeAreaInsets();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [retryToken, setRetryToken] = useState(0);
+
+  const ORDER_FETCH_MAX_ATTEMPTS = 3;
+  const ORDER_FETCH_RETRY_DELAY_MS = 1500;
 
   useEffect(() => {
     if (!referenceId) return;
-    momoAPI.getOrder(referenceId).then((data) => {
-      setOrder(data);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [referenceId]);
+    let cancelled = false;
+
+    async function fetchOrder(attempt: number) {
+      try {
+        const data = await momoAPI.getOrder(referenceId);
+        if (cancelled) return;
+        setOrder(data);
+        setLoading(false);
+      } catch {
+        if (cancelled) return;
+        if (attempt < ORDER_FETCH_MAX_ATTEMPTS) {
+          setTimeout(() => {
+            if (!cancelled) fetchOrder(attempt + 1);
+          }, ORDER_FETCH_RETRY_DELAY_MS);
+        } else {
+          setLoading(false);
+        }
+      }
+    }
+
+    setLoading(true);
+    setOrder(null);
+    fetchOrder(1);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [referenceId, retryToken]);
 
   // Radiating ring behind the checkmark badge — plays once on mount.
   const ringScale = useSharedValue(1);
@@ -173,9 +200,18 @@ export default function ConfirmationScreen() {
           </>
         ) : (
           <View style={{ backgroundColor: color.peachTint, borderRadius: 20, padding: 16, marginBottom: 24, alignItems: 'center' }}>
-            <Text style={{ fontSize: 13, color: color.accentPressed, textAlign: 'center', fontWeight: '600' }}>
+            <Text style={{ fontSize: 13, color: color.accentPressed, textAlign: 'center', fontWeight: '600', marginBottom: 14 }}>
               Your order has been placed! Reference:{'\n'}{referenceId}
             </Text>
+            <Text style={{ fontSize: 12, color: color.accentPressed, textAlign: 'center', marginBottom: 14, opacity: 0.8 }}>
+              We couldn't load the full order details.
+            </Text>
+            <Button
+              title="Try again"
+              variant="outline"
+              size="sm"
+              onPress={() => setRetryToken((t) => t + 1)}
+            />
           </View>
         )}
 

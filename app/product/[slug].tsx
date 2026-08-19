@@ -36,6 +36,8 @@ import { useWishlistStore } from '@/store/wishlist';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { IconButton } from '@/components/ui/IconButton';
 import { SkeletonBlock } from '@/components/ui/SkeletonLoader';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { formatCurrency, discountPercent } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Product, Review } from '@/types';
@@ -95,7 +97,7 @@ export default function ProductDetailScreen() {
     transform: [{ scale: ctaScale.value }],
   }));
 
-  const { data: product, isLoading } = useQuery({
+  const { data: product, isLoading, isError, refetch } = useQuery({
     queryKey: ['product', slug],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_product_by_slug', { product_slug: slug });
@@ -193,7 +195,7 @@ export default function ProductDetailScreen() {
     }
   }, [addedToCart, ctaScale]);
 
-  if (isLoading || !product) {
+  if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#fff' }}>
         <SkeletonBlock height={IMAGE_HEIGHT} borderRadius={0} />
@@ -204,6 +206,31 @@ export default function ProductDetailScreen() {
           <SkeletonBlock height={48} borderRadius={12} />
           <SkeletonBlock height={120} borderRadius={12} />
         </View>
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top }}>
+        <ErrorState
+          message="Couldn't load this product. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
+      </View>
+    );
+  }
+
+  if (!product) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top }}>
+        <EmptyState
+          icon="help-circle-outline"
+          title="Product not found"
+          description="This product may have been removed, or the link is incorrect."
+          actionLabel="Back"
+          onAction={() => router.back()}
+        />
       </View>
     );
   }

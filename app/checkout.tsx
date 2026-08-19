@@ -257,7 +257,7 @@ export default function CheckoutScreen() {
           <IconButton
             icon="arrow-back"
             onPress={() => (step === 1 ? router.back() : setStep(1))}
-            style={isProcessing ? { opacity: 0.4 } : undefined}
+            disabled={isProcessing}
           />
           <Text style={{ fontSize: 18, fontFamily: font.display, color: color.ink }}>Checkout</Text>
         </View>

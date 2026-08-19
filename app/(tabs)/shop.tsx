@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { FlashList } from '@/components/ui/List';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import { color, radius, shadow } from '@/theme/tokens';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { FilterSheet } from '@/components/shop/FilterSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { ProductGridSkeleton } from '@/components/ui/SkeletonLoader';
 import { NoResultsIllustration } from '@/components/illustrations';
 import { BrandLoader } from '@/components/motion/BrandLoader';
@@ -68,6 +70,8 @@ export default function ShopScreen() {
   const {
     data,
     isLoading,
+    isError,
+    refetch,
     isFetching,
     isFetchingNextPage,
     hasNextPage,
@@ -328,6 +332,11 @@ export default function ShopScreen() {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 10 }}>
           <ProductGridSkeleton count={6} />
         </View>
+      ) : isError ? (
+        <ErrorState
+          message="Couldn't load products. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
       ) : !products.length ? (
         <EmptyState
           illustration={<NoResultsIllustration />}
@@ -347,6 +356,13 @@ export default function ShopScreen() {
           estimatedItemSize={290}
           keyExtractor={(item) => item.id ?? ''}
           contentContainerStyle={{ padding: 10, paddingBottom: tabBarClearance }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isFetching && !isFetchingNextPage}
+              onRefresh={() => refetch()}
+              tintColor={color.accent}
+            />
+          }
           renderItem={({ item }) => (
             <View style={{ flex: 1, margin: 5 }}>
               <ProductCard product={item} />
