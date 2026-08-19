@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/ui/IconButton';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
 import { MotifOverlay } from '@/components/brand/Motif';
+import { LogoLockup } from '@/components/brand/LogoMark';
 import type { Product, Category } from '@/types';
 
 const HERO_IMAGE =
@@ -132,9 +133,7 @@ export default function HomeScreen() {
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.text, letterSpacing: -0.6 }}>
-            LITWAYS<Text style={{ color: color.accent }}>.</Text>
-          </Text>
+          <LogoLockup variant="onLight" markSize={36} />
 
           {/* Help — a visible safety net for first-time shoppers */}
           <IconButton icon="help-circle-outline" onPress={() => router.push('/contact')} />

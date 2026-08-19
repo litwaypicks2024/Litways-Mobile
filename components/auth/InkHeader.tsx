@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, font, radius } from '@/theme/tokens';
 import { IconButton } from '@/components/ui/IconButton';
 import { MotifOverlay } from '@/components/brand/Motif';
+import { LogoMark } from '@/components/brand/LogoMark';
 
 interface Props {
   /** Top-left action — 'close' on modally-presented screens, 'arrow-back' on pushed ones. */
@@ -41,9 +42,11 @@ export function InkHeader({ icon, onIconPress, title, subtitle }: Props) {
         variant="dark"
         style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}
       />
-      <View style={{ marginTop: 28, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-        <Text style={{ color: color.onInk, fontSize: 13, fontWeight: '800', letterSpacing: 2 }}>LITWAYS</Text>
-        <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: color.accent }} />
+      <View style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <LogoMark size={30} variant="onInk" />
+        <Text style={{ color: color.onInk, fontSize: 13, fontWeight: '800', letterSpacing: 2 }}>
+          LITWAY <Text style={{ color: color.accent }}>PICKS</Text>
+        </Text>
       </View>
       <Text
         style={{

@@ -30,7 +30,7 @@ export default function AboutScreen() {
           <View className="w-20 h-20 bg-white/20 rounded-2xl items-center justify-center mb-4">
             <Ionicons name="bag" size={40} color="#fff" />
           </View>
-          <Text className="text-white text-3xl font-bold mb-2">LitwaysPicks</Text>
+          <Text className="text-white text-3xl font-bold mb-2">Litway Picks</Text>
           <Text className="text-white/80 text-sm text-center">Liberia's Premier Online Shopping Destination</Text>
         </LinearGradient>
 
@@ -48,7 +48,7 @@ export default function AboutScreen() {
 
         <View className="px-5 mt-6 gap-4">
           <Section title="Our Story">
-            LitwaysPicks was founded with a simple mission: to make quality shopping accessible to every Liberian, no matter where they live. From Montserrado to Sinoe, we deliver across all 15 counties.
+            Litway Picks was founded with a simple mission: to make quality shopping accessible to every Liberian, no matter where they live. From Montserrado to Sinoe, we deliver across all 15 counties.
           </Section>
           <Section title="Our Mission">
             We connect Liberians with the products they love — fashion, electronics, home goods, and more — delivered safely and affordably through MTN Mobile Money.

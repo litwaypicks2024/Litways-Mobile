@@ -3,7 +3,7 @@ import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import { color } from '@/theme/tokens';
 
 /**
- * LitwaysPicks spot illustrations.
+ * Litway Picks spot illustrations.
  *
  * A small duotone set used by empty states and the order-confirmation moment.
  * The house style is deliberately narrow so the six read as one family:

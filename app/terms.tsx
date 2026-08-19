@@ -6,12 +6,12 @@ import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const sections = [
-  { title: 'Acceptance of Terms', body: 'By using LitwaysPicks, you agree to these terms. If you disagree, please do not use our service.' },
+  { title: 'Acceptance of Terms', body: 'By using Litway Picks, you agree to these terms. If you disagree, please do not use our service.' },
   { title: 'Products & Pricing', body: 'We reserve the right to modify prices at any time. Products are subject to availability. In the event of a pricing error, we will contact you before processing your order.' },
   { title: 'Orders & Payment', body: 'Orders are confirmed only after successful payment via MTN Mobile Money. We reserve the right to cancel orders if payment is not received or if stock is unavailable.' },
-  { title: 'Delivery', body: 'Delivery times are estimates. LitwaysPicks is not responsible for delays beyond our control. Risk of damage passes to you upon delivery.' },
+  { title: 'Delivery', body: 'Delivery times are estimates. Litway Picks is not responsible for delays beyond our control. Risk of damage passes to you upon delivery.' },
   { title: 'Returns & Refunds', body: 'Returns accepted within 7 days of delivery for unused items in original condition. Refunds processed within 3–5 business days after return confirmation.' },
-  { title: 'Limitation of Liability', body: 'LitwaysPicks is not liable for indirect, incidental, or consequential damages arising from use of our service.' },
+  { title: 'Limitation of Liability', body: 'Litway Picks is not liable for indirect, incidental, or consequential damages arising from use of our service.' },
   { title: 'Governing Law', body: 'These terms are governed by the laws of the Republic of Liberia.' },
 ];
 

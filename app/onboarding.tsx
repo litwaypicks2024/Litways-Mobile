@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, radius, spacing, type as t } from '@/theme/tokens';
 import { Button } from '@/components/ui/Button';
+import { LogoMark } from '@/components/brand/LogoMark';
 import { onboarding } from '@/lib/storage';
 
 type Slide = {
@@ -56,14 +57,18 @@ export default function OnboardingScreen() {
         )}
       </View>
 
-      {/* Illustration */}
+      {/* Illustration — the brand mark leads; later slides keep their icons */}
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl }}>
         <View style={{
           width: 220, height: 260, borderRadius: radius['2xl'],
           backgroundColor: color.accent,
           alignItems: 'center', justifyContent: 'center',
         }}>
-          <Ionicons name={slide.icon} size={92} color={color.onAccent} />
+          {index === 0 ? (
+            <LogoMark size={150} variant="onOrange" />
+          ) : (
+            <Ionicons name={slide.icon} size={92} color={color.onAccent} />
+          )}
         </View>
       </View>
 

@@ -173,8 +173,8 @@ export default function ProductDetailScreen() {
   async function handleShare() {
     if (!product) return;
     await Share.share({
-      title: product.name ?? 'LitwaysPicks',
-      message: `Check out ${product.name} on LitwaysPicks!\nlitwaypicks://product/${product.slug}`,
+      title: product.name ?? 'Litway Picks',
+      message: `Check out ${product.name} on Litway Picks!\nlitwaypicks://product/${product.slug}`,
       url: `https://litwaypicks.com/product/${product.slug}`,
     });
   }

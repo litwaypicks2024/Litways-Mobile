@@ -51,7 +51,7 @@ export default function LoginScreen() {
   async function handleBiometricAuth() {
     const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Sign in to LitwaysPicks',
+      promptMessage: 'Sign in to Litway Picks',
       fallbackLabel: 'Use password instead',
       cancelLabel: 'Cancel',
       disableDeviceFallback: false,
@@ -93,7 +93,7 @@ export default function LoginScreen() {
       });
       if (error) { setLoading(false); Alert.alert('Sign Up Failed', error.message); return; }
       setLoading(false);
-      Alert.alert('Account Created', 'Welcome to LitwaysPicks! Check your email to verify your account.');
+      Alert.alert('Account Created', 'Welcome to Litway Picks! Check your email to verify your account.');
       router.back();
     }
   }
