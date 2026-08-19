@@ -36,16 +36,31 @@ function getAuthParams(url: string): Record<string, string> {
   return out;
 }
 
+// Sanity checks applied before any deep-link value is handed to Supabase.
+// These don't fully close the recovery-link trust issue (see
+// wave1-security.md) but they reject obviously-malformed/injected values
+// before they reach exchangeCodeForSession/setSession.
+const CODE_PATTERN = /^[A-Za-z0-9-]{8,128}$/;
+const JWT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+
+function isPlausibleCode(value: string): boolean {
+  return CODE_PATTERN.test(value);
+}
+
+function isPlausibleJwt(value: string): boolean {
+  return value.length < 4096 && JWT_PATTERN.test(value);
+}
+
 // Establishes a short-lived recovery session from the reset link so the user can
 // set a new password. Handles implicit (access_token/refresh_token) and PKCE (code).
 async function establishRecoverySession(url: string): Promise<boolean> {
   const p = getAuthParams(url);
   try {
-    if (p.code) {
+    if (p.code && isPlausibleCode(p.code)) {
       const { error } = await supabase.auth.exchangeCodeForSession(p.code);
       return !error;
     }
-    if (p.access_token && p.refresh_token) {
+    if (p.access_token && p.refresh_token && isPlausibleJwt(p.access_token) && isPlausibleJwt(p.refresh_token)) {
       const { error } = await supabase.auth.setSession({
         access_token: p.access_token,
         refresh_token: p.refresh_token,

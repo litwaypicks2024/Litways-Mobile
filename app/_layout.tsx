@@ -107,13 +107,23 @@ function AppContent() {
 
   // Deep link handler
   useEffect(() => {
+    // Defense in depth: only forward well-formed reference ids to the
+    // confirmation screen. This does not fix the underlying unauthenticated
+    // order-lookup endpoint (see wave1-security.md) but rejects obviously
+    // crafted/malformed values before they trigger a fetch.
+    const REFERENCE_ID_PATTERN = /^[A-Za-z0-9_-]{6,64}$/;
+
     function handleUrl(url: string) {
       const { path, queryParams } = Linking.parse(url);
       if (!path) return;
       if (path.startsWith('product/')) {
         router.push(`/${path}` as any);
-      } else if (path === 'confirmation' && queryParams?.referenceId) {
-        router.push({ pathname: '/confirmation', params: { referenceId: queryParams.referenceId as string } });
+      } else if (
+        path === 'confirmation' &&
+        typeof queryParams?.referenceId === 'string' &&
+        REFERENCE_ID_PATTERN.test(queryParams.referenceId)
+      ) {
+        router.push({ pathname: '/confirmation', params: { referenceId: queryParams.referenceId } });
       } else if (path.startsWith('category/')) {
         router.push(`/${path}` as any);
       }

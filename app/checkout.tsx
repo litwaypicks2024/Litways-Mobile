@@ -220,6 +220,10 @@ export default function CheckoutScreen() {
           city: form.city,
           state: form.county,
         },
+        // SECURITY (backend handoff): `price` here is client-held and only
+        // reconciled against the catalog for UI purposes above — the server
+        // must re-price every line item (and the total) from its own product
+        // data rather than trusting this payload. Not fixable client-side.
         items: items.map((i) => ({
           id: i.productId,
           name: i.name,
