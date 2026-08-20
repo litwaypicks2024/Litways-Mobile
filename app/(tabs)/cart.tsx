@@ -6,6 +6,7 @@ import {
   Platform,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { FlashList } from '@/components/ui/List';
 import { Image } from 'expo-image';
@@ -38,15 +39,24 @@ export default function CartScreen() {
   const dismissMergeNotice = useCartStore((s) => s.dismissMergeNotice);
   const syncFailed = useCartStore((s) => s.syncFailed);
   const retrySync = useCartStore((s) => s.retrySync);
+  const syncing = useCartStore((s) => s.syncing);
+  const syncNotice = useCartStore((s) => s.syncNotice);
+  const dismissSyncNotice = useCartStore((s) => s.dismissSyncNotice);
+  const manualSync = useCartStore((s) => s.manualSync);
   const userId = useAuthStore((s) => s.user?.id);
 
   function handleRetrySync() {
     if (userId) void retrySync(userId);
   }
 
+  function handleManualSync() {
+    if (userId) void manualSync(userId);
+  }
+
   function handleCheckout() {
-    // Checkout itself offers an optional, non-blocking sign-in card — guests
-    // can order without an account, so never force a login wall here.
+    // Checkout gates the payment step itself (sign-in is required to place an
+    // order, with everything typed preserved across the sign-in round-trip) —
+    // so no login wall here: let shoppers review delivery details first.
     router.push('/checkout');
   }
 
@@ -102,12 +112,51 @@ export default function CartScreen() {
             {itemQuantity} {itemQuantity === 1 ? 'item' : 'items'}
           </Text>
         </View>
-        <TouchableOpacity onPress={handleClearAll} hitSlop={8}>
-          <Text style={{ fontSize: 13, color: color.danger, fontWeight: '600' }}>Clear all</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
+          {userId && (
+            <TouchableOpacity
+              onPress={handleManualSync}
+              disabled={syncing}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Sync cart"
+              style={{ opacity: syncing ? 0.5 : 1 }}
+            >
+              {syncing ? (
+                <ActivityIndicator size="small" color={color.inkMuted} />
+              ) : (
+                <Ionicons name="sync-outline" size={20} color={color.inkMuted} />
+              )}
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={handleClearAll} hitSlop={8}>
+            <Text style={{ fontSize: 13, color: color.danger, fontWeight: '600' }}>Clear all</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {mergeNotice && (
+      {/* syncNotice (manual sync outcome) takes this slot over mergeNotice
+          when both would otherwise apply, so the two banners never stack. */}
+      {syncNotice ? (
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          backgroundColor: color.accentSoft,
+          marginHorizontal: 12,
+          marginTop: 12,
+          padding: 12,
+          borderRadius: radius.md,
+        }}>
+          <Ionicons name="information-circle" size={18} color={color.accent} />
+          <Text style={{ flex: 1, fontSize: 12.5, color: color.accentPressed, fontWeight: '600' }}>
+            {syncNotice}
+          </Text>
+          <TouchableOpacity onPress={dismissSyncNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
+            <Ionicons name="close" size={16} color={color.accentPressed} />
+          </TouchableOpacity>
+        </View>
+      ) : mergeNotice && (
         <View style={{
           flexDirection: 'row',
           alignItems: 'center',

@@ -8,6 +8,8 @@
 
 Last updated: 2026-08-20. Replaces `docs/OWNERS_GUIDE.md`, which covered the same app for the same person wearing their business hat.
 
+Revised after four pieces of work that landed *after* the first version of this guide: the backend hardening session (real `wishlists` and `push_tokens` tables, view and function security), the move to **accounts required for checkout** with `Authorization: Bearer` auth on the payment API, the **three-way cart sync**, and the **branded loading overlays**. Where an old decision was superseded, [§7](#7-decisions-and-tradeoffs) says so out loud rather than quietly deleting it — and there's a short "What changed recently" list at the end of that chapter.
+
 ---
 
 ## Table of contents
@@ -130,7 +132,7 @@ The `<View>…</View>` inside a `return` is **JSX**. It looks like HTML. It is n
 **`app/checkout.tsx`** — "this or that":
 ```tsx
 {!user ? (
-  <> ... the "Have an account? Sign in" card ... </>
+  <View> ... the "Sign in to place your order" card ... </View>
 ) : (
   <View> ... "Signed in as {user.email}" ... </View>
 )}
@@ -334,6 +336,8 @@ if (data.session) {
 
 Two things you own here. First, the profile row: notice the name is passed as `options.data`, i.e. auth metadata. A database trigger on `auth.users` builds the `public.users` profile row from it. An earlier version tried to insert that row from the app, which failed silently because with email confirmation on there's no session yet, and the database's security rules correctly rejected an anonymous insert. Second, `data.session` — whether signup hands back a live session depends on a **checkbox in your Supabase dashboard**. The code now works correctly with that checkbox in either position, so flipping it can't break signup.
 
+**That checkbox is now off in production.** "Confirm email" was switched off in the Supabase dashboard during the backend session, so today `signUp` returns a live session and the first branch above is the one that runs: a new customer taps once and is signed in. Why that's the right call for this market, and what it costs you, is written up in [§7](#7-decisions-and-tradeoffs). The code stays setting-agnostic anyway — if you ever turn it back on, signup still behaves correctly without a code change.
+
 **Two `await` gotchas worth knowing now:**
 - `await` only works inside an `async` function. That's why you'll see `void somePromise()` in places — it means "start this and deliberately don't wait", and the `void` keyword silences the linter warning about an ignored promise.
 - An `await` that rejects throws. That's why network work is wrapped in `try { … } catch (err) { … }`, as in `handlePlaceOrder` in checkout.
@@ -461,7 +465,7 @@ Six neighbourhoods:
 
 - **`ui/`** — the generic kit, and the one you'll reach for most: `Button`, `IconButton`, `Input`, `Card`, `Badge`, `List` (a FlashList/FlatList shim), `EmptyState`, `ErrorState`, `SkeletonLoader`, `QuantityStepper`, `ProgressStepper`, `PressableScale`, `ErrorBoundary`.
 - **`brand/`** — `LogoMark` (the bag, rebuilt as vector geometry), `Motif` (the country-cloth lozenge lattice), `Marquee` (the endlessly scrolling promise strip), `RotatingBadge` (the circular "shop the drop" seal).
-- **`motion/`** — `BrandLoader`, `FlyToCart`, `DrawnCheckmark`, `IdleFloat`. See [§6](#6-the-animation-layer).
+- **`motion/`** — `BrandLoader`, `LoadingOverlay`, `FlyToCart`, `DrawnCheckmark`, `IdleFloat`. See [§6](#6-the-animation-layer).
 - **`shop/`** — `ProductCard` and `FilterSheet`.
 - **`navigation/TabBar.tsx`** — the floating ink pill bar.
 - **`auth/InkHeader.tsx`**, **`illustrations/index.tsx`**, **`BrandSplash.tsx`** — the black auth panel, six hand-drawn duotone spot illustrations, and the animated launch screen.
@@ -487,7 +491,7 @@ It wraps the entire app in `app/_layout.tsx`. If any component throws, the custo
 | File | What it is |
 |---|---|
 | `supabase.ts` | The database + auth connection, plus the encrypted-storage adapter for the session |
-| `api.ts` | The four calls to your own server at litwaypicks.com |
+| `api.ts` | The four calls to your own server at litwaypicks.com, each signed with the customer's access token as a `Bearer` header |
 | `storage.ts` | Small on-device records: onboarding-seen, recent searches, the pending-payment record; and the zustand persist adapter |
 | `notifications.ts` | Push registration, token save, tap handling |
 | `phone.ts` | Turns anything a Liberian customer types into `231XXXXXXXX` |
@@ -522,8 +526,8 @@ export function normalizeLiberianPhone(input: string): string {
 Four stores. Full walkthrough in [§5b](#5b-state-zustand-stores-vs-local-state).
 
 - `auth.ts` — who's signed in, their profile, and a sign-out procedure that's more careful than you'd guess.
-- `cart.ts` — the cart plus all the machinery keeping it in step with the server.
-- `wishlist.ts` — saved items. **Device-only**, deliberately (see [§8](#8-what-still-needs-the-backend-or-the-dashboard)).
+- `cart.ts` — the cart plus all the machinery keeping it in step with the server, including the **three-way merge** ([§5b](#5b-state-zustand-stores-vs-local-state)).
+- `wishlist.ts` — saved items. **Now synced** to a real `wishlists` table on the backend; it used to be device-only, and [§7](#7-decisions-and-tradeoffs) explains why that changed.
 - `reviewed.ts` — which order/product pairs already got a review, so the "Write a review" chip stops asking.
 
 ### `theme/tokens.ts` — one file, all design decisions
@@ -547,9 +551,9 @@ Everything built or rebuilt during the redesign uses **token-based inline styles
 
 ## 4. Reading your first screen, line by line
 
-Open `app/(tabs)/cart.tsx`. It's 298 lines, it uses nearly everything in the app, and nothing in it is exotic. We'll go through it in order.
+Open `app/(tabs)/cart.tsx`. It's 346 lines, it uses nearly everything in the app, and nothing in it is exotic. We'll go through it in order.
 
-### The imports (lines 1–26)
+### The imports (lines 1–27)
 
 ```tsx
 import React from 'react';
@@ -560,6 +564,7 @@ import {
   Platform,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { FlashList } from '@/components/ui/List';
 import { Image } from 'expo-image';
@@ -598,8 +603,14 @@ export default function CartScreen() {
   const dismissMergeNotice = useCartStore((s) => s.dismissMergeNotice);
   const syncFailed = useCartStore((s) => s.syncFailed);
   const retrySync = useCartStore((s) => s.retrySync);
+  const syncing = useCartStore((s) => s.syncing);
+  const syncNotice = useCartStore((s) => s.syncNotice);
+  const dismissSyncNotice = useCartStore((s) => s.dismissSyncNotice);
+  const manualSync = useCartStore((s) => s.manualSync);
   const userId = useAuthStore((s) => s.user?.id);
 ```
+
+Sixteen lines of hooks looks like a lot, and it's worth saying why it isn't a smell. Twelve of them are *selectors* into one store — each subscribes this screen to exactly one field, so a change to `syncing` doesn't re-render anything that only reads `items`. The four sync-related ones (`syncing`, `syncNotice`, `dismissSyncNotice`, `manualSync`) all arrived with the manual sync button, which is covered properly in [§5b](#5b-state-zustand-stores-vs-local-state).
 
 Every hook, at the top, unconditionally — the rule from [§2.4](#24-state-and-your-first-hook-usestate).
 
@@ -609,11 +620,15 @@ Every hook, at the top, unconditionally — the rule from [§2.4](#24-state-and-
 - `items.reduce((s, i) => s + i.quantity, 0)` is plain JavaScript: walk the array, add up `quantity`, start from 0. That's total *units*, not lines — 3 of one shirt is "3 items", matching the Order Summary below.
 - `useAuthStore((s) => s.user?.id)` — the `?.` is optional chaining: if `user` is null, the whole expression is `undefined` rather than a crash. Guests have no user; this line must not explode for them.
 
-### The handlers (lines 43–58)
+### The handlers (lines 47–71)
 
 ```tsx
 function handleRetrySync() {
   if (userId) void retrySync(userId);
+}
+
+function handleManualSync() {
+  if (userId) void manualSync(userId);
 }
 
 function handleCheckout() {
@@ -630,13 +645,14 @@ function handleClearAll() {
 }
 ```
 
-Ordinary functions declared inside the component, so they can see `userId`, `router` and `clearCart`. Three notes:
+Ordinary functions declared inside the component, so they can see `userId`, `router` and `clearCart`. Four notes:
 
-- The comment on `handleCheckout` is doing real work. An earlier version pushed signed-out shoppers to a login wall here, which made checkout's entire guest path dead code. The comment exists so nobody "helpfully" adds the wall back.
+- **That comment on `handleCheckout` is now out of date, and it's a useful thing to catch.** It was written when guests could complete an order. They can't any more — an account is required to *place* an order, and the gate lives in checkout's own `validateDelivery()` ([§5e](#5e-payments-end-to-end)). What is still true is the part the comment was really protecting: **the cart screen must not be a login wall.** A guest still browses, still adds to the cart, still opens checkout and still fills the form; the sign-in ask happens once, at the step-1-to-step-2 transition, with everything they typed preserved. When you next touch this file, rewrite the comment to say that.
+- `handleManualSync` is the sync button in the header, which only exists for signed-in shoppers. It runs the three-way merge in [§5b](#5b-state-zustand-stores-vs-local-state).
 - `Alert.alert(title, message, buttons)` — the third argument is an array of buttons. `style: 'destructive'` renders red on iOS. This is the app's standard confirm-before-you-destroy pattern.
 - `void retrySync(userId)` — `retrySync` is async; we start it and deliberately don't wait.
 
-### The early return (lines 62–82)
+### The early return (lines 71–91)
 
 ```tsx
 if (items.length === 0) {
@@ -668,7 +684,7 @@ Note `illustration={<EmptyBagIllustration />}`: **components are values.** You c
 
 `flex: 1` means "take all available space in the parent". It's the most-used style in React Native by a mile. Layout here is flexbox and only flexbox — no floats, no grid, and the default direction is **column** (top to bottom), unlike the web's row default. Whenever you see `flexDirection: 'row'`, someone is explicitly asking for side-by-side.
 
-### The header and the two notice banners (lines 84–154)
+### The header and the three notice banners (lines 93–202)
 
 ```tsx
 <View style={{
@@ -681,11 +697,52 @@ Note `illustration={<EmptyBagIllustration />}`: **components are values.** You c
   justifyContent: 'space-between',
 }}>
 ```
-White surface floating on the grey canvas, laid out as a row, with the title on the left and "Clear all" pushed to the right by `space-between`.
+White surface floating on the grey canvas, laid out as a row, with the title on the left and the controls pushed to the right by `space-between`.
 
-Then two conditional banners, both of the `{condition && <View>…</View>}` shape.
+There are two controls on that right side now, and the first one only exists when there's an account to sync with:
 
-The merge notice fires when signing in combined a device cart with an account cart:
+**`app/(tabs)/cart.tsx`**
+```tsx
+{userId && (
+  <TouchableOpacity
+    onPress={handleManualSync}
+    disabled={syncing}
+    hitSlop={8}
+    accessibilityRole="button"
+    accessibilityLabel="Sync cart"
+    style={{ opacity: syncing ? 0.5 : 1 }}
+  >
+    {syncing ? (
+      <ActivityIndicator size="small" color={color.inkMuted} />
+    ) : (
+      <Ionicons name="sync-outline" size={20} color={color.inkMuted} />
+    )}
+  </TouchableOpacity>
+)}
+```
+Three habits worth copying from those eleven lines: the control is *absent* for guests rather than present-and-disabled (there is nothing for a guest to sync); `disabled={syncing}` plus the swapped-in spinner makes double-tapping impossible and visibly so; and the dimming is `opacity`, not a second colour token, so the disabled look costs nothing to maintain.
+
+Then three conditional banners. The first two share one slot:
+
+**`app/(tabs)/cart.tsx`**
+```tsx
+{/* syncNotice (manual sync outcome) takes this slot over mergeNotice
+    when both would otherwise apply, so the two banners never stack. */}
+{syncNotice ? (
+  <View style={{ ... backgroundColor: color.accentSoft ... }}>
+    <Ionicons name="information-circle" size={18} color={color.accent} />
+    <Text style={{ flex: 1, fontSize: 12.5, color: color.accentPressed, fontWeight: '600' }}>
+      {syncNotice}
+    </Text>
+    <TouchableOpacity onPress={dismissSyncNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
+      <Ionicons name="close" size={16} color={color.accentPressed} />
+    </TouchableOpacity>
+  </View>
+) : mergeNotice && (
+```
+Note the shape: a **ternary** whose "else" branch is itself a `&&`. That reads as "show the sync notice if there is one; otherwise show the merge notice if there is one; otherwise nothing." Written as two separate `{a && …}{b && …}` blocks, a shopper who signed in *and then* pressed sync would get two stacked orange banners saying overlapping things. One slot, one message.
+
+The merge notice — the "else" half above — fires when signing in combined a device cart with an account cart:
 ```tsx
 {mergeNotice && (
   <View style={{ ... backgroundColor: color.accentSoft ... }}>
@@ -719,7 +776,7 @@ The sync-failure notice fires when the server copy of the cart is behind:
 
 Two accessibility details, both mandatory in this codebase: `accessibilityLabel` (what a screen reader announces for an icon-only control) and `hitSlop` (invisible extra touch area — a 16pt × icon is far below the 44pt minimum target, and `hitSlop={8}` buys back the difference).
 
-### The list (lines 156–211)
+### The list (lines 204–259)
 
 ```tsx
 <FlashList
@@ -759,7 +816,7 @@ export function FlashList<T>({ estimatedItemSize, ...props }: Props<T>) {
 ```
 The real FlashList needs a native component that isn't in Expo Go, so in Expo Go this quietly falls back to the built-in `FlatList`. Same pattern appears in `lib/notifications.ts`. This is why the app *runs* in Expo Go even though it isn't the real thing.
 
-### The row component (lines 216–298)
+### The row component (lines 264–346)
 
 ```tsx
 const CartItemRow = React.memo(function CartItemRow({
@@ -919,6 +976,15 @@ That's what **zustand** is for. Your cart store is the best example in the app; 
 ```ts
 interface CartState {
   items: CartItem[];
+  /** The three-way merge BASE: the item set this device and the server last
+   * agreed on, captured after every successful loadFromDb/manualSync merge.
+   * Persisted so it survives an app restart. */
+  lastSyncedItems: CartItem[];
+  /** Whose cart lastSyncedItems describes. A base captured for one account
+   * must never be applied as the base for another — checked before every
+   * merge (see manualSync/loadFromDb) and reset to null on clearCart. */
+  lastSyncedUserId: string | null;
+  ...
   mergeNotice: boolean;
   dismissMergeNotice: () => void;
   syncFailed: boolean;
@@ -933,6 +999,8 @@ interface CartState {
 }
 ```
 `Omit<CartItem, 'quantity'>` reads as "a CartItem minus its quantity field" — because `addItem` always starts at quantity 1 and supplying it would be meaningless.
+
+The two fields at the top with the long comments — `lastSyncedItems` and `lastSyncedUserId` — are the newest thing in this store and the subject of "[The three-way merge](#the-three-way-merge-the-hardest-thing-in-this-store)" below. Skip past them for now.
 
 **The identity problem, solved once.** A cart line isn't a product — it's a product *in a size and colour*:
 ```ts
@@ -950,8 +1018,12 @@ export const useCartStore = create<CartState>()(
       ...
       return {
       items: [],
+      lastSyncedItems: [],
+      lastSyncedUserId: null,
       mergeNotice: false,
       syncFailed: false,
+      syncing: false,
+      syncNotice: null,
       ...
 ```
 `create` builds the store. `set` writes state; `get` reads it. Every action is just a function that calls `set`:
@@ -981,11 +1053,18 @@ Same immutability rule as `useState`: `.map()` and `[...spread]` build *new* arr
 {
   name: 'litways-cart',
   storage: createJSONStorage(() => storageAdapter()),
-  // Only persist the items array — methods are not serializable
-  partialize: (state) => ({ items: state.items }),
+  // Only persist serializable cart state — methods are excluded. The
+  // merge base (lastSyncedItems/lastSyncedUserId) must survive an app
+  // restart too, or the very next sync after a relaunch would fall back
+  // to an empty base and risk re-summing quantities already agreed on.
+  partialize: (state) => ({
+    items: state.items,
+    lastSyncedItems: state.lastSyncedItems,
+    lastSyncedUserId: state.lastSyncedUserId,
+  }),
 }
 ```
-`persist` is middleware — a wrapper that adds behaviour. It writes the store to the phone's `AsyncStorage` after every change and reloads it on launch. `partialize` picks *what* to save: only `items`. Functions can't be turned into JSON, and `mergeNotice`/`syncFailed` are session-scoped flags that would be wrong to restore.
+`persist` is middleware — a wrapper that adds behaviour. It writes the store to the phone's `AsyncStorage` after every change and reloads it on launch. `partialize` picks *what* to save: three fields. Functions can't be turned into JSON, and `mergeNotice`/`syncFailed`/`syncing`/`syncNotice` are session-scoped flags that would be wrong to restore — a "couldn't sync" banner from last Tuesday means nothing today. The two `lastSynced*` fields *must* be saved, for the reason the comment gives; that becomes obvious once you've read the merge below.
 
 **Why selectors matter.** Two ways to read a store:
 
@@ -1030,22 +1109,18 @@ syncToDb: async (userId) => {
 if (isRetry) {
   // The one automatic retry also failed — surface it, but keep the
   // local cart exactly as-is.
+  console.warn('Cart syncToDb retry also failed');
   set({ syncFailed: true });
-  return;
+  return false;
 }
 ```
 **A sync failure must never lose local cart state.** The local cart is the truth the shopper is looking at; only the server copy is behind.
 
+(`performSync` returns a boolean now — whether *this* attempt actually wrote — because `manualSync` needs to know whether to claim success. The raw upsert itself was also lifted out into a shared `writeCartRow(userId, items)` so the debounced path and the manual path can't drift apart with two slightly different versions of the same write.)
+
 There are three flush variants and the difference between them is subtle enough to be worth reading in the source comments: `flushSync` writes now *only if something is pending* (called when the app backgrounds, where iOS can fire `inactive` then `background` back to back and would otherwise write twice); `retrySync` **always** writes now (the manual Retry button, where both timers have already fired and cleared); `cancelSync` cancels everything for everyone without writing (sign-out).
 
-**The merge, and why it's local-first:**
-```ts
-// Local first so its metadata (price/name/image) wins on a
-// duplicate key — the local copy is whatever the shopper has been
-// looking at this session, so it's the freshest.
-for (const item of [...local, ...remote]) {
-```
-and, just above it, the rule that a network error must never wipe a cart:
+And the rule that a network error must never wipe a cart:
 ```ts
 // PGRST116 = "no rows" from .single() — a brand-new user with no
 // cart row yet, which is a genuinely empty cart, not a fetch error.
@@ -1072,6 +1147,206 @@ useEffect(() => {
 }, []);
 ```
 Any change to `items`, while signed in, schedules a debounced write. Historically this was the bug that made "your cart follows you across devices" untrue: `syncToDb` existed and nothing ever called it.
+
+#### The three-way merge — the hardest thing in this store
+
+Everything above keeps the *server* in step with the *phone*. This section is about the harder direction: what to do when **both** have changed since they last agreed. It's the single most subtle piece of code in the app, so read it slowly — the ideas here apply to any two copies of anything that both get edited (which is most of software).
+
+**Why the old sync felt broken.** Before this work, two things were true:
+
+1. The device cart and the account cart were only ever combined at **sign-in**. After that, the account cart was never read again for the rest of the session.
+2. Every edit on the phone wrote the *whole* cart row to the server, overwriting whatever was there. That's called **last-writer-wins**.
+
+Put those together and here's the customer's experience. She adds a jacket on litwaypicks.com at her desk. Then she opens the app on her phone — which has been running since this morning, so no sign-in happens, so the jacket is never read — and taps "+" on a pair of shoes. Her phone writes its entire cart to the server. The jacket is gone. Nobody deleted it; it was simply not in the array the phone sent. She was never told.
+
+**The obvious fix, and why it's wrong.** "Just add the quantities together." Watch it fail:
+
+- Her cart has **2** shirts. Both sides agree: local 2, remote 2.
+- She changes nothing at all, and the app syncs. `local + remote` = **4 shirts**.
+- She syncs again. `4 + 4` = **8**.
+
+This is the **double-count trap**, and it's the reason naive sync code silently inflates people's carts. The two copies of "2" aren't two facts. They're *the same fact*, seen twice.
+
+**The fix is to stop merging values and start merging changes.** To do that you need a third snapshot: the **base** — what the two sides last agreed on. Then each side's *delta* (how far it has moved from the base) is a real, independent piece of information, and deltas can be added safely.
+
+Here is the whole function, comment included, because the comment is half the teaching:
+
+**`store/cart.ts`**
+```ts
+/**
+ * Three-way merges a cart across three snapshots: the last-synced BASE (what
+ * this device and the server agreed on after the previous sync), the current
+ * LOCAL cart, and the current REMOTE (server) cart. Per cartKey, the merged
+ * quantity is:
+ *
+ *   qty = max(0, baseQty + (localQty - baseQty) + (remoteQty - baseQty))
+ *
+ * i.e. base plus the SUM OF EACH SIDE'S INDEPENDENT DELTA from base — not a
+ * straight `local + remote`. The double-count trap that guards against: if
+ * base already has 2 of an item and neither side touched it, `local + remote`
+ * would report 4 (both copies of the same 2 counted again), while the
+ * base+deltas form correctly reports 2 (delta 0 + delta 0). An independent
+ * add on one side (local 2→3, remote unchanged at 2) still lands at 3 (delta
+ * +1 + delta 0). Because every quantity is expressed as a delta from a
+ * shared base, re-running the merge with nothing new on either side is a
+ * no-op (both deltas are 0), and a removal on either side (delta walks down
+ * to -baseQty) sticks instead of being resurrected by the other side's
+ * untouched copy.
+ *
+ * The base MUST be scoped per-user (see lastSyncedUserId below) — a base
+ * captured for a different account could reuse the same cartKeys to
+ * describe an entirely different cart, corrupting the delta math here.
+ *
+ * Metadata (name/brand/price/imageUrl/slug/stock/size/color) prefers the
+ * local entry, then remote, then base — local is whatever the shopper has
+ * actually been looking at this session.
+ */
+export function threeWayMergeCarts(base: CartItem[], local: CartItem[], remote: CartItem[]): CartItem[] {
+  const byKey = (list: CartItem[]) => {
+    const map = new Map<string, CartItem>();
+    for (const item of list) map.set(cartKey(item), item);
+    return map;
+  };
+  const baseMap = byKey(base);
+  const localMap = byKey(local);
+  const remoteMap = byKey(remote);
+
+  const keys = new Set<string>([...baseMap.keys(), ...localMap.keys(), ...remoteMap.keys()]);
+  const result: CartItem[] = [];
+
+  for (const key of keys) {
+    const b = baseMap.get(key);
+    const l = localMap.get(key);
+    const r = remoteMap.get(key);
+    const baseQty = b?.quantity ?? 0;
+    const localQty = l?.quantity ?? 0;
+    const remoteQty = r?.quantity ?? 0;
+    const qty = Math.max(0, baseQty + (localQty - baseQty) + (remoteQty - baseQty));
+    if (qty <= 0) continue;
+    const meta = l ?? r ?? b!;
+    result.push({ ...meta, quantity: qty });
+  }
+
+  return result;
+}
+```
+
+Read the mechanics off the code:
+
+- **`Map` and `Set` do the bookkeeping.** A `Map` is a lookup table keyed by anything (here, the `cartKey` string); a `Set` is a collection with no duplicates. Building the union of all three sides' keys in a `Set` is what guarantees the loop visits every line that exists *anywhere* — including one that's only on the server, or only in the base because both sides deleted it.
+- **`?? 0` turns "absent" into a number.** A line missing from a side has quantity 0 there. That one substitution is what lets addition express *removal*: base 2, local 0 → delta −2.
+- **`Math.max(0, …)` clamps.** Both sides removing the same line gives 2 + (−2) + (−2) = −2; the clamp makes it 0, and `if (qty <= 0) continue` drops it.
+- **`const meta = l ?? r ?? b!`** picks which side's *name, price, photo* survive: local first, because that's what the shopper has been looking at. Only the quantity comes from the arithmetic. (The `!` on `b` is TypeScript's non-null assertion — "trust me, this exists" — and it's safe here only because the key came from the union of the three maps, so at least one of the three must have it.)
+- **The whole thing is idempotent.** Run it twice with nothing new and you get the same answer, because both deltas are zero. **Idempotent** means "doing it again changes nothing" — the property you want in every sync routine, because syncs get retried, double-fired and raced constantly.
+
+**Where the base comes from, and the trap in it.** The base is `lastSyncedItems`, saved after every successful merge. But a base is only meaningful *for the account it was captured under* — `productId::size::color` keys are not account-specific, so one person's base would happily "explain" another person's cart and produce nonsense. Hence `lastSyncedUserId`, and this check in both places that merge:
+
+**`store/cart.ts`**
+```ts
+const { items: local, lastSyncedItems, lastSyncedUserId } = get();
+// A base captured under a different account must never be used
+// here — its deltas would describe a different cart entirely.
+const base = lastSyncedUserId === userId ? lastSyncedItems : [];
+```
+A mismatch falls back to an empty base, which degrades the merge to "union everything" — imperfect, but safe. And `clearCart()` resets both fields, for the same reason.
+
+**Checking the catalog while we're here.** A merged cart can contain things that are no longer buyable, so `manualSync` follows the merge with one catalog query:
+
+**`store/cart.ts`**
+```ts
+/**
+ * Revalidates surviving cart items against live catalog stock/price in a
+ * single query. Used by manualSync only — NOT by loadFromDb, which needs to
+ * stay fast and tolerant of the device being offline at sign-in; checkout
+ * revalidates independently anyway before charging anyone.
+ *
+ * Missing product id or stock <= 0 drops the item (counted in `dropped`).
+ * qty > live stock clamps to live stock (counted in `adjusted`). Surviving
+ * items get their price refreshed to (sale_price ?? price) and stock to the
+ * live value. Throws on a query error — the caller decides how to surface
+ * that rather than this silently reporting an empty result.
+ */
+export async function refreshAvailability(
+  items: CartItem[]
+): Promise<{ items: CartItem[]; dropped: number; adjusted: number }> {
+  if (items.length === 0) return { items: [], dropped: 0, adjusted: 0 };
+
+  const ids = [...new Set(items.map((i) => i.productId))];
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, stock, price, sale_price')
+    .in('id', ids);
+
+  if (error) throw error;
+```
+**One query for the whole cart, not one per item.** `[...new Set(ids)]` de-duplicates (the same product in two sizes is two lines but one product), and `.in('id', ids)` fetches them all at once. `sale_price ?? price` is the app's standard "the sale price if there is one, otherwise the list price".
+
+Note what the comment rules *out*: `loadFromDb` — the sign-in path — deliberately does **not** call this. Sign-in has to work on a bad connection and must not stall behind a second query, and checkout re-validates everything against the live catalog before charging anybody anyway ([§5e](#5e-payments-end-to-end)). Two checks in the place that matters beats a slow check in the place that doesn't.
+
+**The ordering inside `manualSync`, which is the part a reviewer caught.** Five steps, and their order is the whole point:
+
+**`store/cart.ts`**
+```ts
+const merged = threeWayMergeCarts(base, local, remote);
+const { items: finalItems, dropped, adjusted } = await refreshAvailability(merged);
+
+// Write BEFORE applying anything locally. Availability-driven
+// drops/clamps must never land on the shopper's local cart unless
+// the server write actually succeeds — applying them first (the
+// old ordering) meant an offline shopper could watch items vanish
+// or shrink while the failure notice claimed nothing had happened.
+// On failure, items/lastSyncedItems/lastSyncedUserId are left
+// completely untouched below.
+const wrote = await writeCartRow(userId, finalItems);
+
+if (!wrote) {
+  set({ syncNotice: "Couldn't sync your cart — check your connection and try again." });
+  return;
+}
+
+set({ items: finalItems, lastSyncedItems: finalItems, lastSyncedUserId: userId });
+```
+The first version applied the merge locally and *then* wrote. On a failed write, the shopper had already watched two items disappear from her cart while a banner told her the sync hadn't worked. Both statements were true and together they were a lie.
+
+**Write-then-apply** is now a house rule ([§11](#11-house-rules-for-this-codebase)): when a change has to land in two places, write the one that can fail *first*, and only change what the user is looking at once it has succeeded. The failure path then genuinely changes nothing, which is what "it didn't work" is supposed to mean.
+
+The step before all of this matters too:
+```ts
+// A queued debounced write must not race the merge below — it
+// would read a half-merged `items` or clobber the merge result
+// right after this function sets it.
+get().cancelSync();
+```
+The 800ms debounced writer from earlier in this section is still armed while `manualSync` runs. Cancel it first, or it fires mid-merge with a stale array.
+
+**Then the notice tells the truth about what moved.** The store counts the lines whose quantity actually differs from the pre-sync local cart, and says so:
+```ts
+let notice = updatedCount > 0
+  ? `Cart synced — ${updatedCount} item${updatedCount === 1 ? '' : 's'} updated from your other devices`
+  : 'Cart synced';
+const extras: string[] = [];
+if (adjusted > 0) extras.push(`${adjusted} adjusted to available stock`);
+if (dropped > 0) extras.push(`${dropped} no longer available`);
+if (extras.length > 0) notice += ' · ' + extras.join(' · ');
+```
+"Cart synced" when nothing changed. "Cart synced — 2 items updated from your other devices · 1 no longer available" when things did. Never a generic success message papering over a silently rewritten cart. That string is what the banner in [§4](#4-reading-your-first-screen-line-by-line) renders.
+
+**And sign-in uses the same engine.** `loadFromDb` — which runs when someone signs in — is now the merge function plus the "did anything visibly change?" test that drives `mergeNotice`:
+```ts
+const base = state.lastSyncedUserId === userId ? state.lastSyncedItems : [];
+const merged = threeWayMergeCarts(base, local, remote);
+
+// Only surface the banner when the merge actually changed
+// something visible vs. the pre-merge local cart — a different
+// item count, or a bumped quantity on an existing line.
+const localByKey = new Map(local.map((i) => [cartKey(i), i]));
+const changed =
+  merged.length !== local.length ||
+  merged.some((i) => (localByKey.get(cartKey(i))?.quantity ?? 0) !== i.quantity);
+```
+One merge engine, two callers, and the base is updated by both — so whichever path ran last leaves a correct starting point for the next one.
+
+**What this buys the shopper, in one sentence:** edits made on the website and edits made on the phone both survive, removals stay removed, quantities never inflate, and pressing sync twice is harmless.
 
 **The auth store is smaller but its `signOut` is the most careful function in the app:**
 
@@ -1110,6 +1385,56 @@ The same purge also has to happen when a session ends without anyone tapping Sig
 const hadSessionRef = useRef(false);
 ```
 Without that flag, every guest's cart would be wiped on every launch. `useRef` is the third memory hook: like `useState`, it survives re-renders; unlike `useState`, changing it does **not** trigger one. Use it for bookkeeping the UI doesn't display.
+
+One line at the end of `signOut` is deliberately *not* there, and the comment explains the absence — worth reading because "why isn't there code here" is the hardest thing to reconstruct later:
+
+**`store/auth.ts`**
+```ts
+// Deliberately NOT deleting this device's push_tokens row here: the next
+// sign-in on this device reassigns it (upsert onConflict: 'token' in
+// lib/notifications.ts), and an orphaned row in the meantime is harmless
+// — it's own-row RLS-protected and simply unreachable until reassigned.
+```
+
+#### The wishlist store, now that it has somewhere to sync to
+
+The wishlist used to be device-only because there was no table for it. There is now — `public.wishlists`, with `user_id` + `product_id` as its primary key and own-row security — so the store writes to it. Its sync is deliberately *much* simpler than the cart's, and the header comment says why:
+
+**`store/wishlist.ts`**
+```ts
+// `public.wishlists` landed on the backend (user_id, product_id, created_at —
+// PK (user_id, product_id), own-row RLS). Sync design (v1, kept deliberately
+// simple next to store/cart.ts's debounced/retry machinery):
+//  - loadFromDb unions remote + local, never clobbers local on a fetch error.
+//  - addItem/removeItem write straight through while signed in (no
+//    debounce — one row per (user, product), so there's nothing to coalesce).
+//  - KNOWN v1 TRADEOFF: an offline/failed REMOVAL write can resurrect on the
+//    next loadFromDb union, since the remote row is still there and the union
+//    only ever grows local state back in. Accepted for v1 — see design notes.
+```
+
+Three things to take from that:
+
+**The data shape decides the sync design.** A cart line is a *quantity* — a number two sides can both move, which is exactly what needs delta arithmetic and a base. A wishlist entry is *membership* — a row that either exists or doesn't. There's nothing to coalesce and nothing to add up, so a **union** (keep everything either side has) is enough, and the debounce/retry/base machinery would be pure cost.
+
+**Write-through** means each change goes to the server immediately as its own tiny write, rather than being batched:
+```ts
+function syncAdd(productId: string) {
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) return;
+  supabase
+    .from('wishlists')
+    .upsert({ user_id: userId, product_id: productId }, { onConflict: 'user_id,product_id', ignoreDuplicates: true })
+    .then(({ error }) => {
+      if (error) console.warn('Wishlist add sync failed:', error.message);
+    });
+}
+```
+`onConflict: 'user_id,product_id'` with `ignoreDuplicates` makes tapping the heart twice, or two devices adding the same item at once, a harmless no-op instead of an error — idempotent again. And note `if (!userId) return`: a guest's wishlist still works perfectly, it just stays on the phone.
+
+**The known hole is written down rather than hidden.** If a removal fails while the phone is offline, the row survives on the server, and the next union pulls it back — the item reappears. That is a real (if minor) bug, it is documented in the file, and the fix when you want it is the same idea the cart uses: remember what you removed (a tombstone, or a base snapshot) instead of only ever adding.
+
+`loadFromDb` runs at sign-in, alongside the cart's. Remote ids the phone doesn't recognise need a `products` lookup to become renderable rows, and a failure there skips just those ids for this pass rather than failing the whole load — the same "degrade, don't collapse" instinct as everywhere else in this codebase.
 
 **When to use which:**
 
@@ -1307,6 +1632,21 @@ After submitting a review, the relevant cache entry is thrown away so the list r
 queryClient.invalidateQueries({ queryKey: ['reviews', state!.item.id] });
 ```
 
+#### What the database itself enforces (and why that matters more than any of the above)
+
+Everything in this chapter is *the app asking politely*. A modified app, or anyone with your public anon key and a terminal, can ask differently. The only thing standing between a stranger and your customers' data is the database's own rules. Those rules live in Supabase, not in this repository, and they were hardened in a dedicated session after the first version of this guide. You should know what changed, because it's the layer you can't see from here.
+
+**RLS — Row Level Security — is the mechanism.** A policy is a rule attached to a table saying which rows a given caller may read, insert, update or delete. `wishlists` and `push_tokens`, both added in that session, each carry own-row policies: you can only touch rows whose `user_id` is your own id. That's why `store/wishlist.ts` can write straight to the table from the phone without any server code in between — the table refuses to be misused.
+
+Four more changes, each of which is a lesson:
+
+- **`security_invoker=on` on the `products_with_categories` and `featured_products` views.** A Postgres view normally runs with the *view author's* permissions, which means a view can quietly hand out rows the caller's own policies would have denied. `security_invoker=on` flips that: the view runs as **whoever is calling it**, so RLS on the underlying tables still applies. Both views had been flagged as errors by Supabase's own security advisor; both are clean now.
+- **The `orders` owner-read policy was widened**, from matching on email alone to `(customer_email = auth.email() OR user_id = auth.uid())`. The app queries orders by `user_id`; the old policy only recognised the email. Widening it made order history work for accounts whose older rows predate the `user_id` column. Note the shape: it's a widening that *adds a second way to prove ownership*, not a loosening that lets anyone in.
+- **`search_path` was pinned on every database function.** Without a pinned search path, a function resolves table names using whatever schema list the caller happens to have — which is a genuine privilege-escalation route in Postgres. Eleven functions were flagged; all eleven are pinned.
+- **Execute permissions were revoked from `PUBLIC`, not just from `anon`.** This one is a trap worth remembering: Postgres grants `EXECUTE` on new functions to the pseudo-role `PUBLIC` by default, and `PUBLIC` includes everyone. Revoking from `anon` alone therefore changes nothing at all — the grant is still there, one level up. You must revoke from `PUBLIC`.
+
+And one deliberate non-change, which is the interesting case. `get_order_stats` is called from a browser — the website's admin dashboard uses it in a `"use client"` hook — so it can't simply be locked away from the `authenticated` role. Instead the check moved *inside* the function: it now calls `is_admin()` itself and refuses anyone who isn't. **When a function must stay callable, gate it internally rather than pretending nobody will call it.** Meanwhile `is_admin()` and `get_my_role()` stay callable by everyone on purpose — RLS policies themselves call them while evaluating, so making them privileged would break every policy that depends on them.
+
 ### 5d. Navigation: expo-router
 
 Routes come from the file tree ([§3](#3-a-guided-tour-of-the-folders)). Navigation itself is four calls.
@@ -1339,20 +1679,25 @@ function navigateAfterAuth() {
     // mount a brand-new checkout and lose all of that; going back to the
     // existing one re-triggers its [user, profile] backfill effect instead.
     router.back();
-  } else if (next && NEXT_ALLOWLIST.includes(next)) {
+  } else if (isAllowedNext(next)) {
     router.replace(next as any);
   } else {
     router.back();
   }
 }
 ```
-And note the security posture on the line above it:
+And note the security posture above it:
 ```tsx
 // Security: `next` is a caller-supplied route param — validate it against an
 // allowlist rather than navigating to it blindly.
 const NEXT_ALLOWLIST = ['/checkout'];
+const CONFIRMATION_NEXT = /^\/confirmation\?referenceId=[A-Za-z0-9_-]{6,64}$/;
+
+function isAllowedNext(next: string | undefined): next is string {
+  return !!next && (NEXT_ALLOWLIST.includes(next) || CONFIRMATION_NEXT.test(next));
+}
 ```
-Any value that arrives from outside the app — a route param, a deep link, a push payload — is untrusted until checked.
+Any value that arrives from outside the app — a route param, a deep link, a push payload — is untrusted until checked. The regex arrived with the confirmation screen's sign-in route ([§5e](#5e-payments-end-to-end)) and is still an allowlist — it just describes a permitted *shape* instead of listing exact strings, because a fixed list can't express a query parameter.
 
 **Params** are how screens receive values.
 
@@ -1481,16 +1826,54 @@ And the failure path matters just as much:
 
 This is the part where mistakes cost real money. Follow it all the way through.
 
+**Read this first: an account is now required to place an order.** Browsing, adding to the cart and filling in the whole delivery form all still work signed out. But the moment a shopper tries to move to the payment step, the app asks them to sign in. This is a reversal of an earlier decision, it has a name in the session records — "Option A" — and [§7](#7-decisions-and-tradeoffs) argues both sides of it. The short version: your payment API now requires the authenticated order owner on every call, so a signed-out order can't succeed. Letting someone type an address, press Pay, and *then* fail with a 401 would be the worst possible version of this.
+
 #### Step 1 — Cart to checkout
 
-`router.push('/checkout')` from the cart. No login wall; guests proceed.
+`router.push('/checkout')` from the cart. Still no login wall here — the wall would make the whole form unreachable for guests, and the form is where the sign-in ask is placed so nothing typed gets lost.
 
-#### Step 2 — Delivery details
+#### Step 2 — Delivery details, and the sign-in gate
 
-`checkout.tsx` is a two-step form driven by one piece of state, `const [step, setStep] = useState<Step>(1)`. Step 1 collects contact and address, validated before you can continue:
+`checkout.tsx` is a two-step form driven by one piece of state, `const [step, setStep] = useState<Step>(1)`. Step 1 collects contact and address. Signed-out shoppers see a card at the top of it, and the copy is chosen with some care:
 
+**`app/checkout.tsx`**
+```tsx
+{/* The payment API requires the authenticated order owner, so an
+    account is required to place an order. Framed as what it buys
+    the customer (tracking), not as a registration demand — and
+    with email confirmation off, signup is one tap. Delivery
+    fields stay editable signed-out so nothing typed is lost;
+    only the step-2 transition is gated (see validateDelivery). */}
+{!user ? (
+```
+```tsx
+<Text style={{ fontSize: 13, fontWeight: '800', color: color.ink }}>Sign in to place your order</Text>
+<Text style={{ fontSize: 12, color: color.inkMuted, marginTop: 1 }}>Takes seconds — and lets you track this order</Text>
+```
+"Lets you track this order" is the whole argument for the requirement, made to the person who has to comply with it. Compare it to "You must create an account to continue", which says the same thing and sells nothing.
+
+The gate itself is the first check in `validateDelivery`, which runs on the Continue button:
+
+**`app/checkout.tsx`**
 ```tsx
 function validateDelivery(): boolean {
+  // The payment API rejects unauthenticated calls (401), so don't let a
+  // signed-out user reach the payment step and fail there. Everything
+  // they've typed survives the round-trip (next=/checkout returns here).
+  if (!user) {
+    Alert.alert(
+      'Sign in to continue',
+      'Create your account or sign in to place this order — it takes seconds, and your details here are saved.',
+      [
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: 'Sign in',
+          onPress: () => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } }),
+        },
+      ]
+    );
+    return false;
+  }
   if (!form.firstName || !form.email || !form.phone || !form.address || !form.county) {
     Alert.alert('Missing fields', 'Please fill in all required delivery information.');
     return false;
@@ -1519,6 +1902,27 @@ useEffect(() => {
 }, [user, profile]);
 ```
 `s.firstName || profile?.first_name || ''` reads as "what they typed, else their saved value, else empty."
+
+That effect is why `next: '/checkout'` and `router.back()` matter so much ([§5d](#5d-navigation-expo-router)). The shopper types half a form, taps Sign In, signs in, and comes *back to the same screen instance* — with everything still typed, and their saved address now filled into the fields they left blank. If login had used `replace` instead, they'd land on a brand-new empty checkout and have to start over. That's the difference between a gate and a wall.
+
+There's a second check, and the reason it exists is worth internalising:
+
+**`app/checkout.tsx`**
+```tsx
+// Session may have expired since step 1 — the API would 401. Re-check
+// fresh state (not the render-time snapshot) before charging anyone.
+if (!useAuthStore.getState().user) {
+  Alert.alert('Signed out', 'Your session ended. Please sign in again to place the order.', [
+    { text: 'Cancel', style: 'cancel', onPress: () => setStep(1) },
+    {
+      text: 'Sign in',
+      onPress: () => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } }),
+    },
+  ]);
+  return;
+}
+```
+Note `useAuthStore.getState().user` rather than the `user` variable from the top of the component. The component's `user` is a snapshot from whenever it last rendered; a token can expire between filling in the form and pressing Pay. `getState()` reads the store *right now*. **Before anything irreversible, re-read the state you're betting on rather than trusting a render-time copy.**
 
 #### Step 3 — Re-validate prices and stock, *before* charging
 
@@ -1572,7 +1976,9 @@ items: items.map((i) => ({
 })),
 ```
 
-**Why the backend must be authoritative on price.** The re-validation above protects an *honest* app from showing a stale price. It does nothing against a modified client or someone calling the endpoint directly with `price: 0.01`. The only defence that works is the server recomputing every line from its own catalog and ignoring the client's numbers entirely. That's item 2 in [§8](#8-what-still-needs-the-backend-or-the-dashboard) and it's not optional.
+**Why the backend must be authoritative on price.** The re-validation above protects an *honest* app from showing a stale price. It does nothing against a modified client or someone calling the endpoint directly with `price: 0.01`. The only defence that works is the server recomputing every line from its own catalog and ignoring the client's numbers entirely.
+
+**That defence now exists.** `/api/momo/pay` on litwaypicks.com re-prices every line from its own `products` rows — `sale_price ?? price`, its own stock check, its own total — and charges *that* number, not the one in this payload. So the comment above is now describing a handoff that was completed rather than one that's outstanding; leave the comment where it is (the client-held price is still not to be trusted, and the next person to read this file should know that), but see [§8](#8-what-still-needs-the-backend-or-the-dashboard) for what's actually still open. There's also a server-side guard that marks an order `DISPUTED` if the amount MTN reports doesn't match the amount the server computed — belt and braces on the one number that matters.
 
 Then the call itself:
 ```tsx
@@ -1588,23 +1994,82 @@ setPaymentStatus('polling');
 
 **`lib/api.ts`**
 ```ts
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://litwaypicks.com';
+// www is canonical — the naked domain 307-redirects there; going direct
+// avoids a redirect round-trip on every payment call.
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://www.litwaypicks.com';
+
+/**
+ * All /api/momo/* endpoints require the authenticated order owner (verified
+ * server-side against user_id / legacy customer_email, or admin). The mobile
+ * app has no cookies, so it authenticates with the Supabase access token as
+ * a Bearer header — see the web repo's lib/session.js getServerUser().
+ */
+/** Error carrying the HTTP status so callers can distinguish auth failures
+ *  (401/403 — sign in / wrong account) from transient network trouble. */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 export const momoAPI = {
   async initiatePayment(payload: object) {
     const res = await fetch(`${BASE_URL}/api/momo/pay`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error((err as any).error ?? 'Payment initiation failed');
+      throw new Error((err as any).error ?? (err as any).message ?? 'Payment initiation failed');
     }
     return res.json() as Promise<{ referenceId: string; externalId: string }>;
   },
 ```
 **The app never talks to MTN and never holds a payment secret.** Your server does that. Keep it that way. (`EXPO_PUBLIC_` is the prefix Expo requires for env vars that are baked into the JavaScript bundle. That also means anything with that prefix is *public* — it ships inside the app and can be read out of it. Never put a secret behind it.)
+
+Three newer things in that file are worth pulling out.
+
+**`www` in the base URL is not cosmetic.** The naked `litwaypicks.com` answers with a 307 redirect to `www`. A redirect on every payment call is a wasted round-trip on a phone that may be on 3G, and redirects are exactly where headers get dropped by intermediaries. Point at the canonical host.
+
+**`authHeaders()` is how the app proves who it is.** A **Bearer token** is simply a credential you present by putting it in a request header: `Authorization: Bearer <the token>`. Whoever bears it is treated as its owner — which is why it's the same thing as the session, and why [§5c](#5c-server-data-supabase--react-query) makes such a fuss about where that session is stored. The website authenticates with cookies, which a browser attaches automatically. This app has no cookies, so it attaches the Supabase **access token** by hand, on every call. Note `?? {}` — if there's no session, no header is sent at all, and the server answers 401 rather than the app pretending.
+
+The matching half lives in the web repository (`lib/session.js`, read-only from here):
+
+**`lib/session.js` (the web repo — do not edit it from this project)**
+```js
+/**
+ * Returns the authenticated user's full profile from the `users` table,
+ * or null if the request is not authenticated.
+ *
+ * Two transports, checked in order:
+ * 1. `Authorization: Bearer <jwt>` — used by the mobile app, which has no
+ *    cookies. The token is validated against Supabase's auth server via
+ *    getUser(token), and the same token is attached to the PostgREST client
+ *    so RLS evaluates as that user.
+ * 2. @supabase/ssr cookies — the web app's normal session.
+ *
+ * Both paths use getUser() (never getSession()) so the JWT is always
+ * validated server-side — prevents privilege escalation via tampered
+ * cookies or forged tokens.
+ */
+```
+Two details in there are the difference between a real check and a decorative one. `getUser(token)` asks Supabase's auth server whether the token is genuine, rather than just decoding it and believing what it says. And the same token is then handed to the database client, so the customer's own RLS policies apply to everything that request reads — the server doesn't get to see more than the customer would. An invalid or expired Bearer deliberately *falls through* to the cookie path instead of failing the request outright, so a browser that happens to carry a stray `Authorization` header still works.
+
+**`ApiError` carries the HTTP status.** A plain `Error` only carries a message, and by the time it reaches a screen, "Order fetch failed" can't be distinguished from "you're not signed in". Attaching `status` lets the confirmation screen treat 401/403 completely differently from a flaky connection — see Step 8.
+
+> **One live dependency you need to know about.** The Bearer support on the website is written and reviewed, on the branch `mobile-bearer-auth` (commits `2bc834c` and `427afa5`, [web PR #27](https://github.com/LitwaysPicks/litwaypickss-eccomerce/pull/27)) — but **it has not been merged and deployed**. Until it is, production still only understands cookies, and every payment call from the app comes back **401**. That's not a bug in this repository and no amount of mobile work will fix it. Deploy the web change.
 
 #### Step 5 — Watch for the outcome, three ways at once
 
@@ -1694,14 +2159,19 @@ timeoutRef.current = setTimeout(() => {
 
 return () => cleanup();
 ```
-After 5 minutes the app stops guessing and says so — with a "Check status" action rather than a dead end, and different copy for guests (who have no order history to point at):
+After 5 minutes the app stops guessing and says so — with a "Check status" action rather than a dead end:
 ```tsx
-Alert.alert(
-  title,
-  user
-    ? `${base} Check your order history for the latest status.`
-    : `${base} Your reference is ${referenceId} — keep it, and check the email we sent you.`,
+// Placing an order requires a session (handlePlaceOrder gates on it), so
+// by the time a referenceId exists the shopper always has an account and
+// an order history to point at. The "Check status" action goes straight
+// to confirmation.tsx, which knows how to poll/refresh a still-pending
+// order (see its "Check again" affordance).
+function showPaymentAlert(title: string, base: string) {
+  Alert.alert(
+    title,
+    `${base} Check your order history for the latest status.`,
 ```
+**This used to be a ternary with a second branch for guests** — "your reference is …, keep it and check your email" — because a guest had no order history to be pointed at. Accounts-required made that branch unreachable, and unreachable branches rot: nobody tests them, and eventually someone reads one and believes it. It was deleted, and the comment explaining *why* one branch is now enough took its place. **When a decision removes a case, remove the code for that case and leave a note saying the case is gone.**
 
 #### Step 6 — Don't let the shopper wander off mid-payment
 
@@ -1770,13 +2240,17 @@ Only a 30-minute expiry deletes the record, and the prompt is deliberately defer
 `app/confirmation.tsx` used to say "Thank You! Your Order is Confirmed" the moment it opened, regardless of what the payment did. Now the hero is a function of what's actually known:
 
 ```tsx
-type Outcome = 'checking' | 'confirmed' | 'pending' | 'failed' | 'unreachable';
+type Outcome = 'checking' | 'confirmed' | 'pending' | 'failed' | 'unreachable' | 'signin';
 ```
 ```tsx
 // Gates the hero on what we actually know — never declares success before
-// it's known.
+// it's known. "checking" while the fetch is in flight, "unreachable" if it
+// never resolved after retries, otherwise one of the three payment_status
+// outcomes checkout.tsx's finalize() would also recognize.
 const outcome: Outcome = loading
   ? 'checking'
+  : authRequired
+  ? 'signin'
   : !order
   ? 'unreachable'
   : isTerminalSuccess(order.payment_status)
@@ -1785,6 +2259,88 @@ const outcome: Outcome = loading
   ? 'failed'
   : 'pending';
 ```
+
+**The sixth outcome, `'signin'`, is new**, and it exists because the order endpoint now requires the owning account. Getting there is worth reading in full, because it's a small masterclass in handling an error you *can't* retry your way out of:
+
+**`app/confirmation.tsx`**
+```tsx
+// 401/403: the order endpoint requires the owning account — retrying
+// won't help; route the user to sign in instead (the pending-payment
+// record deliberately stays so it can be reconciled after sign-in).
+if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+  authFailedUserRef.current = useAuthStore.getState().user?.id ?? null;
+  setAuthRequired(true);
+  setLoading(false);
+  return;
+}
+if (attempt < ORDER_FETCH_MAX_ATTEMPTS) {
+  setTimeout(() => {
+    if (!cancelled) fetchOrder(attempt + 1);
+  }, ORDER_FETCH_RETRY_DELAY_MS);
+} else {
+  setLoading(false);
+}
+```
+**Two error families, two behaviours.** A network wobble deserves three tries a second and a half apart. A 401 or 403 deserves *none* — the server has already told you the answer, and asking again with the same credentials gets the same answer, forever. That's what `ApiError.status` bought.
+
+The hero it produces is a locked one, and it offers the only action that can actually help:
+```tsx
+<Ionicons name="lock-closed-outline" size={40} color={color.accent} />
+```
+```tsx
+<Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink, textAlign: 'center' }}>
+  Sign in to see this order
+</Text>
+<Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+  Sign in with the account that placed this order and we'll pull up its status.
+</Text>
+<Button
+  title="Sign In"
+  size="sm"
+  onPress={() =>
+    router.push({
+      pathname: '/(auth)/login',
+      params: { next: `/confirmation?referenceId=${referenceId}` },
+    })
+  }
+```
+Note the copy: "**the account that placed this order**", not "your account". A 403 usually means *signed in as the wrong person*, and telling someone to sign in when they already are is maddening.
+
+That `next` value carries a query string, which the login screen's plain allowlist couldn't express — so it grew a second, pattern-based rule beside it:
+
+**`app/(auth)/login.tsx`**
+```tsx
+const NEXT_ALLOWLIST = ['/checkout'];
+const CONFIRMATION_NEXT = /^\/confirmation\?referenceId=[A-Za-z0-9_-]{6,64}$/;
+
+function isAllowedNext(next: string | undefined): next is string {
+  return !!next && (NEXT_ALLOWLIST.includes(next) || CONFIRMATION_NEXT.test(next));
+}
+```
+The regex is anchored at both ends (`^` … `$`) and permits only the characters a reference id can contain. It is still an allowlist — it just describes a *shape* rather than listing exact strings. House rule 9 ([§11](#11-house-rules-for-this-codebase)) survives intact. (`next is string` is a TypeScript **type predicate**: a function that, when it returns true, also tells the compiler the argument definitely isn't `undefined`.)
+
+**Now the subtle part, and it was found in review.** After signing in, the screen should retry by itself rather than making the customer press a button. The naive version — "if there's a user and auth was required, refetch" — loops forever when the answer is 403: refetch → 403 → still a user → refetch → 403 …, hammering the server and spinning the UI. The fix is to remember *which identity* the failure happened under, and only retry when that identity has actually changed:
+
+**`app/confirmation.tsx`**
+```tsx
+// Which identity (user id, or null for signed-out) the 401/403 happened
+// under. The auto-refetch below only fires when the identity has actually
+// CHANGED since then — a 403 means "wrong account", and auto-retrying as
+// the same account would loop 403→refetch→403 forever.
+const authFailedUserRef = useRef<string | null | undefined>(undefined);
+
+// After the user signs in (next=/confirmation returns here) or switches
+// accounts, re-run the fetch instead of leaving the sign-in hero up until
+// a manual retry.
+useEffect(() => {
+  if (user && authRequired && user.id !== authFailedUserRef.current) {
+    setRetryToken((t) => t + 1);
+  }
+}, [user, authRequired]);
+```
+**Never auto-retry a 403 without an identity change** is now a house rule. The general form: an automatic retry needs a reason to believe the *inputs* have changed. Retrying the identical request with the identical credentials isn't resilience, it's a loop with extra steps.
+
+(`retryToken` is a counter in a dependency array — bumping it re-runs the fetch effect. It's the standard way to say "run that again" to an effect keyed on something that hasn't otherwise changed.)
 
 And the success/failure vocabulary is defined once and shared with checkout, so the two screens can never disagree:
 ```tsx
@@ -1898,6 +2454,7 @@ Motion is deliberately limited to a small set of named moments:
 
 - **`PressableScale`** — press feedback on essentially every tappable surface, with optional light haptic.
 - **`components/motion/BrandLoader.tsx`** — the loading state. The logo bag bobs gently while its speed lines streak past: "your stuff is moving." Replaces generic spinners at confirmation, reset-link verification, and infinite-scroll footers.
+- **`components/motion/LoadingOverlay.tsx`** — `BrandLoader` promoted to a full-screen, interaction-blocking moment with a title and subtitle. Used at exactly two points in the app; see "[Full-screen loading, and why only twice](#full-screen-loading-and-why-only-twice)" below.
 - **`components/motion/FlyToCart.tsx`** — an orange bag chip arcs from the pressed Add-to-Cart button into the Cart tab.
 - **`components/motion/DrawnCheckmark.tsx`** — a checkmark that draws itself via stroke-dash reveal, on the confirmation.
 - **`components/motion/IdleFloat.tsx`** — a slow ambient bob for illustrations and empty states.
@@ -1945,6 +2502,108 @@ function cartTabCenter(insetsBottom: number) {
 **Note the coupling.** Those constants mirror `app/(tabs)/_layout.tsx` (`left: 16, right: 16, paddingHorizontal: 6`, four cells, Cart third). Change the tab bar's geometry and this must change with it. It's the price of not measuring; the comment in the file says so explicitly.
 
 Also note: the chip is *pure decoration*. It never touches cart state, so it cannot cause a cart bug.
+
+### Full-screen loading, and why only twice
+
+There is a tempting mistake here that's worth naming, because it looks like polish and behaves like damage: **putting a beautiful full-screen loader on everything.**
+
+A full-screen loader has one real cost — it *removes the app*. While it's up, the customer can't scroll, can't read, can't go back, can't do anything but wait and watch. That's fine when there's genuinely nothing else to do. It's actively worse than nothing when there was: a takeover on the Home screen makes the app feel **slower**, because content that would have appeared piecemeal now appears all at once, later, after a wait the customer was forced to watch.
+
+So the rule in this codebase is:
+
+> **Skeletons for browsing. Full-screen loaders only for blocking moments.** A blocking moment is one where the customer genuinely cannot proceed, and where guessing what's happening would be worse than being told.
+
+That gives exactly two moments in the whole app. Everything else — Home, Shop, product detail, orders — uses `SkeletonLoader` and keeps the app on screen.
+
+The component itself is deliberately plain:
+
+**`components/motion/LoadingOverlay.tsx`**
+```tsx
+/**
+ * Full-screen branded loading moment — a solid-color overlay with the
+ * BrandLoader centered above a title/subtitle. For meaningful waits where
+ * inline feedback isn't enough (e.g. post-sign-in hydration, payment
+ * processing): blocks interaction while visible, disappears entirely
+ * (unmounts) once hidden. Fades honor reduced motion via ReduceMotion.System,
+ * same as BrandLoader itself.
+ */
+export function LoadingOverlay({
+  visible,
+  title,
+  subtitle,
+}: {
+  visible: boolean;
+  title: string;
+  subtitle?: string;
+}) {
+  if (!visible) return null;
+```
+`if (!visible) return null` is the important line. The overlay doesn't hide itself with an opacity of 0 — it stops existing, so it can't swallow taps it isn't entitled to. And it carries two accessibility props that a decorative view wouldn't: `accessibilityViewIsModal` (tells a screen reader that everything behind this is unavailable, matching what sighted users see) and `accessibilityLiveRegion="polite"` (announces the title when it appears, so a blind customer learns a wait has started).
+
+**Moment 1 — the sign-in hydration.** Signing in kicks off four fetches at once: profile, cart, wishlist, push token. Until they land, the app would show a stale, empty-looking version of itself. The overlay covers it — but only for a *genuine* sign-in:
+
+**`app/_layout.tsx`**
+```tsx
+// A genuine sign-in: the known user id actually changed (not a
+// token refresh for the same user), and it's happening after the
+// splash has already resolved (the cold-start session restore is
+// covered by BrandSplash, not this overlay).
+const isGenuineSignIn = previousUserIdRef.current !== userId && !showSplashRef.current;
+previousUserIdRef.current = userId;
+```
+Two guards, two different false positives they prevent. Supabase fires the same auth-change event when it silently refreshes an expiring token — several times a day, in the background — and without `previousUserIdRef` the customer would get a mystery takeover mid-scroll. And on a cold start with a saved session, `BrandSplash` is already covering the screen; without `showSplashRef` the customer would watch one full-screen loader hand off to another.
+
+(`showSplashRef` exists for a mechanical reason worth knowing: `hydrate()` lives inside a mount-once `useEffect`, so the `showSplash` *variable* it captured is frozen at its first value forever. A ref is a stable box whose contents can be updated from outside — mirroring live state into it is the standard way for long-lived closures to read fresh values.)
+
+Then the overlay is raised, capped, and lowered:
+```tsx
+if (isGenuineSignIn) {
+  setPostAuthHydrating(true);
+  if (hydrationCapTimerRef.current) clearTimeout(hydrationCapTimerRef.current);
+  hydrationCapTimerRef.current = setTimeout(() => {
+    hydrationCapTimerRef.current = null;
+    setPostAuthHydrating(false);
+  }, POST_AUTH_HYDRATION_MAX_MS);
+  Promise.allSettled([profilePromise, cartPromise, wishlistPromise, pushTokenPromise]).then(() => {
+    if (hydrationCapTimerRef.current) {
+      clearTimeout(hydrationCapTimerRef.current);
+      hydrationCapTimerRef.current = null;
+    }
+    setPostAuthHydrating(false);
+  });
+}
+```
+Two safety devices in eleven lines.
+
+**`Promise.allSettled`, not `Promise.all`.** `Promise.all` rejects the instant *any* of its promises rejects. Here that would mean a failed wishlist fetch leaving the overlay up permanently, since the `.then` would never run. `allSettled` waits for all four to finish *however* they finish — resolved or rejected — and always continues. When you're waiting on things only so you can stop waiting, `allSettled` is almost always the one you want.
+
+**And a hard cap regardless:**
+```tsx
+// Hard cap on the post-sign-in hydration overlay (Moment 1 below) — clears
+// even if fetchProfile/loadFromDb/loadWishlistFromDb/syncPushTokenForUser
+// hang, so a slow network never traps the shopper behind the overlay.
+const POST_AUTH_HYDRATION_MAX_MS = 2500;
+```
+A promise that neither resolves nor rejects — a request hanging on a dead connection — defeats even `allSettled`. Two and a half seconds later the overlay comes down anyway and the customer gets an app that's slightly behind rather than an app that's gone. This is the same **fail open** instinct as the startup path in [§5d](#5d-navigation-expo-router), and it belongs on every blocking UI you ever write: *what raises this must have something that lowers it unconditionally.*
+
+**Moment 2 — the payment.** Two overlays, because the two halves of a MoMo payment need to say completely different things:
+
+**`app/checkout.tsx`**
+```tsx
+<LoadingOverlay
+  visible={paymentStatus === 'processing'}
+  title="Contacting MTN MoMo…"
+  subtitle="Setting up your payment — this takes a moment."
+/>
+<LoadingOverlay
+  visible={paymentStatus === 'polling'}
+  title="Check your phone"
+  subtitle={`Approve the MoMo prompt sent to ${form.phone || 'your phone'}. We'll confirm automatically.`}
+/>
+```
+`processing` is "we're talking to MTN, sit tight". `polling` is an **instruction**: a USSD prompt has been sent to that handset and nothing further happens until the customer approves it. Echoing back the actual number is what turns a spinner into a piece of information. A generic "Loading…" here would be the difference between a completed sale and a customer waiting for the app to do something the app cannot do.
+
+Note what *isn't* covered: `paymentStatus === 'failed'` has no overlay. A failure needs the failure message, the retry button and the cart all visible and reachable — the exact opposite of a takeover. And the `beforeRemove` guard from [§5e](#5e-payments-end-to-end) is unchanged and still necessary: the overlay blocks taps, but not Android's hardware back button or iOS's back-swipe.
 
 ### The splash choreography
 
@@ -2043,17 +2702,45 @@ Note there *is* an `ios/` directory, from a prebuild. It's generated output. Don
 > **Alternative:** load server data into zustand and manage the loading/error flags yourself.
 > **Tradeoff:** caching, deduplication, retries, background refetch, and the loading/error/empty triad come for free and behave the same way in every screen. The cost is a second state library to understand — which is why [§5c](#5c-server-data-supabase--react-query) exists.
 
-### Guest checkout, always
+### ~~Guest checkout, always~~ — SUPERSEDED by "accounts required to order"
 
-> **Decision:** signed-out shoppers go straight to checkout, with an optional non-blocking sign-in card.
-> **Alternative:** require an account (which is what the cart screen used to enforce).
-> **Tradeoff:** more completed orders, and less data attached to a customer record. The bug this fixed is instructive: the login wall on the cart made checkout's entire guest path unreachable dead code — it had been *written* and could never *run*.
+> **The original decision (kept here on purpose):** signed-out shoppers go straight to checkout, with an optional non-blocking sign-in card. The alternative was requiring an account, which is what the cart screen used to enforce. The bug it fixed is still instructive: the login wall on the cart made checkout's entire guest path unreachable dead code — it had been *written* and could never *run*.
+>
+> **Why it no longer holds:** the payment API on litwaypicks.com now requires the authenticated order owner on every call. A guest order can't succeed — it comes back 401 — so "guest checkout" wasn't a choice the app could still make. That fact was discovered the hard way, by watching production payments fail.
 
-### Local-first cart merge
+### Accounts required to place an order ("Option A")
 
-> **Decision:** on sign-in, merge the device cart into the account cart, local metadata winning, and tell the shopper it happened.
-> **Alternative:** replace one with the other.
-> **Tradeoff:** nothing a shopper added is silently thrown away. The cost is edge cases — the quantity cap has to be taken from the *chosen* item's stock, not the discarded one, and the notice only appears when something visibly changed. Both are handled and commented in `store/cart.ts`.
+> **Decision:** an account is required to **place an order**. Browsing, the cart, and the entire delivery form stay open to guests; the sign-in ask happens once, at the step-1-to-step-2 transition, and everything typed survives the round-trip.
+> **Alternative:** keep guest checkout and build a possession-token scheme on the backend so an anonymous order could still be looked up safely — or drop the ownership checks, which was never on the table.
+> **Tradeoff, argued honestly, because this one is genuinely close:**
+>
+> *Against.* Friction at the exact moment of purchase is the most expensive friction there is, and this is a low-trust market where being asked to register before you've received anything is a real reason to close the app. First-time buyers are precisely the customers you can least afford to lose.
+>
+> *For.* Four things tipped it. **(1)** The thing that actually builds trust in this market is *post-payment visibility* — being able to open the app and see where your order is. That requires an account; a guest gets a reference id and an email and nothing else. The account isn't the tax on the sale, it's the feature. **(2)** With email confirmation now off, signup is genuinely one tap: email, password, first name, and you're in — no inbox round-trip. **(3)** MoMo already demands identity. Anyone paying is entering their phone number and approving a prompt on their own handset; the account requirement doesn't introduce identity to a flow that had none. **(4)** The backend hardening had already resolved on the assumption of an authenticated owner, and reversing that would mean giving up ownership checks on order lookup — trading a data-exposure bug back for a conversion rate.
+>
+> *The cost is real and you should watch for it.* If completion rates drop after this ships, the fallback is **not** to restore guest checkout — the API can't support it. The fallback is **phone-number sign-in with an OTP**, which fits this market far better than email-and-password anyway and keeps every ownership guarantee intact. Treat that as the pre-planned next move rather than a new project.
+>
+> *What it touched:* `checkout.tsx` (the sign-in card, the `validateDelivery` gate, the fresh-state re-check in `handlePlaceOrder`), `confirmation.tsx` (the `'signin'` outcome), `lib/api.ts` (Bearer headers, `ApiError`), and the removal of every guest-specific string in the payment path.
+
+### `Authorization: Bearer` instead of cookies
+
+> **Decision:** the app authenticates to litwaypicks.com by attaching the Supabase access token as a `Bearer` header; the website's `getServerUser()` accepts either that or its normal cookies.
+> **Alternative:** teach the app to hold cookies, or build a second, mobile-only API surface.
+> **Tradeoff:** one server-side function learned a second transport, and every existing route — ownership checks, admin checks, re-pricing, all of it — works unchanged for both clients. A separate mobile API would have doubled the surface that has to stay secure, which is the surface you least want doubled. The cost is a hard deployment dependency: **the app's payments do not work until the web change is deployed**, and that is not visible from this repository ([§8](#8-what-still-needs-the-backend-or-the-dashboard)).
+
+### Three-way cart merge with a persisted base
+
+> **Decision:** merge carts by summing each side's **delta from a shared base snapshot**, keep that base per-user, persist it across restarts, and offer a manual sync button in the cart header.
+> **Alternative:** last-writer-wins (what it was), or "sum the two quantities", or a full CRDT/operation-log sync.
+> **Tradeoff:** removals stick, quantities never double-count, the merge is idempotent so re-running it is free, and mid-session changes made on the website now actually arrive. The costs: one more piece of persisted state (`lastSyncedItems` + `lastSyncedUserId`) that must be reset on sign-out and scoped per account, and a sync the shopper has to *press* rather than one that happens continuously. A proper operation log would remove the button, at several times the complexity — the wrong trade at this size.
+> **The review fix inside it is the reusable lesson:** `manualSync` writes to the server *before* applying anything locally. The first version applied first, so a failed write left the shopper looking at a silently-changed cart under a banner saying nothing had happened.
+
+### Email confirmation OFF in Supabase
+
+> **Decision:** turn off "Confirm email" in the Supabase dashboard, so signup returns a live session immediately.
+> **Alternative:** leave it on, as it was.
+> **Tradeoff:** signup becomes one tap, which is exactly what the accounts-required decision above needs to be survivable. What you give up is proof that the email address is real at the moment of signup — but note what actually guards what here: **the MoMo phone number is the identity rail in this market**, not the email; the payment itself is approved on a handset the customer controls; and the password-reset flow still proves ownership of the email whenever it matters. Cost: more junk or mistyped addresses in the `users` table, and order-confirmation emails that bounce for those accounts. The long-term answer is the same one as above — **phone OTP** — after which the email is optional metadata rather than the account key.
+> The app code is agnostic either way ([§2.6](#26-async--await--code-that-has-to-wait)), so flipping the toggle back is safe.
 
 ### Email-confirmation-agnostic signup (`541ba23`)
 
@@ -2103,11 +2790,11 @@ Note there *is* an `ios/` directory, from a prebuild. It's generated output. Don
 > **Alternative:** white text over the photo — the standard ecommerce hero.
 > **Tradeoff:** kills the white-text-on-busy-photo contrast fight entirely; text is legible regardless of what the photo does, and the photography gets to be photography. Cost: a taller hero.
 
-### Wishlist is device-only, on purpose
+### ~~Wishlist is device-only, on purpose~~ — SUPERSEDED, and the reasoning is the point
 
 > **Decision:** no server sync for the wishlist.
 > **Alternative:** invent a table shape client-side and write to it.
-> **Tradeoff:** the file says it plainly:
+> **Tradeoff:** the file said it plainly (this comment is no longer in `store/wishlist.ts` — it's quoted here as the record of the original decision):
 > ```ts
 > // BACKEND HANDOFF: this store is local-only by design for now — verified
 > // types/database.types.ts has no `wishlists` table (or equivalent), so there
@@ -2115,7 +2802,29 @@ Note there *is* an `ios/` directory, from a prebuild. It's generated output. Don
 > ```
 > Inventing a client-side schema for a shared backend is how you end up with two incompatible ideas of the same data. The cost is real and known: wishlists don't appear on litwaypicks.com for the same account and are lost on reinstall. The store is written so wiring it up later is small.
 
-The push token sits on the same principle — the app writes it to auth metadata and the backend decides whether that's where it wants it.
+The push token sat on the same principle — the app wrote it to auth metadata and let the backend decide whether that's where it wanted it.
+
+### …and then the tables were created, so both were wired up
+
+> **Decision (superseding both of the above):** `public.wishlists` and `public.push_tokens` were created on the production database with own-row RLS, and the app now reads and writes them.
+> **Alternative:** carry on device-only.
+> **Tradeoff:** this is what "the store is written so wiring it up later is small" was for, and it was — one commit, no restructuring. The wishlist now follows the customer across devices and survives a reinstall; the push token is queryable, so order-update notifications can actually be fanned out to the right handset. **The lesson worth keeping is the sequencing, not the outcome:** refusing to invent a schema meant that when the real one arrived, there was nothing to unpick. Had the app guessed at a shape, the app and the website would now hold two incompatible ideas of the same wishlist and someone would be writing a migration.
+>
+> The wishlist sync is deliberately a simpler v1 than the cart's, with one known hole written down in the file rather than papered over ([§5b](#5b-state-zustand-stores-vs-local-state)): an offline *removal* can be resurrected by the next union. Shipping a known, documented, minor flaw beats delaying the feature for it — as long as it's genuinely written down.
+>
+> Sign-out deliberately leaves this device's `push_tokens` row in place. The next sign-in reassigns it by token, and an orphan row is unreachable in the meantime because RLS scopes it to a user who isn't there.
+
+### The database was hardened separately, and mostly not by changing app code
+
+> **Decision:** a dedicated backend session applied five migrations to production Supabase — the two new tables, `security_invoker=on` on both product views, a widened `orders` owner-read policy, `search_path` pinned on all eleven flagged functions, and `EXECUTE` revoked from `PUBLIC` where appropriate — then regenerated `types/database.types.ts`.
+> **Alternative:** keep treating "the backend is out of scope" as permanent.
+> **Tradeoff:** most of the app's remaining security posture was never fixable from this repository, and hardening it changed almost no app code — which is the point. **The security that matters is the security the database enforces**, because that's the layer a modified client can't route around. Two details from that work are general lessons and are written up in [§5c](#5c-server-data-supabase--react-query): revoke from `PUBLIC` rather than `anon` (the default grant is one level up from where you're looking), and when a function has to stay callable by a browser, put the privilege check **inside** it rather than trying to hide it.
+
+### Full-screen loaders at blocking moments only
+
+> **Decision:** two `LoadingOverlay` moments in the entire app — post-sign-in hydration and payment — with skeletons everywhere else.
+> **Alternative:** the branded overlay wherever anything loads.
+> **Tradeoff:** the two waits that genuinely block a customer get an explanation ("Check your phone" is an instruction, not a spinner), and browsing keeps the app on screen so it stays fast to *use* as well as fast to load. Costs: two guard conditions on the sign-in one (`previousUserIdRef`, `showSplashRef`) so a token refresh or a cold start can't trigger it, plus a hard 2.5-second cap so a hung request can't trap anyone behind it. Full reasoning in [§6](#6-the-animation-layer).
 
 ### Fix the money and data paths before the cosmetics
 
@@ -2177,64 +2886,102 @@ Supabase's own null-check then runs with tracing off, which is what you want on 
 - **No offline banner.** Connectivity detection needs a new native module and a full rebuild, which couldn't be verified without a device. It's a recommendation, not a fix.
 - **A seventh whole-system review was skipped.** Every wave already had its own review plus a scoped re-review, and round 3's audit *was* the whole-system pass.
 
+### What changed recently
+
+Everything in this list landed *after* the first version of this guide, and the body of the guide has been rewritten to match — this is a map, not a changelog to read instead of the chapters.
+
+| Commit | What | Where it's explained |
+|---|---|---|
+| `541ba23` | Signup handles email confirmation on **or** off; the dashboard toggle is now off | [§2.6](#26-async--await--code-that-has-to-wait), §7 |
+| `5298add` | `types/database.types.ts` regenerated from the live schema (adds `wishlists`, `push_tokens`) | [§5c](#5c-server-data-supabase--react-query) |
+| `1f87040` | Wishlist and push token wired to the new tables | [§5b](#5b-state-zustand-stores-vs-local-state), §7 |
+| `a6fb744` | Bearer auth on the payment API; an account is required to place an order | [§5e](#5e-payments-end-to-end), §7 |
+| `812e180` | Review fixes: typed `ApiError`, the confirmation `'signin'` outcome, guest copy removed, `www` share links | [§5e](#5e-payments-end-to-end) |
+| `57e7736` | Confirmation stops auto-refetching on a wrong-account 403 | [§5e](#5e-payments-end-to-end) |
+| `1818cdc` | Branded loading overlays for sign-in hydration and payment | [§6](#6-the-animation-layer) |
+| `bcdf9b6` | Three-way cart merge, availability refresh, manual sync button | [§5b](#5b-state-zustand-stores-vs-local-state) |
+| `4a977fe` | Cart sync writes to the server *before* applying locally | [§5b](#5b-state-zustand-stores-vs-local-state), [§11](#11-house-rules-for-this-codebase) |
+| (no commit — Supabase) | Five production migrations: new tables, `security_invoker` views, widened `orders` policy, pinned `search_path`, `EXECUTE` revoked from `PUBLIC` | [§5c](#5c-server-data-supabase--react-query), §7 |
+| (no commit — web repo) | `/api/momo/*` hardened; `getServerUser` accepts Bearer (**deployed? not yet**) | [§5e](#5e-payments-end-to-end), [§8](#8-what-still-needs-the-backend-or-the-dashboard) |
+
+And one piece of housekeeping with no code in it: **this repository now lives on GitHub**, at [github.com/DNLCodess/litwaypicks-mobile](https://github.com/DNLCodess/litwaypicks-mobile), private. It's under a personal account rather than the LitwaysPicks organisation only because the org account lacked repository-creation permission at the time; it can be transferred whenever that's sorted, and transferring preserves history, issues and stars. The website's repository stays where it is, and changes to it go through branches and pull requests — which is why the Bearer work sits on `mobile-bearer-auth` waiting for a merge rather than having been pushed straight to `main`.
+
 ---
 
 ## 8. What still needs the backend or the dashboard
 
 None of these can be fixed from this repository. Hand this section over verbatim.
 
-### 1. IDOR on `getOrder` and `checkStatus` — the most important item here
+**Most of the original list is now done**, and the resolved items are kept below rather than deleted — partly so you can see what "handed off" actually looked like when it came back, and partly because a list that only ever grows teaches nobody anything. Read the two open items first.
 
-`GET /api/momo/order/:referenceId` and `GET /api/momo/status/:referenceId` accept **no authentication whatsoever**. Anyone who has, guesses, or enumerates a reference id gets back the full order: customer first and last name, email, phone, delivery address and city, payment status, final total, and every line item.
+### OPEN — 1. Deploy the web repository's Bearer-auth change
 
-Reference ids are not secret. They're returned to the client on payment initiation, they appear in deep links and push payloads, and the app polls `checkStatus` with one every 6 seconds. There's no visible rate limiting or ownership check.
+**This is the only thing standing between the app and working payments.** `/api/momo/*` requires an authenticated caller, and until `getServerUser()` understands `Authorization: Bearer`, every call from the phone is a **401** — initiating a payment, checking a status, opening a confirmation, all of it.
 
-Plainly: **today, a stranger with a reference id can read a customer's name, phone number and home address.** In many jurisdictions that is a reportable data breach.
+The change is written, reviewed and sitting on the branch `mobile-bearer-auth` in the web repository: commit `2bc834c` (accept Bearer, validated via `getUser(jwt)`, same token on the PostgREST client so RLS evaluates as that user) and `427afa5` (an invalid Bearer falls through to the cookie path instead of failing the request). It's [PR #27](https://github.com/LitwaysPicks/litwaypickss-eccomerce/pull/27).
 
-**Required fix:** require the caller to be either the authenticated owner (a Supabase JWT matched against `orders.user_id`) or to present a possession secret that is *not* the publicly-visible reference — for example a one-time signed token minted at payment initiation. Guest checkouts need the token path, since they have no account to match against.
+**Required action: merge it and deploy.** Nothing in the mobile app can substitute for this.
 
-The app is hardened as far as it can be: deep-linked reference ids are format-validated before use, and both endpoints carry explicit `SECURITY (backend handoff)` comments in `lib/api.ts` so nobody assumes it's handled.
+### OPEN — 2. A pre-payment quote endpoint
 
-### 2. Server-side re-pricing validation
+The app cannot show a true order total, because it has no way to know the delivery fee before payment. The current honest workaround: no shipping row in the cart, checkout labels its figure **Subtotal**, and a note says the final amount appears in the MoMo prompt. **An endpoint returning a quote (subtotal, delivery fee, total) for a given cart and delivery address would let the app show the real number before the customer commits.** This is the single best conversion improvement available, and it is the last substantive item on the original handoff list.
 
-The payload posted to `/api/momo/pay` still carries a client-held `price` for every line item. The app re-validates against the live catalog before submitting, but that only protects the honest app from showing a stale price — it does nothing against a modified client or a direct call to the endpoint. **The server must recompute every line item's price and the order total from its own catalog data and ignore whatever the client sent.** Marked in `app/checkout.tsx`.
+### OPEN — 3. Two Supabase dashboard settings only you can change
 
-### 3. RLS verification
+Neither is code; both are toggles in the Supabase dashboard, and both were flagged by Supabase's own advisors:
 
-Several reads and writes trust Supabase's Row Level Security to scope rows to the right customer, and those policies aren't in this repository, so they couldn't be verified:
+- **Apply the Postgres patch upgrade.** Security patches for the database engine. Dashboard → Settings → Infrastructure.
+- **Turn on leaked-password protection.** Supabase checks new passwords against the HaveIBeenPwned breach corpus and rejects known-compromised ones. Dashboard → Authentication → Policies.
 
-- `carts` — read and upsert filtered by `user_id`
-- `users` — profile read filtered by `id`
-- `orders` — `app/order/[id].tsx` selects by an id taken straight from the route, with no ownership predicate in the query
-
-Note that `orders.user_id` is **nullable** (guest checkouts). If the `orders` policy isn't strict, that order-detail screen is a second data-exposure surface, independent of the API one above. **Please confirm every policy enforces `auth.uid() = user_id` (or the right owner check) for select and update, and that nothing permits anonymous or cross-user select on `orders`.**
-
-### 4. Wishlists table + RLS
-
-There is no `wishlists` table, so the wishlist is device-only: it doesn't appear on litwaypicks.com for the same account, and it's lost on reinstall or a new phone. **Add a `wishlists` table with RLS policies and tell us the shape.** The app is written to wire into it with a small change; the note at the top of `store/wishlist.ts` explains exactly why nothing was invented client-side.
-
-### 5. Push token — pick a side
-
-The app writes the Expo push token to Supabase auth user metadata (`raw_user_meta_data.push_token`). The `users` table has no `push_token` column. **Either** confirm the backend reads it from auth metadata, **or** add a queryable column/table (e.g. `push_tokens`: user_id, token, device_id, platform) and we'll point the app at it. Until one of those is true, order-update pushes cannot be fanned out. Marked in `lib/notifications.ts`.
-
-### 6. A pre-payment quote endpoint
-
-The app cannot show a true order total, because it has no way to know the delivery fee before payment. The current honest workaround: no shipping row in the cart, checkout labels its figure **Subtotal**, and a note says the final amount appears in the MoMo prompt. **An endpoint returning a quote (subtotal, delivery fee, total) for a given cart and delivery address would let the app show the real number before the customer commits.** This is the single best conversion improvement available.
-
-### 7. `payment_status` string alignment
-
-`getOrder` returns a `payment_status` field; `checkStatus` returns a `status` field. The app treats `SUCCESSFUL` and `COMPLETED` as success, and `FAILED` and `DISPUTED` as failure, in both places, using one shared predicate. **Please confirm both endpoints emit exactly the same vocabulary.** A status string one endpoint emits and the other doesn't means a customer can see a confirmed order on one screen and a pending one on another.
-
-### 8. Offline banner — a decision for you, not a backend task
+### OPEN — 4. Offline banner — a decision for you, not a backend task
 
 The app has no connectivity detection. A customer who loses signal sees error states rather than "you're offline". Adding it means a new native module (`@react-native-community/netinfo`) and a fresh build. **Recommendation: do it, bundled with the next change that requires a rebuild anyway.**
 
-### 9. Supabase dashboard settings to be aware of
+### RESOLVED — 5. IDOR on `getOrder` and `checkStatus`
 
-- **Email confirmation on/off** — signup handles both correctly since `541ba23`, but it changes what your customers experience. Confirmation on means they must verify before signing in (they can still order as a guest meanwhile).
+*Was:* `GET /api/momo/order/:referenceId` and `GET /api/momo/status/:referenceId` accepted **no authentication whatsoever**, so anyone with a reference id could read a customer's name, phone number and home address. Reference ids are not secret — they're returned to the client, they appear in deep links, and the app polls with one every six seconds.
+
+*Now:* both routes call `requireUserApi()` and then check ownership explicitly. From the web repo's order route:
+
+```js
+const isOwner =
+  (order.user_id && order.user_id === user.id) ||
+  (!order.user_id &&
+    order.customer_email &&
+    order.customer_email.toLowerCase() === (user.email || "").toLowerCase());
+const isAdmin = user.role === "admin";
+
+if (!isOwner && !isAdmin) {
+```
+Owner by `user_id`, or owner by email for older rows that predate the column, or admin. Everyone else gets a 403 — which is exactly the 403 the confirmation screen's `'signin'` outcome exists to handle ([§5e](#5e-payments-end-to-end)).
+
+*The consequence you must not forget:* this is precisely why guest checkout could not survive. A guest has no identity to match against, so there is no honest way to let one look up an order.
+
+### RESOLVED — 6. Server-side re-pricing validation
+
+*Was:* the payload carried a client-held `price` per line item and the server trusted it.
+
+*Now:* `/api/momo/pay` recomputes everything from its own `products` rows — `sale_price ?? price` per unit, its own stock check, its own total — and charges the computed figure. The client's numbers are ignored. There's also an amount-mismatch guard that flags an order `DISPUTED` when what MTN reports doesn't match what the server computed.
+
+### RESOLVED — 7. `payment_status` string alignment
+
+*Was:* `getOrder` returned `payment_status` and `checkStatus` returned `status`, with no guarantee the two used the same vocabulary — so a customer could see "confirmed" on one screen and "pending" on another.
+
+*Now:* status is normalized server-side, and the app's one shared predicate (`SUCCESSFUL`/`COMPLETED` = success, `FAILED`/`DISPUTED` = failure) matches both.
+
+### RESOLVED — 8. Wishlists table, push tokens, RLS verification
+
+*Was:* three separate asks — a `wishlists` table, somewhere queryable for the push token, and confirmation that the RLS policies actually said what the app assumed.
+
+*Now:* `public.wishlists` (`user_id` + `product_id` primary key) and `public.push_tokens` (`token` primary key, `user_id`, `platform`) both exist with own-row RLS, `types/database.types.ts` is regenerated from the live schema, and the app reads and writes both ([§5b](#5b-state-zustand-stores-vs-local-state)). The policy audit that came with them also fixed the `products_with_categories` / `featured_products` views (`security_invoker=on`), widened the `orders` owner-read policy to `(customer_email = auth.email() OR user_id = auth.uid())`, pinned `search_path` on all eleven flagged functions, and revoked `EXECUTE` from `PUBLIC` where it wasn't wanted — see [§5c](#5c-server-data-supabase--react-query) for what each of those means.
+
+### Supabase dashboard settings to be aware of
+
+- **Email confirmation is now OFF.** Signup handles both settings correctly since `541ba23`, but the toggle changes what your customers experience, and off is a deliberate decision with reasoning in [§7](#7-decisions-and-tradeoffs) — not an accident to be tidied up.
 - **Realtime must be enabled on the `orders` table** or the checkout screen's live subscription silently does nothing and everything falls back to the 6-second poll.
 - **The `auth.users` trigger that creates the `public.users` profile row** must stay in place. Without it, new signups have no profile.
 - **Redirect URLs** must include the app's scheme for the password-reset email to land on `app/(auth)/new-password.tsx`.
+- **`get_order_stats` is admin-gated inside the function.** The website's admin dashboard calls it from the browser, so it can't be locked away from the `authenticated` role; it checks `is_admin()` itself instead. Don't "simplify" that check away.
 
 ---
 
@@ -2340,7 +3087,7 @@ Tokens only, and pick a corner that doesn't collide with the discount chip (top-
 
 `console.log('cart items', items)` output appears in the terminal where you ran `npx expo start`, and in the dev tools if you have them open. `console.warn` and `console.error` also show in the app's own dev overlay. The codebase uses `console.warn` for recoverable problems, always with a prefix identifying the source:
 ```ts
-console.warn('Cart syncToDb failed:', error.message);
+console.warn('Cart write failed:', error.message);
 console.warn('[supabase] SecureStore read failed for', key, e);
 ```
 Follow that convention. And remember these lines stay in release builds — don't log anything sensitive.
@@ -2349,11 +3096,18 @@ Follow that convention. And remember these lines stay in release builds — don'
 
 1. `app.json` → `expo.version`. That's the human-facing version ("1.0.1").
 2. Build numbers are handled for you: `eas.json`'s production profile sets `"autoIncrement": true`, and the CLI is configured with `"appVersionSource": "remote"` so EAS tracks the counter.
-3. Build:
+3. **Push your environment variables to EAS if they've changed.** This step is easy to forget and it produces a build that installs fine and then crashes on launch — see [§10](#10-when-things-break):
+   ```bash
+   eas env:push --environment preview --path .env
+   eas env:push --environment production --path .env
+   ```
+4. Build:
    ```bash
    eas build --profile preview --platform android     # a real release build, for testing
    eas build --profile production --platform all      # store submission
    ```
+
+**Why step 3 exists.** `.env` is in `.gitignore` — correctly, since it holds your Supabase URL and keys and shouldn't be in the repository. But EAS builds from a *clean copy of the repository on a cloud machine*, so that file simply isn't there when your app is compiled. Locally everything works, because `npx expo start` reads `.env` off your disk. Remotely, `process.env.EXPO_PUBLIC_SUPABASE_URL` is `undefined`, `createClient` is handed nothing, and the app dies on launch. `eas env:push` uploads the values to EAS once per environment, where they're stored and injected into every future build. You only need to re-run it when `.env` itself changes — and the three variables that matter are `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` and `EXPO_PUBLIC_API_BASE_URL`.
 
 The three profiles in `eas.json`:
 
@@ -2433,6 +3187,39 @@ componentDidCatch(error: Error, info: React.ErrorInfo) {
 ```
 That log goes to the device console, which you'd read via `adb logcat` on Android or Console.app on iOS. There is no crash-reporting service wired up — if you want stack traces from real customers, that's a service to add (Sentry is the usual choice, and it's a native module, so it needs a rebuild).
 
+### When a release build installs and then crashes instantly
+
+This has already happened to you once, and it's worth reading before it happens again — because both gates were green, the build succeeded, the APK installed, and the app died the moment it opened. Neither `npm run typecheck` nor `npx expo export` can catch this class of failure, because there is nothing wrong with the code.
+
+**The symptom:** app opens, white flash, closed. No error, no red screen (release builds don't have them), nothing on your machine.
+
+**How to actually see the crash.** Plug the phone in and read the device's own crash log:
+
+```bash
+adb logcat --buffer=crash -d | tail -50
+```
+
+Piece by piece: `adb` is the Android Debug Bridge, part of the platform-tools that come with Android Studio (`brew install --cask android-platform-tools` if you don't have it). `logcat` is Android's system log. `--buffer=crash` narrows it to the crash buffer instead of every log line on the device. `-d` means "dump what's there and exit" rather than streaming forever. `tail -50` shows the last fifty lines, which is where the crash is.
+
+For that to work the phone needs **USB debugging** turned on: Settings → About phone → tap "Build number" seven times to unlock Developer options, then Developer options → USB debugging. Plug in, accept the "Allow USB debugging?" prompt on the phone, and confirm with `adb devices` — you want a line ending in `device`, not `unauthorized`.
+
+**The crash you actually got, and what it meant:**
+
+```
+supabaseUrl is required
+```
+
+Five words, and they're the whole diagnosis. `lib/supabase.ts` calls `createClient(supabaseUrl, supabaseAnonKey, …)`; `supabaseUrl` comes from `process.env.EXPO_PUBLIC_SUPABASE_URL`; that was `undefined`; and the Supabase client throws immediately rather than limping along. The module runs at import time — before any screen renders — so the whole app dies at once.
+
+**The cause was not code at all.** `.env` is gitignored, EAS builds from a clean checkout on a cloud machine, so `.env` never existed in that build. The fix is the `eas env:push` step in [§9](#9-how-to-do-common-things):
+
+```bash
+eas env:push --environment preview --path .env
+eas env:push --environment production --path .env
+```
+
+**The general lesson, which is bigger than this one bug:** *anything that isn't in the repository doesn't exist on the build machine.* Your `.env`, your local `node_modules` quirks, that file you forgot to `git add` — none of it travels. When a build works locally and fails remotely and the code is identical, ask what's on your disk that isn't in git.
+
 ### When typecheck fails
 
 Read the *first* error, not the last. TypeScript errors cascade — one bad type at the top produces twenty downstream. Fix the first, re-run, repeat. If an error mentions a route that definitely exists, restart the dev server: typed routes are generated files.
@@ -2454,9 +3241,12 @@ These are the conventions the app was built to. Keep them, and tell any AI assis
 9. **Never trust input from outside the app.** Route params, deep links and push payloads all get allowlisted or format-validated before use.
 10. **A sync failure must never lose local state.** Surface it, retry it, but keep what the customer has.
 11. **Never declare success you haven't verified.** Especially about money.
-12. **Write down every judgment call**, with its alternative and its cost. Specs live in `docs/superpowers/specs/`, plans in `docs/superpowers/plans/`, session records in `.superpowers/overnight/`.
-13. **Review is separate from implementation.** When work is done by an agent, have a different agent look for defects in it. That separation caught four real problems, two critical.
-14. **Update this guide when big changes land**, in the same commit.
+12. **Write, then apply.** When a change has to land both on the server and in front of the customer, do the server write *first* and only change what they're looking at once it succeeded. A failure path that has already altered the screen is a failure path that lies. (`manualSync` in `store/cart.ts` is the worked example.)
+13. **Never auto-retry a 403 without an identity change.** A 401 or 403 is a considered answer, not a hiccup — repeating the same request with the same credentials gets the same answer forever, and that's a loop, not resilience. Retry only when an *input* has genuinely changed; `confirmation.tsx`'s `authFailedUserRef` is how that's tracked.
+14. **`EXECUTE` grants: revoke from `PUBLIC`, not just `anon`.** Postgres grants execute on new functions to `PUBLIC` by default, and `PUBLIC` includes every role. Revoking from `anon` alone changes nothing at all.
+15. **Write down every judgment call**, with its alternative and its cost. Specs live in `docs/superpowers/specs/`, plans in `docs/superpowers/plans/`, session records in `.superpowers/overnight/`.
+16. **Review is separate from implementation.** When work is done by an agent, have a different agent look for defects in it. That separation caught four real problems, two critical — and two more since, including the write-then-apply ordering in rule 12 and the 403 loop in rule 13.
+17. **Update this guide when big changes land**, in the same commit. When a decision is *reversed*, mark the old one superseded and say why rather than deleting it — the reasoning that turned out to be wrong is the most useful thing in the record.
 
 ---
 
@@ -2472,9 +3262,15 @@ These are the conventions the app was built to. Keep them, and tell any AI assis
 
 **Babel** — the tool that rewrites your modern JavaScript/JSX into what the engine actually runs. Also where the hermesc fix lives.
 
+**Base snapshot** — in a three-way merge, the copy of the data that both sides last agreed on. Each side's *delta* from the base is what actually gets merged, which is why a base is what stops "sum the two copies" from double-counting. Here: `lastSyncedItems`, scoped by `lastSyncedUserId`.
+
+**Bearer token** — a credential presented in a request header (`Authorization: Bearer <token>`) rather than a cookie. Whoever "bears" it is treated as its owner. The app sends its Supabase access token this way because it has no cookies.
+
 **Bundle** — all your JavaScript packed into one file for shipping.
 
 **Component** — a function with a capitalised name that returns UI.
+
+**CRDT / operation log** — sync designs that record *every change* rather than snapshots, so copies converge with no merge step. More powerful than the three-way merge here, and far more machinery; deliberately not used.
 
 **Debounce** — waiting for activity to stop before acting. The cart waits 800ms after the last change before writing to the server.
 
@@ -2498,13 +3294,17 @@ These are the conventions the app was built to. Keep them, and tell any AI assis
 
 **Hydrate** — populate the app's state from a stored or fetched source on startup.
 
-**IDOR** — *Insecure Direct Object Reference*. A URL that hands you someone else's data because you know its id. The order-lookup endpoint is one today.
+**IDOR** — *Insecure Direct Object Reference*. A URL that hands you someone else's data because you know its id. The order-lookup endpoints were one until the backend added authentication and ownership checks (§8).
+
+**Idempotent** — an operation you can run twice and get the same result as running it once. Sync routines must be idempotent, because they get retried, double-fired and raced constantly. The cart's three-way merge is.
 
 **Immutability** — never editing state in place; always producing a new value. Required for React to notice changes.
 
 **Infinite query** — loading a list one page at a time as the customer scrolls.
 
 **JSX** — the HTML-looking syntax inside `return`. It's JavaScript, transformed at build time.
+
+**Last-writer-wins** — the naive sync rule where whoever writes most recently overwrites everything else. Simple, and the reason cart items used to disappear when two devices were both in use.
 
 **Memoization** — remembering a computed result so it isn't recalculated every render. `useMemo` for values, `React.memo` for components.
 
@@ -2520,6 +3320,8 @@ These are the conventions the app was built to. Keep them, and tell any AI assis
 
 **Promise** — an object representing an answer that will arrive later.
 
+**PUBLIC (Postgres role)** — the pseudo-role every database role belongs to. New functions grant `EXECUTE` to it by default, so revoking a permission from `anon` alone does nothing while `PUBLIC` still holds it.
+
 **Query** — a read from a server, managed here by React Query with caching, retries, and loading/error states.
 
 **Query key** — a query's cache address. Include every input the fetch depends on.
@@ -2534,9 +3336,11 @@ These are the conventions the app was built to. Keep them, and tell any AI assis
 
 **Render** — React calling your component function to get a fresh description of the UI.
 
-**RLS** — *Row Level Security*. Database rules deciding which rows each user may see or change. Your last line of defence; still unverified (see §8).
+**RLS** — *Row Level Security*. Database rules deciding which rows each user may see or change. Your last line of defence, because it's the one a modified app can't route around. Audited and fixed in the backend session (§5c); `wishlists` and `push_tokens` carry own-row policies.
 
 **SecureStore** — hardware-backed encrypted storage (iOS Keychain / Android Keystore). Where the session token lives.
+
+**`security_invoker`** — a Postgres view setting. Off (the default), a view runs with its author's permissions and can hand out rows the caller's own RLS would deny. `security_invoker=on` runs the view as the caller, so RLS still applies. Both product views here have it on.
 
 **Selector** — the `(s) => s.items` function passed to a store hook, subscribing to just one slice so unrelated changes don't re-render.
 
@@ -2545,6 +3349,8 @@ These are the conventions the app was built to. Keep them, and tell any AI assis
 **Shared value** — a Reanimated value both the JS and UI threads can see. Changing it does not re-render.
 
 **Skeleton** — the grey placeholder shapes shown while content loads.
+
+**Skeleton vs. full-screen loader** — a skeleton keeps the app on screen; a full-screen loader removes it. Skeletons for browsing, full-screen only for genuinely blocking moments (§6).
 
 **Spread (`...`)** — copy an object's or array's contents into a new one: `{ ...s, firstName: v }`.
 
@@ -2556,7 +3362,13 @@ These are the conventions the app was built to. Keep them, and tell any AI assis
 
 **Ternary (`? :`)** — an inline if/else expression. The only conditional usable inside JSX.
 
+**Three-way merge** — combining two edited copies of something by comparing each against a shared **base snapshot** and applying both sides' changes, rather than picking a winner or naively adding the copies together. The cart's merge (§5b) is the worked example.
+
 **Token (design)** — a named design value like `color.accent`. Change it once, it changes everywhere.
+
+**Tombstone** — a record that something was *deleted*, kept so a later sync doesn't resurrect it. The wishlist's known v1 hole is the absence of one.
+
+**Type predicate** — a TypeScript function whose return type is written `x is SomeType`; when it returns true, the compiler narrows the argument's type. `isAllowedNext(next): next is string` is one.
 
 **TypeScript** — JavaScript plus data-shape checking, so mistakes surface at compile time instead of on a customer's phone.
 
@@ -2564,8 +3376,10 @@ These are the conventions the app was built to. Keep them, and tell any AI assis
 
 **Upsert** — insert a row, or update it if it already exists. How the cart is written to Supabase.
 
+**Write-then-apply** — house rule 12: when a change has to land on the server *and* on screen, do the server write first and only update the screen once it succeeded, so a failure genuinely changes nothing.
+
 **Zustand** — the small library the stores are built with.
 
 ---
 
-*Written from the code itself, the specs and plans in `docs/superpowers/`, and the session ledger in `.superpowers/overnight/ledger.md`. Every code excerpt in this guide was copied from the file named above it.*
+*Written from the code itself, the specs and plans in `docs/superpowers/`, and the session ledger in `.superpowers/overnight/ledger.md`. Every code excerpt in this guide was copied from the file named above it — including the two excerpts from the website's repository, which are labelled as such and are read-only from here. Where an excerpt is quoted as a historical record of a decision that has since changed, the text says so.*

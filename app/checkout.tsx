@@ -7,7 +7,6 @@ import {
   Platform,
   Alert,
   KeyboardAvoidingView,
-  ActivityIndicator,
   AppState,
   TextInput,
 } from 'react-native';
@@ -29,6 +28,7 @@ import { formatCurrency } from '@/lib/currency';
 import { normalizeLiberianPhone, isValidLiberianMobile } from '@/lib/phone';
 import { pendingPayment } from '@/lib/storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LoadingOverlay } from '@/components/motion/LoadingOverlay';
 import type { CheckoutForm } from '@/types';
 
 type PaymentStatus = 'idle' | 'processing' | 'polling' | 'success' | 'failed';
@@ -364,6 +364,7 @@ export default function CheckoutScreen() {
   }
 
   return (
+    <>
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: color.bg }}>
 
       {/* ─── Header ─── */}
@@ -651,17 +652,6 @@ export default function CheckoutScreen() {
               Your final total, including any delivery fee, is shown in the MoMo prompt on your phone.
             </Text>
 
-            {/* Polling indicator */}
-            {paymentStatus === 'polling' && (
-              <View style={{ backgroundColor: '#eff6ff', borderRadius: 14, padding: 16, marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <ActivityIndicator color="#2563eb" />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#1d4ed8' }}>Waiting for confirmation</Text>
-                  <Text style={{ fontSize: 12, color: '#3b82f6', marginTop: 2 }}>Approve the MoMo prompt on your phone</Text>
-                </View>
-              </View>
-            )}
-
             {paymentStatus === 'failed' && (
               <View style={{ backgroundColor: '#fff1f2', borderRadius: 14, padding: 14, marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <Ionicons name="close-circle-outline" size={20} color="#ef4444" />
@@ -692,6 +682,18 @@ export default function CheckoutScreen() {
         )}
       </ScrollView>
     </KeyboardAvoidingView>
+
+    <LoadingOverlay
+      visible={paymentStatus === 'processing'}
+      title="Contacting MTN MoMo…"
+      subtitle="Setting up your payment — this takes a moment."
+    />
+    <LoadingOverlay
+      visible={paymentStatus === 'polling'}
+      title="Check your phone"
+      subtitle={`Approve the MoMo prompt sent to ${form.phone || 'your phone'}. We'll confirm automatically.`}
+    />
+    </>
   );
 }
 
