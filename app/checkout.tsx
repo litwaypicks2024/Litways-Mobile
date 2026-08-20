@@ -343,6 +343,12 @@ export default function CheckoutScreen() {
           quantity: i.quantity,
           size: i.size,
           color: i.color,
+          // The web pay route (app/api/momo/pay/route.js) reads
+          // selectedSize/selectedColor, not size/color — send both so the
+          // chosen variant survives into the order instead of being
+          // silently dropped.
+          selectedSize: i.size,
+          selectedColor: i.color,
           // Order History (account.tsx) and Order Detail (order/[id].tsx)
           // render thumbnails from imageUrl and gate tap-to-view-product on
           // slug — both must round-trip through the backend's stored order.

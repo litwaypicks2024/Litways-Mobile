@@ -9,6 +9,156 @@ function cartKey(item: Pick<CartItem, 'productId' | 'size' | 'color'>): string {
 }
 
 /**
+ * The `carts` table (`{ user_id, items: jsonb[] }`) is shared with the web
+ * app, but the two apps have never agreed on an item shape. A row can be any
+ * of three shapes:
+ *
+ *   MOBILE (this app writes):
+ *     { productId, name, brand, price, imageUrl, size?, color?, quantity,
+ *       stock, slug }
+ *     `price` is already the effective (discounted) price.
+ *
+ *   WEB (lib/cart-context.jsx in the web repo):
+ *     { ...product, cartKey, selectedSize, selectedColor, quantity }
+ *     i.e. id, name, brand, price, sale_price?, image_urls[], images[],
+ *     slug, stock, sizes, colors, category, … plus cartKey (composite of
+ *     [id, size, color]) and selectedSize/selectedColor (null when unset).
+ *     Web's own cart total uses `sale_price ?? price` — `price` alone is
+ *     the pre-discount list price.
+ *
+ *   LEGACY WEB (pre-cartKey web rows): same as WEB but without
+ *     cartKey/selectedSize/selectedColor.
+ *
+ * `fromWire`/`toWire` are the adapter pair that lets this store read and
+ * write any of the three without the merge engine below ever seeing a raw
+ * wire shape — it only ever operates on normalized `CartItem`s. There is no
+ * shared contract between the two apps yet (web-side canonicalization onto
+ * one shape is a later follow-up); until then `toWire` writes a SUPERSET of
+ * fields so either app's reader finds what it expects in a row written by
+ * the other.
+ */
+
+/**
+ * Normalizes one raw `carts.items[]` entry (any of the three shapes above)
+ * into a `CartItem`, or `null` if it's unusable (no id, or no positive
+ * quantity) so the caller can filter it out rather than merge in garbage.
+ */
+export function fromWire(raw: any): CartItem | null {
+  if (raw == null || typeof raw !== 'object') return null;
+
+  const productId = raw.productId ?? raw.id;
+  if (!productId) return null;
+
+  const quantity = Number(raw.quantity);
+  if (!(quantity > 0)) return null;
+
+  const name = raw.name ?? '';
+  const brand = raw.brand ?? '';
+  const slug = raw.slug ?? '';
+
+  // Mobile rows already carry the effective (post-discount) price in
+  // `price`. Web rows carry the list price in `price` plus an optional
+  // `sale_price` — the effective price is exactly web's own rule,
+  // `sale_price ?? price` (no magnitude check, so both apps always agree on
+  // the displayed price even for odd data; the server re-prices at payment
+  // anyway). `raw.productId` is the mobile-only field, so its presence is
+  // what distinguishes the two shapes.
+  let price: number;
+  if (raw.productId != null) {
+    price = Number(raw.price) || 0;
+  } else {
+    price = Number(raw.sale_price ?? raw.price) || 0;
+  }
+
+  const imageUrl = raw.imageUrl ?? raw.image_urls?.[0] ?? raw.images?.[0] ?? '';
+
+  const rawSize = raw.size ?? raw.selectedSize;
+  const size = rawSize === null || rawSize === '' || rawSize === undefined ? undefined : rawSize;
+  const rawColor = raw.color ?? raw.selectedColor;
+  const color = rawColor === null || rawColor === '' || rawColor === undefined ? undefined : rawColor;
+
+  const stock = Number(raw.stock ?? 0);
+
+  return { productId, name, brand, price, imageUrl, size, color, quantity, stock, slug };
+}
+
+/**
+ * Serializes a normalized `CartItem` back into the wire superset both apps'
+ * readers understand. `raw` — the original remote object this item was last
+ * read from (see rawRemoteByCartKey below) — is spread first so any
+ * web-only metadata (sizes, colors, category, …) survives a mobile
+ * read-modify-write round-trip instead of being dropped.
+ *
+ * `sale_price` is always nulled out here, NOT preserved from `raw`: the
+ * item's `price` already holds the effective (post-discount) price computed
+ * by `fromWire`, and web's total reads `sale_price ?? price` — leaving a
+ * stale `sale_price` in place would make web double-apply the discount.
+ *
+ * `image_urls`/`images` keep the raw row's full gallery when present (web
+ * may have uploaded several images) and only fall back to a single-entry
+ * array derived from `imageUrl` when the raw row had none.
+ */
+export function toWire(item: CartItem, raw?: Record<string, unknown>): Record<string, unknown> {
+  const base = raw ?? {};
+  const rawImageUrls = (base as { image_urls?: unknown }).image_urls;
+  const rawImages = (base as { images?: unknown }).images;
+  const imageUrls =
+    Array.isArray(rawImageUrls) && rawImageUrls.length > 0 ? rawImageUrls : [item.imageUrl].filter(Boolean);
+  const images = Array.isArray(rawImages) && rawImages.length > 0 ? rawImages : [item.imageUrl].filter(Boolean);
+
+  return {
+    ...base, // web-only metadata survives a mobile round-trip
+    id: item.productId,
+    productId: item.productId,
+    name: item.name,
+    brand: item.brand,
+    slug: item.slug,
+    stock: item.stock,
+    quantity: item.quantity,
+    price: item.price, // effective price; web reads sale_price ?? price
+    sale_price: null, // never let a stale web sale_price override our effective price
+    imageUrl: item.imageUrl,
+    image_urls: imageUrls,
+    images,
+    size: item.size ?? null,
+    color: item.color ?? null,
+    selectedSize: item.size ?? null,
+    selectedColor: item.color ?? null,
+    cartKey: [item.productId, item.size, item.color].filter(Boolean).join('::') || item.productId,
+  };
+}
+
+/**
+ * Raw remote objects from the most recent loadFromDb/manualSync fetch,
+ * keyed by the mobile cartKey() of their normalized CartItem. writeCartRow
+ * consults this so an item that round-trips through this device still
+ * carries whatever web-only fields it arrived with (see toWire above)
+ * instead of losing them the moment mobile re-writes the row. Cleared on
+ * clearCart so a stale entry can never leak metadata onto a different
+ * user's or a brand-new item's write.
+ */
+const rawRemoteByCartKey = new Map<string, Record<string, unknown>>();
+
+/**
+ * Normalizes a raw remote `carts.items` array (any of the three wire
+ * shapes) into CartItems via fromWire, dropping anything unparseable, and
+ * refreshes rawRemoteByCartKey to reflect this — the most recent — fetch.
+ */
+function normalizeRemoteItems(rawItems: unknown[]): CartItem[] {
+  rawRemoteByCartKey.clear();
+  const result: CartItem[] = [];
+  for (const raw of rawItems) {
+    const item = fromWire(raw);
+    if (!item) continue;
+    result.push(item);
+    if (raw && typeof raw === 'object') {
+      rawRemoteByCartKey.set(cartKey(item), raw as Record<string, unknown>);
+    }
+  }
+  return result;
+}
+
+/**
  * Three-way merges a cart across three snapshots: the last-synced BASE (what
  * this device and the server agreed on after the previous sync), the current
  * LOCAL cart, and the current REMOTE (server) cart. Per cartKey, the merged
@@ -119,9 +269,10 @@ export async function refreshAvailability(
  * manualSync's write-then-apply path below.
  */
 async function writeCartRow(userId: string, items: CartItem[]): Promise<boolean> {
+  const wireItems = items.map((item) => toWire(item, rawRemoteByCartKey.get(cartKey(item))));
   const { error } = await supabase
     .from('carts')
-    .upsert({ user_id: userId, items: items as any, updated_at: new Date().toISOString() });
+    .upsert({ user_id: userId, items: wireItems as any, updated_at: new Date().toISOString() });
 
   if (error) {
     console.warn('Cart write failed:', error.message);
@@ -301,8 +452,10 @@ export const useCartStore = create<CartState>()(
       // that would leak the outgoing user's cart/notices onto the next
       // signed-in user's Cart screen, or — worse, for the base — get used as
       // the merge base for a different account entirely.
-      clearCart: () =>
-        set({ items: [], syncFailed: false, syncNotice: null, lastSyncedItems: [], lastSyncedUserId: null }),
+      clearCart: () => {
+        rawRemoteByCartKey.clear();
+        set({ items: [], syncFailed: false, syncNotice: null, lastSyncedItems: [], lastSyncedUserId: null });
+      },
 
       cancelSync: () => {
         for (const t of debounceTimers.values()) clearTimeout(t);
@@ -373,7 +526,7 @@ export const useCartStore = create<CartState>()(
           // a genuinely empty remote cart, not a fetch error.
           if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
 
-          const remote = (data?.items as unknown as CartItem[]) ?? [];
+          const remote = normalizeRemoteItems((data?.items as unknown[]) ?? []);
           const { items: local, lastSyncedItems, lastSyncedUserId } = get();
           // A base captured under a different account must never be used
           // here — its deltas would describe a different cart entirely.
@@ -455,7 +608,7 @@ export const useCartStore = create<CartState>()(
           return;
         }
 
-        const remote = (data?.items as unknown as CartItem[]) ?? [];
+        const remote = normalizeRemoteItems((data?.items as unknown[]) ?? []);
 
         set((state) => {
           const local = state.items;
