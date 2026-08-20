@@ -17,6 +17,12 @@ import { registerForPushNotifications, savePushToken, syncPushTokenForUser, useN
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { BrandSplash } from '@/components/BrandSplash';
 import { FlyToCartOverlay } from '@/components/motion/FlyToCart';
+import { LoadingOverlay } from '@/components/motion/LoadingOverlay';
+
+// Hard cap on the post-sign-in hydration overlay (Moment 1 below) — clears
+// even if fetchProfile/loadFromDb/loadWishlistFromDb/syncPushTokenForUser
+// hang, so a slow network never traps the shopper behind the overlay.
+const POST_AUTH_HYDRATION_MAX_MS = 2500;
 
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ fade: true, duration: 300 });
@@ -117,6 +123,19 @@ function AppContent() {
   }, []);
   const appReady = startupDone && fontsLoaded && splashMinHoldDone;
   const [showSplash, setShowSplash] = useState(true);
+  // hydrate() below lives inside a mount-once ([]) effect, so it can't see
+  // showSplash updates via closure — mirror the latest value into a ref it
+  // can read instead.
+  const showSplashRef = useRef(showSplash);
+  useEffect(() => {
+    showSplashRef.current = showSplash;
+  }, [showSplash]);
+
+  // Branded overlay for a genuine post-sign-in hydration (Moment 1) — not
+  // shown for the cold-start session restore (BrandSplash covers that) or
+  // for token refreshes of the same user. See previousUserIdRef below.
+  const [postAuthHydrating, setPostAuthHydrating] = useState(false);
+  const hydrationCapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Persist the cart back to the server (debounced) whenever it changes while
   // signed in. loadFromDb only *reads*; without this the DB copy goes stale.
@@ -160,6 +179,13 @@ function AppContent() {
   // where session is null from the start.
   const hadSessionRef = useRef(false);
 
+  // Tracks the last known signed-in user id (null when signed out or not yet
+  // resolved) so hydrate() below can tell a genuine sign-in (id goes from
+  // null/another id to a new id) apart from a token refresh for the same
+  // user, which fires the same auth-change event but shouldn't retrigger
+  // the hydration overlay.
+  const previousUserIdRef = useRef<string | null>(null);
+
   // Whether this launch is already routing to /confirmation on its own —
   // resolved once startup settles (success or fail-open), then acted on only
   // once the splash is actually gone (see the appReady effect below), so the
@@ -179,20 +205,45 @@ function AppContent() {
     function hydrate(session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) {
       setSession(session);
       if (session?.user) {
+        const userId = session.user.id;
+        // A genuine sign-in: the known user id actually changed (not a
+        // token refresh for the same user), and it's happening after the
+        // splash has already resolved (the cold-start session restore is
+        // covered by BrandSplash, not this overlay).
+        const isGenuineSignIn = previousUserIdRef.current !== userId && !showSplashRef.current;
+        previousUserIdRef.current = userId;
+
         hadSessionRef.current = true;
-        fetchProfile(session.user.id);
-        loadFromDb(session.user.id);
+        const profilePromise = fetchProfile(userId);
+        const cartPromise = loadFromDb(userId);
         // Non-blocking: wishlist load/merge should never hold up startup or
         // the auth-change handler, and loadFromDb itself never throws (it
         // logs and leaves local state untouched on a fetch error).
-        void loadWishlistFromDb(session.user.id);
-        registerPushOnce(session.user.id);
+        const wishlistPromise = loadWishlistFromDb(userId);
+        registerPushOnce(userId);
         // Cheap no-op unless registration already cached a token this
         // session (e.g. it ran before this session had a signed-in user) —
         // covers sign-in-after-registration so that token still ends up
         // owned by this user in push_tokens.
-        void syncPushTokenForUser(session.user.id);
+        const pushTokenPromise = syncPushTokenForUser(userId);
+
+        if (isGenuineSignIn) {
+          setPostAuthHydrating(true);
+          if (hydrationCapTimerRef.current) clearTimeout(hydrationCapTimerRef.current);
+          hydrationCapTimerRef.current = setTimeout(() => {
+            hydrationCapTimerRef.current = null;
+            setPostAuthHydrating(false);
+          }, POST_AUTH_HYDRATION_MAX_MS);
+          Promise.allSettled([profilePromise, cartPromise, wishlistPromise, pushTokenPromise]).then(() => {
+            if (hydrationCapTimerRef.current) {
+              clearTimeout(hydrationCapTimerRef.current);
+              hydrationCapTimerRef.current = null;
+            }
+            setPostAuthHydrating(false);
+          });
+        }
       } else {
+        previousUserIdRef.current = null;
         registeredUserRef.current = null;
         if (hadSessionRef.current) {
           // Session transitioned from signed-in to signed-out — covers
@@ -267,7 +318,10 @@ function AppContent() {
       hydrate(session);
     });
 
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      listener.subscription.unsubscribe();
+      if (hydrationCapTimerRef.current) clearTimeout(hydrationCapTimerRef.current);
+    };
   }, []);
 
   // Deep links that arrive while the app is already running (cold-start links
@@ -335,6 +389,11 @@ function AppContent() {
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
     </Stack>
+    <LoadingOverlay
+      visible={postAuthHydrating}
+      title="Setting up your shop…"
+      subtitle="Syncing your cart and saved items"
+    />
     <FlyToCartOverlay />
     {showSplash && <BrandSplash visible={!appReady} onHidden={() => setShowSplash(false)} />}
     </>
