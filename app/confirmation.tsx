@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { BrandLoader } from '@/components/motion/BrandLoader';
@@ -71,12 +71,19 @@ export default function ConfirmationScreen() {
   const [loading, setLoading] = useState(true);
   const [retryToken, setRetryToken] = useState(0);
   const [authRequired, setAuthRequired] = useState(false);
+  // Which identity (user id, or null for signed-out) the 401/403 happened
+  // under. The auto-refetch below only fires when the identity has actually
+  // CHANGED since then — a 403 means "wrong account", and auto-retrying as
+  // the same account would loop 403→refetch→403 forever.
+  const authFailedUserRef = useRef<string | null | undefined>(undefined);
 
-  // After the user signs in (next=/confirmation returns here), the session
-  // change should immediately re-run the fetch instead of leaving the
-  // sign-in hero up until a manual retry.
+  // After the user signs in (next=/confirmation returns here) or switches
+  // accounts, re-run the fetch instead of leaving the sign-in hero up until
+  // a manual retry.
   useEffect(() => {
-    if (user && authRequired) setRetryToken((t) => t + 1);
+    if (user && authRequired && user.id !== authFailedUserRef.current) {
+      setRetryToken((t) => t + 1);
+    }
   }, [user, authRequired]);
 
   const ORDER_FETCH_MAX_ATTEMPTS = 3;
@@ -106,6 +113,7 @@ export default function ConfirmationScreen() {
         // won't help; route the user to sign in instead (the pending-payment
         // record deliberately stays so it can be reconciled after sign-in).
         if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          authFailedUserRef.current = useAuthStore.getState().user?.id ?? null;
           setAuthRequired(true);
           setLoading(false);
           return;
