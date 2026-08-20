@@ -87,7 +87,13 @@ export default function HomeScreen() {
     ],
   }));
 
-  const { data: featured, isLoading: loadingFeatured, isError: errorFeatured, refetch: refetchFeatured } = useQuery({
+  const {
+    data: featured,
+    isLoading: loadingFeatured,
+    isError: errorFeatured,
+    isFetching: fetchingFeatured,
+    refetch: refetchFeatured,
+  } = useQuery({
     queryKey: ['featured-products'],
     queryFn: async () => {
       const { data, error } = await supabase.from('featured_products').select('*').limit(10);
@@ -96,7 +102,13 @@ export default function HomeScreen() {
     },
   });
 
-  const { data: newest, isError: errorNewest, refetch: refetchNewest } = useQuery({
+  const {
+    data: newest,
+    isLoading: loadingNewest,
+    isError: errorNewest,
+    isFetching: fetchingNewest,
+    refetch: refetchNewest,
+  } = useQuery({
     queryKey: ['newest-products'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -109,7 +121,13 @@ export default function HomeScreen() {
     },
   });
 
-  const { data: deals, isError: errorDeals, refetch: refetchDeals } = useQuery({
+  const {
+    data: deals,
+    isLoading: loadingDeals,
+    isError: errorDeals,
+    isFetching: fetchingDeals,
+    refetch: refetchDeals,
+  } = useQuery({
     queryKey: ['deal-products'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -123,7 +141,13 @@ export default function HomeScreen() {
     },
   });
 
-  const { data: categories, isLoading: loadingCats, isError: errorCats, refetch: refetchCats } = useQuery({
+  const {
+    data: categories,
+    isLoading: loadingCats,
+    isError: errorCats,
+    isFetching: fetchingCats,
+    refetch: refetchCats,
+  } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -301,6 +325,7 @@ export default function HomeScreen() {
               <ErrorState
                 message="Couldn't load categories. Check your connection and try again."
                 onRetry={() => refetchCats()}
+                loading={fetchingCats}
               />
             </View>
           ) : (
@@ -352,11 +377,18 @@ export default function HomeScreen() {
         <Animated.View
           entering={FadeInDown.duration(300).delay(3 * 60).reduceMotion(ReduceMotion.System)}
         >
-          {errorDeals ? (
+          {loadingDeals ? (
+            <View style={{ marginTop: spacing['2xl'] }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: spacing.md }}>
+                {Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+              </ScrollView>
+            </View>
+          ) : errorDeals ? (
             <View style={{ marginTop: spacing['2xl'], paddingHorizontal: gutter }}>
               <ErrorState
                 message="Couldn't load deals. Check your connection and try again."
                 onRetry={() => refetchDeals()}
+                loading={fetchingDeals}
               />
             </View>
           ) : (deals?.length ?? 0) > 0 && (
@@ -417,6 +449,7 @@ export default function HomeScreen() {
               <ErrorState
                 message="Couldn't load popular products. Check your connection and try again."
                 onRetry={() => refetchFeatured()}
+                loading={fetchingFeatured}
               />
             </View>
           ) : (
@@ -434,11 +467,19 @@ export default function HomeScreen() {
         <Animated.View
           entering={FadeInDown.duration(300).delay(5 * 60).reduceMotion(ReduceMotion.System)}
         >
-          {errorNewest ? (
+          {loadingNewest ? (
+            <View style={{ marginTop: spacing['2xl'] }}>
+              <SectionHeader title="New arrivals" subtitle="Fresh in this week" />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: spacing.md }}>
+                {Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+              </ScrollView>
+            </View>
+          ) : errorNewest ? (
             <View style={{ marginTop: spacing['2xl'], paddingHorizontal: gutter }}>
               <ErrorState
                 message="Couldn't load new arrivals. Check your connection and try again."
                 onRetry={() => refetchNewest()}
+                loading={fetchingNewest}
               />
             </View>
           ) : (newest?.length ?? 0) > 0 && (

@@ -13,9 +13,11 @@ interface Props {
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
+  /** Shows an in-flight spinner on the action button (e.g. while a retry is in progress). */
+  actionLoading?: boolean;
 }
 
-export function EmptyState({ icon = 'cube-outline', illustration, title, description, actionLabel, onAction }: Props) {
+export function EmptyState({ icon = 'cube-outline', illustration, title, description, actionLabel, onAction, actionLoading }: Props) {
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingVertical: 64 }}>
       {illustration ? (
@@ -31,7 +33,7 @@ export function EmptyState({ icon = 'cube-outline', illustration, title, descrip
       {description && (
         <Text style={{ fontSize: 14, color: color.inkMuted, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>{description}</Text>
       )}
-      {actionLabel && onAction && <Button title={actionLabel} onPress={onAction} size="md" />}
+      {actionLabel && onAction && <Button title={actionLabel} onPress={onAction} size="md" loading={actionLoading} />}
     </View>
   );
 }

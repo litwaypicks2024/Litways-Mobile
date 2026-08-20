@@ -12,7 +12,7 @@ import { useAuthStore } from '@/store/auth';
 import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
 import { onboarding } from '@/lib/storage';
-import { registerForPushNotifications, savePushToken, useNotificationListener } from '@/lib/notifications';
+import { registerForPushNotifications, savePushToken, useNotificationListener, getLastNotificationResponse } from '@/lib/notifications';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { BrandSplash } from '@/components/BrandSplash';
 import { FlyToCartOverlay } from '@/components/motion/FlyToCart';
@@ -28,6 +28,37 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Defense in depth: only forward well-formed reference ids to the
+// confirmation screen. This does not fix the underlying unauthenticated
+// order-lookup endpoint (see wave1-security.md) but rejects obviously
+// crafted/malformed values before they trigger a fetch.
+const REFERENCE_ID_PATTERN = /^[A-Za-z0-9_-]{6,64}$/;
+
+/** Shared by cold-start and while-running deep link handling below. */
+function parseDeepLink(url: string): { pathname: string; params?: Record<string, string> } | null {
+  const { path, queryParams } = Linking.parse(url);
+  if (!path) return null;
+  if (path.startsWith('product/')) return { pathname: `/${path}` };
+  if (
+    path === 'confirmation' &&
+    typeof queryParams?.referenceId === 'string' &&
+    REFERENCE_ID_PATTERN.test(queryParams.referenceId)
+  ) {
+    return { pathname: '/confirmation', params: { referenceId: queryParams.referenceId } };
+  }
+  if (path.startsWith('category/')) return { pathname: `/${path}` };
+  return null;
+}
+
+// Prefixes a notification's `data.screen` must match before we'll navigate —
+// a push payload is server/attacker-influenced, so route it like any other
+// untrusted deep link rather than pushing it blindly.
+const NOTIFICATION_SCREEN_ALLOWLIST = ['/product/', '/category/', '/confirmation', '/(tabs)'];
+
+function isAllowedNotificationScreen(screen: string): boolean {
+  return NOTIFICATION_SCREEN_ALLOWLIST.some((prefix) => screen.startsWith(prefix));
+}
 
 function AppContent() {
   const setSession = useAuthStore((s) => s.setSession);
@@ -102,19 +133,38 @@ function AppContent() {
       }
     }
 
-    Promise.all([supabase.auth.getSession(), onboarding.hasSeen()]).then(
-      ([{ data: { session } }, seenOnboarding]) => {
+    // Resolve startup state first (session, onboarding, and whether we were
+    // cold-started via a deep link) before deciding where to navigate — a
+    // deep link and the onboarding redirect both want to run router.replace
+    // on first paint, and whichever wins by chance used to depend on which
+    // promise resolved first (wave2 round1 finding: deep-link vs onboarding
+    // race). RULING: deep-linked content wins over onboarding this launch.
+    Promise.all([supabase.auth.getSession(), onboarding.hasSeen(), Linking.getInitialURL()])
+      .then(([{ data: { session } }, seenOnboarding, initialUrl]) => {
         hydrate(session);
-        // First-time, signed-out shoppers get the one-time intro. Returning or
-        // signed-in users go straight to the store.
-        if (!seenOnboarding && !session) {
-          // Cast: typed-routes union regenerates on next dev-server run.
+        const initialDeepLink = initialUrl ? parseDeepLink(initialUrl) : null;
+        if (initialDeepLink) {
+          router.push(initialDeepLink as any);
+        } else if (!seenOnboarding && !session) {
+          // First-time, signed-out shoppers get the one-time intro. Returning
+          // or signed-in users (or anyone arriving via a valid deep link) go
+          // straight to the store. Cast: typed-routes union regenerates on
+          // next dev-server run.
           router.replace('/onboarding' as any);
         }
         SplashScreen.hideAsync();
         setStartupDone(true);
-      }
-    );
+      })
+      .catch((err) => {
+        // A storage or network hiccup here used to leave BrandSplash up
+        // forever (Promise.all had no catch). Fail open instead: treat the
+        // shopper as signed-out with onboarding already seen so a transient
+        // error never traps a returning user on the intro screen.
+        console.warn('Startup hydration failed, continuing as signed-out:', err);
+        hydrate(null);
+        SplashScreen.hideAsync();
+        setStartupDone(true);
+      });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       hydrate(session);
@@ -123,39 +173,42 @@ function AppContent() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // Deep link handler
+  // Deep links that arrive while the app is already running (cold-start links
+  // are handled above, before the onboarding decision).
   useEffect(() => {
-    // Defense in depth: only forward well-formed reference ids to the
-    // confirmation screen. This does not fix the underlying unauthenticated
-    // order-lookup endpoint (see wave1-security.md) but rejects obviously
-    // crafted/malformed values before they trigger a fetch.
-    const REFERENCE_ID_PATTERN = /^[A-Za-z0-9_-]{6,64}$/;
-
-    function handleUrl(url: string) {
-      const { path, queryParams } = Linking.parse(url);
-      if (!path) return;
-      if (path.startsWith('product/')) {
-        router.push(`/${path}` as any);
-      } else if (
-        path === 'confirmation' &&
-        typeof queryParams?.referenceId === 'string' &&
-        REFERENCE_ID_PATTERN.test(queryParams.referenceId)
-      ) {
-        router.push({ pathname: '/confirmation', params: { referenceId: queryParams.referenceId } });
-      } else if (path.startsWith('category/')) {
-        router.push(`/${path}` as any);
-      }
-    }
-
-    Linking.getInitialURL().then((url) => { if (url) handleUrl(url); });
-    const sub = Linking.addEventListener('url', (e) => handleUrl(e.url));
+    const sub = Linking.addEventListener('url', (e) => {
+      const dest = parseDeepLink(e.url);
+      if (dest) router.push(dest as any);
+    });
     return () => sub.remove();
   }, []);
 
-  // Navigate to the relevant screen when a notification is tapped
+  // Cold start via a tapped notification — addNotificationResponseReceivedListener
+  // below only fires for taps while the app is foregrounded/backgrounded, not
+  // for the notification that launched a killed app. Guard with a ref so the
+  // cached response (Expo keeps returning it until cleared) is only acted on
+  // once per app launch.
+  const handledInitialNotificationRef = useRef(false);
+  useEffect(() => {
+    if (handledInitialNotificationRef.current) return;
+    handledInitialNotificationRef.current = true;
+    getLastNotificationResponse().then((response) => {
+      if (!response) return;
+      const data = response.notification.request.content.data as Record<string, string>;
+      if (data?.screen && isAllowedNotificationScreen(data.screen)) {
+        router.push(data.screen as any);
+      }
+    });
+  }, []);
+
+  // Navigate to the relevant screen when a notification is tapped while the
+  // app is running. `data.screen` is server/push-payload controlled, so it's
+  // validated against an allowlist before navigating rather than trusted.
   useNotificationListener((response) => {
     const data = response.notification.request.content.data as Record<string, string>;
-    if (data?.screen) router.push(data.screen as any);
+    if (data?.screen && isAllowedNotificationScreen(data.screen)) {
+      router.push(data.screen as any);
+    }
   });
 
   return (

@@ -80,6 +80,21 @@ export async function sendLocalNotification(title: string, body: string, data?: 
   } catch {}
 }
 
+// Cold start: the app was launched by tapping a notification. Unlike
+// addNotificationResponseReceivedListener (foreground/background taps only),
+// this is the only way to learn about the notification that launched a
+// killed app. Expo caches this response until cleared, so the caller is
+// responsible for only acting on it once (see _layout.tsx's ref guard).
+export async function getLastNotificationResponse(): Promise<any | null> {
+  if (IS_EXPO_GO) return null;
+  try {
+    const Notifications = getNotifications();
+    return await Notifications.getLastNotificationResponseAsync();
+  } catch {
+    return null;
+  }
+}
+
 // Proper React hook — adds listeners on mount, cleans up on unmount.
 export function useNotificationListener(
   onResponse: (r: any) => void,

@@ -11,7 +11,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { FlashList } from '@/components/ui/List';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -43,16 +43,16 @@ const DEBOUNCE_MS = 350;
 
 export default function ShopScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   // Lets callers (e.g. the Home "Deals on now" banner) deep-link straight
-  // into a sorted view — read once as the initial sort, not re-applied on
-  // every re-render so in-screen sort taps aren't fought.
-  const { sort: initialSortParam } = useLocalSearchParams<{ sort?: string }>();
+  // into a sorted view. Shop stays mounted for the session as a tab screen,
+  // so a plain useState initializer would miss a param that arrives on an
+  // already-mounted instance — react to param changes explicitly instead,
+  // mirroring the account.tsx tab-param pattern.
+  const { sort: sortParam } = useLocalSearchParams<{ sort?: string }>();
   const [inputValue, setInputValue] = useState('');
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<SortOption>(() => {
-    const valid = SORT_OPTIONS.map((o) => o.value);
-    return valid.includes(initialSortParam as SortOption) ? (initialSortParam as SortOption) : 'featured';
-  });
+  const [sort, setSort] = useState<SortOption>('featured');
   const [filters, setFilters] = useState<ProductFilters>({});
   const [filterVisible, setFilterVisible] = useState(false);
   const [showRecent, setShowRecent] = useState(false);
@@ -65,6 +65,16 @@ export default function ShopScreen() {
     filters.sizes?.length ?? 0,
     filters.minPrice != null || filters.maxPrice != null ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
+
+  useEffect(() => {
+    const valid = SORT_OPTIONS.map((o) => o.value);
+    if (sortParam && valid.includes(sortParam as SortOption)) {
+      setSort(sortParam as SortOption);
+      // Consume the param immediately so it doesn't re-apply after the
+      // shopper has since picked a different sort manually.
+      router.setParams({ sort: undefined });
+    }
+  }, [sortParam]);
 
   // Debounced search
   useEffect(() => {
@@ -344,6 +354,7 @@ export default function ShopScreen() {
         <ErrorState
           message="Couldn't load products. Check your connection and try again."
           onRetry={() => refetch()}
+          loading={isFetching}
         />
       ) : !products.length ? (
         <EmptyState

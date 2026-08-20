@@ -72,6 +72,7 @@ export default function CategoryScreen() {
         <ErrorState
           message="Couldn't load products in this category. Check your connection and try again."
           onRetry={() => refetch()}
+          loading={isFetching}
         />
       ) : !products.length ? (
         <EmptyState

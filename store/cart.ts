@@ -10,6 +10,11 @@ function cartKey(item: Pick<CartItem, 'productId' | 'size' | 'color'>): string {
 
 interface CartState {
   items: CartItem[];
+  /** Set when loadFromDb's merge visibly changed the local cart (different
+   * item count or a bumped quantity), so the Cart screen can tell the
+   * shopper what happened instead of silently rewriting their cart. */
+  mergeNotice: boolean;
+  dismissMergeNotice: () => void;
   addItem: (item: Omit<CartItem, 'quantity'>) => void;
   removeItem: (productId: string, size?: string, color?: string) => void;
   updateQuantity: (productId: string, quantity: number, size?: string, color?: string) => void;
@@ -31,6 +36,9 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      mergeNotice: false,
+
+      dismissMergeNotice: () => set({ mergeNotice: false }),
 
       addItem: (newItem) => {
         set((state) => {
@@ -107,26 +115,39 @@ export const useCartStore = create<CartState>()(
           .select('items')
           .eq('user_id', userId)
           .single();
-        if (data?.items) {
-          set((state) => {
-            const remote = data.items as unknown as CartItem[];
-            const local = state.items;
-            const merged = new Map<string, CartItem>();
-            for (const item of [...remote, ...local]) {
-              const k = cartKey(item);
-              const existing = merged.get(k);
-              if (!existing) {
-                merged.set(k, item);
-              } else {
-                merged.set(k, {
-                  ...existing,
-                  quantity: Math.min(Math.max(existing.quantity, item.quantity), item.stock),
-                });
-              }
+        const remote = (data?.items as unknown as CartItem[]) ?? [];
+        if (remote.length === 0) return;
+
+        set((state) => {
+          const local = state.items;
+          const merged = new Map<string, CartItem>();
+          // Local first so its metadata (price/name/image) wins on a
+          // duplicate key — the local copy is whatever the shopper has been
+          // looking at this session, so it's the freshest.
+          for (const item of [...local, ...remote]) {
+            const k = cartKey(item);
+            const existing = merged.get(k);
+            if (!existing) {
+              merged.set(k, item);
+            } else {
+              merged.set(k, {
+                ...existing,
+                quantity: Math.min(Math.max(existing.quantity, item.quantity), item.stock),
+              });
             }
-            return { items: Array.from(merged.values()) };
-          });
-        }
+          }
+          const mergedItems = Array.from(merged.values());
+
+          // Only surface the banner when the merge actually changed
+          // something visible vs. the pre-merge local cart — a different
+          // item count, or a bumped quantity on an existing line.
+          const localByKey = new Map(local.map((i) => [cartKey(i), i]));
+          const changed =
+            mergedItems.length !== local.length ||
+            mergedItems.some((i) => (localByKey.get(cartKey(i))?.quantity ?? 0) !== i.quantity);
+
+          return { items: mergedItems, mergeNotice: changed };
+        });
       },
 
       itemCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),

@@ -12,7 +12,6 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCartStore } from '@/store/cart';
-import { useAuthStore } from '@/store/auth';
 import { color, font, radius } from '@/theme/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { EmptyBagIllustration } from '@/components/illustrations';
@@ -33,15 +32,12 @@ export default function CartScreen() {
   const removeItem = useCartStore((s) => s.removeItem);
   const clearCart = useCartStore((s) => s.clearCart);
   const total = useCartStore((s) => s.subtotal());
-  const user = useAuthStore((s) => s.user);
+  const mergeNotice = useCartStore((s) => s.mergeNotice);
+  const dismissMergeNotice = useCartStore((s) => s.dismissMergeNotice);
 
   function handleCheckout() {
-    if (!user) {
-      // `next` tells login.tsx where to land after a successful sign-in, so
-      // the shopper returns to Checkout instead of back here at Cart.
-      router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } });
-      return;
-    }
+    // Checkout itself offers an optional, non-blocking sign-in card — guests
+    // can order without an account, so never force a login wall here.
     router.push('/checkout');
   }
 
@@ -100,6 +96,27 @@ export default function CartScreen() {
           <Text style={{ fontSize: 13, color: color.danger, fontWeight: '600' }}>Clear all</Text>
         </TouchableOpacity>
       </View>
+
+      {mergeNotice && (
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          backgroundColor: color.accentSoft,
+          marginHorizontal: 12,
+          marginTop: 12,
+          padding: 12,
+          borderRadius: radius.md,
+        }}>
+          <Ionicons name="information-circle" size={18} color={color.accent} />
+          <Text style={{ flex: 1, fontSize: 12.5, color: color.accentPressed, fontWeight: '600' }}>
+            We combined this cart with items saved to your account.
+          </Text>
+          <TouchableOpacity onPress={dismissMergeNotice} hitSlop={8}>
+            <Ionicons name="close" size={16} color={color.accentPressed} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <FlashList
         data={items}

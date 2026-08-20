@@ -80,7 +80,17 @@ export default function LoginScreen() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) navigateAfterAuth();
       else Alert.alert('Session expired', 'Please sign in with your email and password.');
+      return;
     }
+    // User-initiated cancels are a platform convention — no alert needed.
+    if (
+      result.error === 'user_cancel' ||
+      result.error === 'system_cancel' ||
+      result.error === 'app_cancel'
+    ) {
+      return;
+    }
+    Alert.alert("Couldn't verify", 'Please sign in with your email and password.');
   }
 
   async function handleAuth() {

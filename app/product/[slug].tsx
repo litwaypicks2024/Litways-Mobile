@@ -10,6 +10,7 @@ import {
   Share,
   Platform,
   ActivityIndicator,
+  RefreshControl,
   type GestureResponderEvent,
 } from 'react-native';
 import { flyToCart } from '@/components/motion/FlyToCart';
@@ -97,7 +98,7 @@ export default function ProductDetailScreen() {
     transform: [{ scale: ctaScale.value }],
   }));
 
-  const { data: product, isLoading, isError, refetch } = useQuery({
+  const { data: product, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['product', slug],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_product_by_slug', { product_slug: slug });
@@ -107,7 +108,12 @@ export default function ProductDetailScreen() {
     enabled: !!slug,
   });
 
-  const { data: reviews } = useQuery({
+  const {
+    data: reviews,
+    isLoading: reviewsLoading,
+    isError: reviewsError,
+    refetch: refetchReviews,
+  } = useQuery({
     queryKey: ['reviews', product?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -216,6 +222,7 @@ export default function ProductDetailScreen() {
         <ErrorState
           message="Couldn't load this product. Check your connection and try again."
           onRetry={() => refetch()}
+          loading={isFetching}
         />
       </View>
     );
@@ -268,6 +275,9 @@ export default function ProductDetailScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl refreshing={isFetching} onRefresh={() => refetch()} tintColor={color.accent} />
+        }
       >
         {/* ─── Image gallery ─── */}
         <Animated.View style={[{ height: IMAGE_HEIGHT }, galleryAnimatedStyle]}>
@@ -534,7 +544,19 @@ export default function ProductDetailScreen() {
           </View>
 
           {/* Reviews */}
-          {reviews && reviews.length > 0 && (
+          {reviewsLoading ? (
+            <View style={{ marginBottom: 24, gap: 8 }}>
+              <SkeletonBlock height={16} width="35%" borderRadius={8} />
+              <SkeletonBlock height={52} borderRadius={12} />
+            </View>
+          ) : reviewsError ? (
+            <View style={{ marginBottom: 24, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 12.5, color: color.inkFaint }}>Couldn't load reviews.</Text>
+              <TouchableOpacity onPress={() => refetchReviews()} hitSlop={8}>
+                <Text style={{ fontSize: 12.5, color: color.accent, fontWeight: '700' }}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : reviews && reviews.length > 0 && (
             <View style={{ marginBottom: 24 }}>
               {/* Rating summary */}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>

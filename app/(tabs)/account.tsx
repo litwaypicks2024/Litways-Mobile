@@ -19,6 +19,7 @@ import { Image } from 'expo-image';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useWishlistStore } from '@/store/wishlist';
+import { useReviewedStore } from '@/store/reviewed';
 import { color, font } from '@/theme/tokens';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -216,6 +217,7 @@ interface ReviewState {
 
 function ReviewModal({ state, onClose }: { state: ReviewState | null; onClose: () => void }) {
   const user = useAuthStore((s) => s.user);
+  const markReviewed = useReviewedStore((s) => s.markReviewed);
   const queryClient = useQueryClient();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -237,6 +239,7 @@ function ReviewModal({ state, onClose }: { state: ReviewState | null; onClose: (
     if (error) {
       Alert.alert('Error', 'Could not submit review. You may have already reviewed this product.');
     } else {
+      markReviewed(state!.order.id, state!.item.id);
       queryClient.invalidateQueries({ queryKey: ['reviews', state!.item.id] });
       Alert.alert('Review submitted', 'Thank you for your feedback!');
       setRating(5);
@@ -304,6 +307,7 @@ function OrdersTab({ userId }: { userId: string }) {
   const router = useRouter();
   const tabBarClearance = useTabBarClearance();
   const [reviewState, setReviewState] = useState<ReviewState | null>(null);
+  const isReviewed = useReviewedStore((s) => s.isReviewed);
 
   const { data: orders, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['my-orders', userId],
@@ -331,6 +335,7 @@ function OrdersTab({ userId }: { userId: string }) {
       <ErrorState
         message="Couldn't load your orders. Check your connection and try again."
         onRetry={() => refetch()}
+        loading={isFetching}
       />
     );
   }
@@ -401,18 +406,26 @@ function OrdersTab({ userId }: { userId: string }) {
                 <View className="mt-3 pt-3 border-t border-gray-50">
                   <Text className="text-xs mb-2 font-medium" style={{ color: color.inkFaint }}>Leave a review:</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                    {items.map((item: any) => (
-                      <TouchableOpacity
-                        key={item.id}
-                        onPress={() => setReviewState({ order, item: { id: item.id, name: item.name, imageUrl: item.imageUrl } })}
-                        className="flex-row items-center gap-2 bg-primary-50 border border-primary-100 rounded-full px-3 py-2"
-                      >
-                        <Ionicons name="star-outline" size={13} color={color.accent} />
-                        <Text className="text-xs font-semibold text-primary-700" numberOfLines={1} style={{ maxWidth: 120 }}>
-                          {item.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    {items.map((item: any) => {
+                      const reviewed = isReviewed(order.id, item.id);
+                      return (
+                        <TouchableOpacity
+                          key={item.id}
+                          disabled={reviewed}
+                          onPress={() => setReviewState({ order, item: { id: item.id, name: item.name, imageUrl: item.imageUrl } })}
+                          className={`flex-row items-center gap-2 rounded-full px-3 py-2 border ${reviewed ? 'bg-gray-50 border-gray-100' : 'bg-primary-50 border-primary-100'}`}
+                        >
+                          {!reviewed && <Ionicons name="star-outline" size={13} color={color.accent} />}
+                          <Text
+                            className={`text-xs font-semibold ${reviewed ? '' : 'text-primary-700'}`}
+                            numberOfLines={1}
+                            style={{ maxWidth: 120, color: reviewed ? color.inkFaint : undefined }}
+                          >
+                            {reviewed ? 'Reviewed ✓' : item.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </ScrollView>
                 </View>
               )}
@@ -483,7 +496,7 @@ function SettingsTab({ onSignOut }: { onSignOut: () => void }) {
   const [saving, setSaving] = useState(false);
 
   async function handleChangePassword() {
-    if (pw.length < 8) { Alert.alert('Password must be at least 8 characters'); return; }
+    if (pw.length < 8) { Alert.alert('Weak password', 'Password must be at least 8 characters.'); return; }
     setSaving(true);
     const { error } = await supabase.auth.updateUser({ password: pw });
     setSaving(false);

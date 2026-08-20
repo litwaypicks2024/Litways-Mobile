@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { Colors } from '@/constants/Colors';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { formatCurrency } from '@/lib/currency';
 import type { Order } from '@/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,7 +25,7 @@ export default function OrderDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const { data: order, isLoading } = useQuery({
+  const { data: order, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['order-detail', id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -61,6 +62,12 @@ export default function OrderDetailScreen() {
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={Colors.primary[500]} />
         </View>
+      ) : isError ? (
+        <ErrorState
+          message="Couldn't load this order. Check your connection and try again."
+          onRetry={() => refetch()}
+          loading={isFetching}
+        />
       ) : !order ? (
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="receipt-outline" size={48} color={Colors.gray[300]} />
