@@ -118,7 +118,7 @@ export default function LoginScreen() {
       // public.users profile row from this — the old client-side insert ran as the
       // anonymous role (no session yet, since email confirmation is on) and RLS
       // rejected it, leaving new users without a profile.
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
@@ -130,6 +130,14 @@ export default function LoginScreen() {
       });
       if (error) { setLoading(false); Alert.alert('Sign up failed', error.message); return; }
       setLoading(false);
+      // Setting-agnostic: with email confirmation OFF, signUp returns a live
+      // session — the user is signed in right now, so welcome them and move on.
+      // With confirmation ON there's no session yet, so route them to their inbox.
+      if (data.session) {
+        Alert.alert('Welcome to Litway Picks!', 'Your account is ready.');
+        navigateAfterAuth();
+        return;
+      }
       // Coming from checkout (next=/checkout, see the optional sign-in card
       // in checkout.tsx) — that order isn't blocked on verifying this new
       // account, so say so instead of just "check your email".
