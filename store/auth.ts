@@ -74,5 +74,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     // devices (wave2b-ux-flows.md).
     useCartStore.getState().clearCart();
     useWishlistStore.getState().clear();
+    // Deliberately NOT deleting this device's push_tokens row here: the next
+    // sign-in on this device reassigns it (upsert onConflict: 'token' in
+    // lib/notifications.ts), and an orphaned row in the meantime is harmless
+    // — it's own-row RLS-protected and simply unreachable until reassigned.
   },
 }));

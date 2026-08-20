@@ -13,7 +13,7 @@ import { useAuthStore } from '@/store/auth';
 import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
 import { onboarding, pendingPayment } from '@/lib/storage';
-import { registerForPushNotifications, savePushToken, useNotificationListener, getLastNotificationResponse } from '@/lib/notifications';
+import { registerForPushNotifications, savePushToken, syncPushTokenForUser, useNotificationListener, getLastNotificationResponse } from '@/lib/notifications';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { BrandSplash } from '@/components/BrandSplash';
 import { FlyToCartOverlay } from '@/components/motion/FlyToCart';
@@ -101,6 +101,7 @@ function AppContent() {
   const setSession = useAuthStore((s) => s.setSession);
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
   const loadFromDb = useCartStore((s) => s.loadFromDb);
+  const loadWishlistFromDb = useWishlistStore((s) => s.loadFromDb);
   const router = useRouter();
 
   // Branded splash stays up until the session + onboarding state resolve AND the
@@ -181,7 +182,16 @@ function AppContent() {
         hadSessionRef.current = true;
         fetchProfile(session.user.id);
         loadFromDb(session.user.id);
+        // Non-blocking: wishlist load/merge should never hold up startup or
+        // the auth-change handler, and loadFromDb itself never throws (it
+        // logs and leaves local state untouched on a fetch error).
+        void loadWishlistFromDb(session.user.id);
         registerPushOnce(session.user.id);
+        // Cheap no-op unless registration already cached a token this
+        // session (e.g. it ran before this session had a signed-in user) —
+        // covers sign-in-after-registration so that token still ends up
+        // owned by this user in push_tokens.
+        void syncPushTokenForUser(session.user.id);
       } else {
         registeredUserRef.current = null;
         if (hadSessionRef.current) {

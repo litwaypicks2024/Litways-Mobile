@@ -5,6 +5,12 @@ import { Platform } from 'react-native';
 // Push notifications require a dev/production build — they are not available in Expo Go.
 const IS_EXPO_GO = Constants.appOwnership === 'expo';
 
+// Module-level cache of the last Expo push token this device obtained, so
+// syncPushTokenForUser can (re-)upsert it against a user_id that only became
+// available after registration ran (e.g. registration happened signed-out,
+// then the shopper signed in later in the same app session).
+let cachedPushToken: string | null = null;
+
 // Lazy getter so we never import expo-notifications at module level in Expo Go.
 function getNotifications() {
   return require('expo-notifications') as typeof import('expo-notifications');
@@ -55,6 +61,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
     const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    cachedPushToken = token;
     return token;
   } catch {
     return null;
@@ -63,17 +70,37 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
 export async function savePushToken(userId: string, token: string) {
   if (IS_EXPO_GO) return;
+  cachedPushToken = token;
   try {
     const { supabase } = await import('./supabase');
-    // BACKEND HANDOFF: types/database.types.ts's public.users table has no
-    // push_token (or similar) column, so this is the only place a token is
-    // ever written today. The backend must either (a) read Expo push tokens
-    // from auth.users.raw_user_meta_data.push_token — this write location —
-    // or (b) add a queryable column/table (e.g. push_tokens: user_id, token,
-    // device_id, platform) and this function should be pointed at it
-    // instead. Not fixable client-side without that confirmation.
+    // `public.push_tokens` (token PK, user_id, platform, updated_at; own-row
+    // RLS) is now the canonical store for Expo push tokens — this is what
+    // the backend reads to target a push. onConflict: 'token' because a
+    // device token moving to a different signed-in user (shared device,
+    // sign-out/sign-in) must reassign user_id on that same token row rather
+    // than erroring or leaving the token pointed at the previous user.
+    const { error } = await supabase
+      .from('push_tokens')
+      .upsert(
+        { token, user_id: userId, platform: Platform.OS, updated_at: new Date().toISOString() },
+        { onConflict: 'token' }
+      );
+    if (error) console.warn('savePushToken: push_tokens upsert failed:', error.message);
+
+    // Kept for backward compat with whatever may still read the token off
+    // the user's metadata — push_tokens above is the source of truth now.
     await supabase.auth.updateUser({ data: { push_token: token } });
   } catch {}
+}
+
+// Handles the case where registerForPushNotifications() ran while signed
+// out (or before a session existed) and a session only appears afterwards —
+// without this, that device's token would never get an owning user_id in
+// push_tokens. Cheap no-op when no token has been cached yet this session.
+export async function syncPushTokenForUser(userId: string) {
+  if (IS_EXPO_GO) return;
+  if (!cachedPushToken) return;
+  await savePushToken(userId, cachedPushToken);
 }
 
 export async function sendLocalNotification(title: string, body: string, data?: Record<string, unknown>) {
