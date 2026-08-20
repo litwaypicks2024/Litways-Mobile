@@ -17,7 +17,7 @@ import Animated, {
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/auth';
 import { useCartStore } from '@/store/cart';
-import { momoAPI } from '@/lib/api';
+import { momoAPI, ApiError } from '@/lib/api';
 import { pendingPayment } from '@/lib/storage';
 import { formatCurrency } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -60,7 +60,7 @@ async function reconcilePendingPayment(referenceId: string, data: any) {
   }
 }
 
-type Outcome = 'checking' | 'confirmed' | 'pending' | 'failed' | 'unreachable';
+type Outcome = 'checking' | 'confirmed' | 'pending' | 'failed' | 'unreachable' | 'signin';
 
 export default function ConfirmationScreen() {
   const { referenceId } = useLocalSearchParams<{ referenceId: string }>();
@@ -70,6 +70,14 @@ export default function ConfirmationScreen() {
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [retryToken, setRetryToken] = useState(0);
+  const [authRequired, setAuthRequired] = useState(false);
+
+  // After the user signs in (next=/confirmation returns here), the session
+  // change should immediately re-run the fetch instead of leaving the
+  // sign-in hero up until a manual retry.
+  useEffect(() => {
+    if (user && authRequired) setRetryToken((t) => t + 1);
+  }, [user, authRequired]);
 
   const ORDER_FETCH_MAX_ATTEMPTS = 3;
   const ORDER_FETCH_RETRY_DELAY_MS = 1500;
@@ -92,8 +100,16 @@ export default function ConfirmationScreen() {
         setOrder(data);
         setLoading(false);
         await reconcilePendingPayment(referenceId, data);
-      } catch {
+      } catch (err) {
         if (cancelled) return;
+        // 401/403: the order endpoint requires the owning account — retrying
+        // won't help; route the user to sign in instead (the pending-payment
+        // record deliberately stays so it can be reconciled after sign-in).
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          setAuthRequired(true);
+          setLoading(false);
+          return;
+        }
         if (attempt < ORDER_FETCH_MAX_ATTEMPTS) {
           setTimeout(() => {
             if (!cancelled) fetchOrder(attempt + 1);
@@ -106,6 +122,7 @@ export default function ConfirmationScreen() {
 
     setLoading(true);
     setOrder(null);
+    setAuthRequired(false);
     fetchOrder(1);
 
     return () => {
@@ -119,6 +136,8 @@ export default function ConfirmationScreen() {
   // outcomes checkout.tsx's finalize() would also recognize.
   const outcome: Outcome = loading
     ? 'checking'
+    : authRequired
+    ? 'signin'
     : !order
     ? 'unreachable'
     : isTerminalSuccess(order.payment_status)
@@ -259,6 +278,32 @@ export default function ConfirmationScreen() {
                 variant="outline"
                 size="sm"
                 onPress={() => setRetryToken((t) => t + 1)}
+                style={{ marginTop: 14 }}
+              />
+            </>
+          ) : outcome === 'signin' ? (
+            <>
+              <View style={{
+                width: 96, height: 96, borderRadius: 48, marginBottom: 20,
+                backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Ionicons name="lock-closed-outline" size={40} color={color.accent} />
+              </View>
+              <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink, textAlign: 'center' }}>
+                Sign in to see this order
+              </Text>
+              <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+                Sign in with the account that placed this order and we'll pull up its status.
+              </Text>
+              <Button
+                title="Sign In"
+                size="sm"
+                onPress={() =>
+                  router.push({
+                    pathname: '/(auth)/login',
+                    params: { next: `/confirmation?referenceId=${referenceId}` },
+                  })
+                }
                 style={{ marginTop: 14 }}
               />
             </>

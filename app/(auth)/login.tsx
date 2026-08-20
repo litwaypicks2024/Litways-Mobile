@@ -28,8 +28,15 @@ type Mode = 'login' | 'signup';
 const HERO_H = Math.round(Dimensions.get('window').height * 0.4);
 
 // Security: `next` is a caller-supplied route param — validate it against an
-// allowlist rather than navigating to it blindly.
+// allowlist rather than navigating to it blindly. The confirmation form is
+// pattern-matched because it carries a referenceId query (see confirmation.tsx's
+// sign-in hero); the id charset mirrors _layout.tsx's REFERENCE_ID_PATTERN.
 const NEXT_ALLOWLIST = ['/checkout'];
+const CONFIRMATION_NEXT = /^\/confirmation\?referenceId=[A-Za-z0-9_-]{6,64}$/;
+
+function isAllowedNext(next: string | undefined): next is string {
+  return !!next && (NEXT_ALLOWLIST.includes(next) || CONFIRMATION_NEXT.test(next));
+}
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -44,7 +51,7 @@ export default function LoginScreen() {
       // mount a brand-new checkout and lose all of that; going back to the
       // existing one re-triggers its [user, profile] backfill effect instead.
       router.back();
-    } else if (next && NEXT_ALLOWLIST.includes(next)) {
+    } else if (isAllowedNext(next)) {
       router.replace(next as any);
     } else {
       router.back();
@@ -141,11 +148,11 @@ export default function LoginScreen() {
       // Coming from checkout (next=/checkout, see the optional sign-in card
       // in checkout.tsx) — that order isn't blocked on verifying this new
       // account, so say so instead of just "check your email".
-      const cameFromCheckout = !!next && NEXT_ALLOWLIST.includes(next);
+      const cameFromCheckout = next === '/checkout';
       Alert.alert(
         'Account Created',
         cameFromCheckout
-          ? 'Check your email to verify, then sign in — you can finish this order as a guest in the meantime.'
+          ? 'Check your email to verify, then sign in here to finish your order.'
           : 'Welcome to Litway Picks! Check your email to verify your account.'
       );
       navigateAfterAuth();

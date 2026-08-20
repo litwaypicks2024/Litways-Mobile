@@ -10,6 +10,16 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://www.litwaypick
  * app has no cookies, so it authenticates with the Supabase access token as
  * a Bearer header — see the web repo's lib/session.js getServerUser().
  */
+/** Error carrying the HTTP status so callers can distinguish auth failures
+ *  (401/403 — sign in / wrong account) from transient network trouble. */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function authHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
@@ -37,7 +47,7 @@ export const momoAPI = {
     const res = await fetch(`${BASE_URL}/api/momo/status/${referenceId}`, {
       headers: await authHeaders(),
     });
-    if (!res.ok) throw new Error('Status check failed');
+    if (!res.ok) throw new ApiError('Status check failed', res.status);
     return res.json() as Promise<{ status: string; order?: object }>;
   },
 
@@ -45,7 +55,7 @@ export const momoAPI = {
     const res = await fetch(`${BASE_URL}/api/momo/order/${referenceId}`, {
       headers: await authHeaders(),
     });
-    if (!res.ok) throw new Error('Order fetch failed');
+    if (!res.ok) throw new ApiError('Order fetch failed', res.status);
     return res.json();
   },
 };

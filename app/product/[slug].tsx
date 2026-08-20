@@ -188,7 +188,7 @@ export default function ProductDetailScreen() {
     await Share.share({
       title: product.name ?? 'Litway Picks',
       message: `Check out ${product.name} on Litway Picks!\nlitwaypicks://product/${product.slug}`,
-      url: `https://litwaypicks.com/product/${product.slug}`,
+      url: `https://www.litwaypicks.com/product/${product.slug}`,
     });
   }
 

@@ -127,17 +127,15 @@ export default function CheckoutScreen() {
 
     let resolved = false;
 
-    // Guests have no order history to point at, so give them their reference
-    // id (plus the confirmation email) instead — and both audiences get a
-    // direct "Check status" action to confirmation.tsx rather than having to
-    // hunt for it, since that screen already knows how to poll/refresh a
-    // still-pending order (see its "Check again" affordance).
+    // Placing an order requires a session (handlePlaceOrder gates on it), so
+    // by the time a referenceId exists the shopper always has an account and
+    // an order history to point at. The "Check status" action goes straight
+    // to confirmation.tsx, which knows how to poll/refresh a still-pending
+    // order (see its "Check again" affordance).
     function showPaymentAlert(title: string, base: string) {
       Alert.alert(
         title,
-        user
-          ? `${base} Check your order history for the latest status.`
-          : `${base} Your reference is ${referenceId} — keep it, and check the email we sent you.`,
+        `${base} Check your order history for the latest status.`,
         [
           { text: 'OK', style: 'cancel' },
           {
