@@ -111,6 +111,25 @@ export async function refreshAvailability(
   return { items: result, dropped, adjusted };
 }
 
+/**
+ * Performs the carts upsert for an EXPLICIT items array. No retry
+ * scheduling, no state mutation beyond the write itself — just the raw
+ * write. Returns whether it succeeded; never throws. This is the single
+ * upsert implementation shared by performSync's debounced/retry path and
+ * manualSync's write-then-apply path below.
+ */
+async function writeCartRow(userId: string, items: CartItem[]): Promise<boolean> {
+  const { error } = await supabase
+    .from('carts')
+    .upsert({ user_id: userId, items: items as any, updated_at: new Date().toISOString() });
+
+  if (error) {
+    console.warn('Cart write failed:', error.message);
+    return false;
+  }
+  return true;
+}
+
 interface CartState {
   items: CartItem[];
   /** The three-way merge BASE: the item set this device and the server last
@@ -187,22 +206,18 @@ export const useCartStore = create<CartState>()(
       // attempt still returns false even though a retry is now pending) —
       // manualSync uses that to decide its own success/failure notice.
       async function performSync(userId: string, isRetry = false): Promise<boolean> {
-        const { items } = get();
-        const { error } = await supabase
-          .from('carts')
-          .upsert({ user_id: userId, items: items as any, updated_at: new Date().toISOString() });
+        const ok = await writeCartRow(userId, get().items);
 
-        if (!error) {
+        if (ok) {
           retryTimers.delete(userId);
           set({ syncFailed: false });
           return true;
         }
 
-        console.warn(`Cart syncToDb failed${isRetry ? ' (retry)' : ''}:`, error.message);
-
         if (isRetry) {
           // The one automatic retry also failed — surface it, but keep the
           // local cart exactly as-is.
+          console.warn('Cart syncToDb retry also failed');
           set({ syncFailed: true });
           return false;
         }
@@ -367,20 +382,27 @@ export const useCartStore = create<CartState>()(
           const merged = threeWayMergeCarts(base, local, remote);
           const { items: finalItems, dropped, adjusted } = await refreshAvailability(merged);
 
-          set({ items: finalItems, lastSyncedItems: finalItems, lastSyncedUserId: userId });
-
-          // The `set` above already triggered _layout's items-subscriber,
-          // which scheduled a normal debounced syncToDb — an acceptable
-          // second write, but not enough on its own. Write through right
-          // now too (the exact same upsert syncToDb eventually performs) so
-          // the server holds the merged truth even if the app dies inside
-          // that debounce window.
-          const wrote = await performSync(userId);
+          // Write BEFORE applying anything locally. Availability-driven
+          // drops/clamps must never land on the shopper's local cart unless
+          // the server write actually succeeds — applying them first (the
+          // old ordering) meant an offline shopper could watch items vanish
+          // or shrink while the failure notice claimed nothing had happened.
+          // On failure, items/lastSyncedItems/lastSyncedUserId are left
+          // completely untouched below.
+          const wrote = await writeCartRow(userId, finalItems);
 
           if (!wrote) {
             set({ syncNotice: "Couldn't sync your cart — check your connection and try again." });
             return;
           }
+
+          set({ items: finalItems, lastSyncedItems: finalItems, lastSyncedUserId: userId });
+
+          // The `set` above triggers _layout's items-subscriber, which
+          // schedules a normal debounced syncToDb re-write of these same
+          // (now-current) items — redundant since we just wrote them
+          // ourselves, but idempotent and harmless, so no extra flush or
+          // cancel is needed here.
 
           // Count keys whose quantity visibly changed vs. the pre-sync
           // local cart (added, bumped, or dropped) so the notice can be
@@ -407,7 +429,9 @@ export const useCartStore = create<CartState>()(
         } catch (err) {
           console.warn('Cart manualSync failed:', err instanceof Error ? err.message : err);
           // Do NOT touch `items` here — whatever local state already held
-          // (pre- or mid-merge) is left exactly as-is on any failure path.
+          // (pre-merge) is left exactly as-is on any failure path (fetch,
+          // availability, or write all reach here without having called
+          // `set` on items/lastSyncedItems/lastSyncedUserId).
           set({ syncNotice: "Couldn't sync your cart — check your connection and try again." });
         } finally {
           set({ syncing: false });
