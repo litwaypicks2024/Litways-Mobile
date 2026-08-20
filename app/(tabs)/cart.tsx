@@ -77,15 +77,52 @@ export default function CartScreen() {
           paddingHorizontal: 20,
           paddingBottom: 14,
           paddingTop: insets.top + 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
         }}>
           <Text style={{ fontSize: 20, fontFamily: font.display, color: color.ink }}>My Cart</Text>
+          {/* An empty local cart is the MOST important sync case — items added
+              on the web are waiting on the server — so the control must exist
+              here too, not only in the non-empty header. */}
+          {userId && (
+            <TouchableOpacity
+              onPress={handleManualSync}
+              disabled={syncing}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Sync cart"
+              style={{ opacity: syncing ? 0.5 : 1 }}
+            >
+              {syncing ? (
+                <ActivityIndicator size="small" color={color.inkMuted} />
+              ) : (
+                <Ionicons name="sync-outline" size={20} color={color.inkMuted} />
+              )}
+            </TouchableOpacity>
+          )}
         </View>
+        {syncNotice && (
+          <View style={{
+            marginHorizontal: 16, marginTop: 12, padding: 12,
+            backgroundColor: color.accentSoft, borderRadius: radius.lg,
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+          }}>
+            <Ionicons name="information-circle" size={18} color={color.accent} />
+            <Text style={{ flex: 1, fontSize: 13, color: color.ink }}>{syncNotice}</Text>
+            <TouchableOpacity onPress={dismissSyncNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
+              <Ionicons name="close" size={16} color={color.accentPressed} />
+            </TouchableOpacity>
+          </View>
+        )}
         <EmptyState
           illustration={<EmptyBagIllustration />}
           title="Your cart is empty"
-          description="Looks like you haven't added anything yet. Start shopping!"
-          actionLabel="Browse Shop"
-          onAction={() => router.push('/shop')}
+          description={userId
+            ? "Nothing here yet. Added items on the website? Tap sync to bring them over."
+            : "Looks like you haven't added anything yet. Start shopping!"}
+          actionLabel={userId ? 'Sync from my other devices' : 'Browse Shop'}
+          onAction={userId ? handleManualSync : () => router.push('/shop')}
         />
       </View>
     );
