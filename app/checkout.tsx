@@ -228,6 +228,23 @@ export default function CheckoutScreen() {
   }, [referenceId]);
 
   function validateDelivery(): boolean {
+    // The payment API rejects unauthenticated calls (401), so don't let a
+    // signed-out user reach the payment step and fail there. Everything
+    // they've typed survives the round-trip (next=/checkout returns here).
+    if (!user) {
+      Alert.alert(
+        'Sign in to continue',
+        'Create your account or sign in to place this order — it takes seconds, and your details here are saved.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          {
+            text: 'Sign in',
+            onPress: () => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } }),
+          },
+        ]
+      );
+      return false;
+    }
     if (!form.firstName || !form.email || !form.phone || !form.address || !form.county) {
       Alert.alert('Missing fields', 'Please fill in all required delivery information.');
       return false;
@@ -246,6 +263,18 @@ export default function CheckoutScreen() {
   async function handlePlaceOrder() {
     if (items.length === 0) {
       Alert.alert('Empty cart', 'Your cart is empty.');
+      return;
+    }
+    // Session may have expired since step 1 — the API would 401. Re-check
+    // fresh state (not the render-time snapshot) before charging anyone.
+    if (!useAuthStore.getState().user) {
+      Alert.alert('Signed out', 'Your session ended. Please sign in again to place the order.', [
+        { text: 'Cancel', style: 'cancel', onPress: () => setStep(1) },
+        {
+          text: 'Sign in',
+          onPress: () => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } }),
+        },
+      ]);
       return;
     }
     setPaymentStatus('processing');
@@ -396,25 +425,25 @@ export default function CheckoutScreen() {
         {/* ─── STEP 1: Delivery ─── */}
         {step === 1 && (
           <>
-            {/* Optional sign-in — never a wall. Guests can order without an account. */}
+            {/* The payment API requires the authenticated order owner, so an
+                account is required to place an order. Framed as what it buys
+                the customer (tracking), not as a registration demand — and
+                with email confirmation off, signup is one tap. Delivery
+                fields stay editable signed-out so nothing typed is lost;
+                only the step-2 transition is gated (see validateDelivery). */}
             {!user ? (
-              <>
-                <View style={{ backgroundColor: color.surface, borderRadius: 16, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: color.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="person-circle-outline" size={24} color={color.accent} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '800', color: color.ink }}>Have an account?</Text>
-                    <Text style={{ fontSize: 12, color: color.inkMuted, marginTop: 1 }}>Sign in for faster checkout & order tracking</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } })} style={{ backgroundColor: color.accent, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 9 }}>
-                    <Text style={{ color: color.onAccent, fontSize: 13, fontWeight: '800' }}>Sign in</Text>
-                  </TouchableOpacity>
+              <View style={{ backgroundColor: color.surface, borderRadius: 16, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: color.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="person-circle-outline" size={24} color={color.accent} />
                 </View>
-                <Text style={{ fontSize: 12, color: color.inkFaint, marginBottom: 14, marginLeft: 2 }}>
-                  No account needed — just fill in your details to order as a guest.
-                </Text>
-              </>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: color.ink }}>Sign in to place your order</Text>
+                  <Text style={{ fontSize: 12, color: color.inkMuted, marginTop: 1 }}>Takes seconds — and lets you track this order</Text>
+                </View>
+                <TouchableOpacity onPress={() => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } })} style={{ backgroundColor: color.accent, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 9 }}>
+                  <Text style={{ color: color.onAccent, fontSize: 13, fontWeight: '800' }}>Sign in</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, marginLeft: 2 }}>
                 <Ionicons name="checkmark-circle" size={16} color={color.success} />

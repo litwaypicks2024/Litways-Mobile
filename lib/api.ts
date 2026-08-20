@@ -1,40 +1,50 @@
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://litwaypicks.com';
+import { supabase } from '@/lib/supabase';
+
+// www is canonical — the naked domain 307-redirects there; going direct
+// avoids a redirect round-trip on every payment call.
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://www.litwaypicks.com';
+
+/**
+ * All /api/momo/* endpoints require the authenticated order owner (verified
+ * server-side against user_id / legacy customer_email, or admin). The mobile
+ * app has no cookies, so it authenticates with the Supabase access token as
+ * a Bearer header — see the web repo's lib/session.js getServerUser().
+ */
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 export const momoAPI = {
   async initiatePayment(payload: object) {
     const res = await fetch(`${BASE_URL}/api/momo/pay`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error((err as any).error ?? 'Payment initiation failed');
+      throw new Error((err as any).error ?? (err as any).message ?? 'Payment initiation failed');
     }
     return res.json() as Promise<{ referenceId: string; externalId: string }>;
   },
 
-  // SECURITY (backend handoff — not fixable client-side): this endpoint is
-  // unauthenticated and `referenceId` is enumerable/guessable, so any caller
-  // can poll another customer's order status (including the embedded `order`
-  // object) with no ownership check. The backend must require the caller to
-  // be the authenticated order owner (or a single-use polling token) before
-  // returning this data. See wave1-security.md finding for lib/api.ts:17.
   async checkStatus(referenceId: string) {
-    const res = await fetch(`${BASE_URL}/api/momo/status/${referenceId}`);
+    const res = await fetch(`${BASE_URL}/api/momo/status/${referenceId}`, {
+      headers: await authHeaders(),
+    });
     if (!res.ok) throw new Error('Status check failed');
     return res.json() as Promise<{ status: string; order?: object }>;
   },
 
-  // SECURITY (backend handoff — not fixable client-side): this endpoint is
-  // unauthenticated and `referenceId` is enumerable/guessable (IDOR), so any
-  // caller can fetch another customer's full order + PII (name, email, phone,
-  // delivery address, totals, line items) with no ownership check. The
-  // backend must require the caller to be the authenticated order owner (or
-  // present a one-time possession token minted at payment-initiation) before
-  // returning this data. See wave1-security.md finding for lib/api.ts:23.
   async getOrder(referenceId: string) {
-    const res = await fetch(`${BASE_URL}/api/momo/order/${referenceId}`);
+    const res = await fetch(`${BASE_URL}/api/momo/order/${referenceId}`, {
+      headers: await authHeaders(),
+    });
     if (!res.ok) throw new Error('Order fetch failed');
     return res.json();
   },
