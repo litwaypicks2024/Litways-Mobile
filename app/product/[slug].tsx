@@ -258,14 +258,16 @@ export default function ProductDetailScreen() {
           paddingTop: insets.top + 16,
         }}
       >
-        <IconButton icon="arrow-back" variant="dark" onPress={() => router.back()} />
+        <IconButton icon="arrow-back" variant="dark" onPress={() => router.back()} accessibilityLabel="Go back" />
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <IconButton icon="share-outline" variant="dark" onPress={handleShare} />
+          <IconButton icon="share-outline" variant="dark" onPress={handleShare} accessibilityLabel="Share product" />
           <IconButton
             icon={wishlisted ? 'heart' : 'heart-outline'}
             variant="dark"
             iconColor={wishlisted ? '#fca5a5' : undefined}
             onPress={handleWishlist}
+            accessibilityLabel={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            accessibilityState={{ selected: wishlisted }}
           />
         </View>
       </View>
@@ -335,7 +337,14 @@ export default function ProductDetailScreen() {
           {images.length > 1 && (
             <View style={{ position: 'absolute', bottom: 14, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 }}>
               {images.map((_, i) => (
-                <TouchableOpacity key={i} onPress={() => scrollToImage(i)} hitSlop={8}>
+                <TouchableOpacity
+                  key={i}
+                  onPress={() => scrollToImage(i)}
+                  hitSlop={16}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Go to image ${i + 1} of ${images.length}`}
+                  accessibilityState={{ selected: i === imageIndex }}
+                >
                   <View style={{
                     width: i === imageIndex ? 22 : 6,
                     height: 6,
@@ -616,6 +625,9 @@ export default function ProductDetailScreen() {
         <PressableScale
           haptic
           onPress={handleWishlist}
+          accessibilityRole="button"
+          accessibilityLabel={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          accessibilityState={{ selected: wishlisted }}
           style={{
             width: 48, height: 48,
             borderRadius: radius.full,

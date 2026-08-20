@@ -154,7 +154,12 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
             <TouchableOpacity onPress={handleReset}>
               <Text className="text-sm font-medium" style={{ color: color.inkMuted }}>Reset</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Close filters"
+            >
               <Ionicons name="close" size={22} color={color.inkMuted} />
             </TouchableOpacity>
           </View>

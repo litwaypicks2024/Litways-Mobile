@@ -57,7 +57,7 @@ export default function CategoryScreen() {
       <View
         style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}
       >
-        <IconButton icon="arrow-back" onPress={() => router.back()} />
+        <IconButton icon="arrow-back" onPress={() => router.back()} accessibilityLabel="Go back" />
         <Text style={{ fontSize: 18, fontFamily: font.display, color: color.ink, flex: 1 }} numberOfLines={1}>
           {categoryName ?? 'Category'}
         </Text>

@@ -195,7 +195,7 @@ export default function HomeScreen() {
           <LogoLockup variant="onLight" markSize={36} />
 
           {/* Help — a visible safety net for first-time shoppers */}
-          <IconButton icon="help-circle-outline" onPress={() => router.push('/contact')} />
+          <IconButton icon="help-circle-outline" onPress={() => router.push('/contact')} accessibilityLabel="Help" />
         </View>
 
         {/* Search */}

@@ -192,6 +192,7 @@ export default function NewPasswordScreen() {
           <InkHeader
             icon="arrow-back"
             onIconPress={() => router.replace('/(auth)/login')}
+            iconAccessibilityLabel="Go back"
             title={'New\npassword.'}
             subtitle="Choose a new password for your account"
           />

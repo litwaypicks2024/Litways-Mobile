@@ -84,12 +84,13 @@ export const color = {
   ink: '#141414',
   /** Secondary text (subtitles, meta). */
   inkMuted: '#8a8a8a',
-  /** Tertiary text (placeholders, faint labels). */
-  inkFaint: '#b8b8b8',
+  /** Tertiary text (placeholders, faint labels). Darkened from #b8b8b8 — still
+   *  decorative-tier contrast, not a substitute for inkMuted on real content. */
+  inkFaint: '#9a9a9a',
   /** Aliases kept so existing screens using the old names keep compiling. */
   text: '#141414',
   textMuted: '#8a8a8a',
-  textFaint: '#b8b8b8',
+  textFaint: '#9a9a9a',
   /** Text/icons drawn on the accent color. */
   onAccent: palette.neutral[0],
   /** Text/icons drawn on the ink-black tab bar / dark pill button. */

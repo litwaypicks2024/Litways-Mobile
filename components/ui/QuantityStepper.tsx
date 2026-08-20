@@ -27,7 +27,14 @@ export function QuantityStepper({ quantity, max, onDecrement, onIncrement }: Pro
         overflow: 'hidden',
       }}
     >
-      <PressableScale haptic onPress={onDecrement} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
+      <PressableScale
+        haptic
+        onPress={onDecrement}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={quantity === 1 ? 'Remove item' : 'Decrease quantity'}
+        style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}
+      >
         <Ionicons
           name={quantity === 1 ? 'trash-outline' : 'remove'}
           size={15}
@@ -41,6 +48,10 @@ export function QuantityStepper({ quantity, max, onDecrement, onIncrement }: Pro
         haptic
         onPress={onIncrement}
         disabled={atMax}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Increase quantity"
+        accessibilityState={{ disabled: atMax }}
         style={{
           width: 32,
           height: 32,

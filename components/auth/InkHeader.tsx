@@ -11,6 +11,8 @@ interface Props {
   /** Top-left action — 'close' on modally-presented screens, 'arrow-back' on pushed ones. */
   icon: keyof typeof Ionicons.glyphMap;
   onIconPress: () => void;
+  /** Screen-reader label for the top-left action, e.g. "Go back" or "Close". */
+  iconAccessibilityLabel: string;
   title: string;
   subtitle?: string;
 }
@@ -20,7 +22,7 @@ interface Props {
  * headline, muted subline. Same material language as the floating tab bar and
  * dark hero CTAs.
  */
-export function InkHeader({ icon, onIconPress, title, subtitle }: Props) {
+export function InkHeader({ icon, onIconPress, iconAccessibilityLabel, title, subtitle }: Props) {
   const insets = useSafeAreaInsets();
   return (
     <View
@@ -40,6 +42,7 @@ export function InkHeader({ icon, onIconPress, title, subtitle }: Props) {
         icon={icon}
         onPress={onIconPress}
         variant="dark"
+        accessibilityLabel={iconAccessibilityLabel}
         style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}
       />
       <View style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', gap: 8 }}>

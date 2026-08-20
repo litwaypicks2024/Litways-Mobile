@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, type ViewStyle } from 'react-native';
+import { View, Text, type ViewStyle, type AccessibilityState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { color, shadow } from '@/theme/tokens';
 import { PressableScale } from './PressableScale';
@@ -16,9 +16,13 @@ interface Props {
   style?: ViewStyle;
   /** When true, the button no-ops on press and dims its icon — a real disabled state, not just visual. */
   disabled?: boolean;
+  /** What a screen reader announces for this icon-only control, e.g. "Close", "Go back", "Share product". */
+  accessibilityLabel: string;
+  /** For toggle controls (wishlist heart, etc.) — reflects the current on/off state. */
+  accessibilityState?: AccessibilityState;
 }
 
-export function IconButton({ icon, onPress, size = 42, iconSize = 19, variant = 'light', iconColor, badge, style, disabled }: Props) {
+export function IconButton({ icon, onPress, size = 42, iconSize = 19, variant = 'light', iconColor, badge, style, disabled, accessibilityLabel, accessibilityState }: Props) {
   const isLight = variant === 'light';
   return (
     <PressableScale
@@ -27,6 +31,9 @@ export function IconButton({ icon, onPress, size = 42, iconSize = 19, variant = 
       onPress={onPress}
       disabled={disabled}
       hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: !!disabled, ...accessibilityState }}
       style={[
         {
           width: size,

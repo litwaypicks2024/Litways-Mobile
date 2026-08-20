@@ -112,7 +112,7 @@ export default function CartScreen() {
           <Text style={{ flex: 1, fontSize: 12.5, color: color.accentPressed, fontWeight: '600' }}>
             We combined this cart with items saved to your account.
           </Text>
-          <TouchableOpacity onPress={dismissMergeNotice} hitSlop={8}>
+          <TouchableOpacity onPress={dismissMergeNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
             <Ionicons name="close" size={16} color={color.accentPressed} />
           </TouchableOpacity>
         </View>
@@ -257,7 +257,9 @@ const CartItemRow = React.memo(function CartItemRow({
 
       <TouchableOpacity
         onPress={() => onRemove(item.productId, item.size, item.color)}
-        hitSlop={10}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel={`Remove ${item.name} from cart`}
         style={{ position: 'absolute', top: 10, right: 10 }}
       >
         <Ionicons name="close-circle" size={20} color={color.inkFaint} />

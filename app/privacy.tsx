@@ -20,7 +20,7 @@ export default function PrivacyScreen() {
   return (
     <View className="flex-1 bg-gray-50">
       <View className="bg-white border-b border-gray-100 px-5 pb-4 flex-row items-center gap-3" style={{ paddingTop: insets.top + 12 }}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}><Ionicons name="arrow-back" size={22} color={Colors.gray[800]} /></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back"><Ionicons name="arrow-back" size={22} color={Colors.gray[800]} /></TouchableOpacity>
         <Text className="text-lg font-bold text-gray-900">Privacy Policy</Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>

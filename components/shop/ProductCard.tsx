@@ -105,6 +105,9 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
         <TouchableOpacity
           onPress={handleWishlist}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          accessibilityState={{ selected: isWishlisted }}
           style={{
             position: 'absolute', top: 8, right: 8,
             width: 32, height: 32, borderRadius: 16,
@@ -122,7 +125,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
 
       {/* Caption — sits directly on the grey canvas, no card box */}
       <View style={{ paddingTop: 8, paddingHorizontal: 2 }}>
-        <Text numberOfLines={1} style={{ ...type.overline, marginBottom: 3 }}>
+        <Text numberOfLines={1} style={{ ...type.overline, color: color.inkMuted, marginBottom: 3 }}>
           {product.brand ?? '—'}
         </Text>
         <Text numberOfLines={2} style={{ fontSize: 13, fontWeight: '600', color: color.ink, lineHeight: 18, marginBottom: 4 }}>

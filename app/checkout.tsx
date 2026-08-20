@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   AppState,
+  TextInput,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,6 +60,13 @@ export default function CheckoutScreen() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
   const [referenceId, setReferenceId] = useState<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Return-key focus chain through the delivery form, mirroring login.tsx.
+  const lastNameRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
+  const addressRef = useRef<TextInput>(null);
+  const cityRef = useRef<TextInput>(null);
 
   const isProcessing = paymentStatus === 'processing' || paymentStatus === 'polling';
 
@@ -298,6 +306,7 @@ export default function CheckoutScreen() {
             icon="arrow-back"
             onPress={() => (step === 1 ? router.back() : setStep(1))}
             disabled={isProcessing}
+            accessibilityLabel={step === 1 ? 'Go back' : 'Back to delivery details'}
           />
           <Text style={{ fontSize: 18, fontFamily: font.display, color: color.ink }}>Checkout</Text>
         </View>
@@ -348,19 +357,68 @@ export default function CheckoutScreen() {
             <SectionCard title="Contact Info" icon="person-outline">
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Input label="First Name *" leftIcon="person-outline" value={form.firstName} onChangeText={(v) => setForm((s) => ({ ...s, firstName: v }))} />
+                  <Input
+                    label="First Name *"
+                    leftIcon="person-outline"
+                    value={form.firstName}
+                    onChangeText={(v) => setForm((s) => ({ ...s, firstName: v }))}
+                    returnKeyType="next"
+                    onSubmitEditing={() => lastNameRef.current?.focus()}
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Input label="Last Name" leftIcon="person-outline" value={form.lastName} onChangeText={(v) => setForm((s) => ({ ...s, lastName: v }))} />
+                  <Input
+                    ref={lastNameRef}
+                    label="Last Name"
+                    leftIcon="person-outline"
+                    value={form.lastName}
+                    onChangeText={(v) => setForm((s) => ({ ...s, lastName: v }))}
+                    returnKeyType="next"
+                    onSubmitEditing={() => emailRef.current?.focus()}
+                  />
                 </View>
               </View>
-              <Input label="Email *" leftIcon="mail-outline" value={form.email} onChangeText={(v) => setForm((s) => ({ ...s, email: v }))} keyboardType="email-address" autoCapitalize="none" />
-              <Input label="Phone *" leftIcon="call-outline" value={form.phone} onChangeText={(v) => setForm((s) => ({ ...s, phone: v }))} keyboardType="phone-pad" />
+              <Input
+                ref={emailRef}
+                label="Email *"
+                leftIcon="mail-outline"
+                value={form.email}
+                onChangeText={(v) => setForm((s) => ({ ...s, email: v }))}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                returnKeyType="next"
+                onSubmitEditing={() => phoneRef.current?.focus()}
+              />
+              <Input
+                ref={phoneRef}
+                label="Phone *"
+                leftIcon="call-outline"
+                value={form.phone}
+                onChangeText={(v) => setForm((s) => ({ ...s, phone: v }))}
+                keyboardType="phone-pad"
+                returnKeyType="next"
+                onSubmitEditing={() => addressRef.current?.focus()}
+              />
             </SectionCard>
 
             <SectionCard title="Delivery Address" icon="location-outline">
-              <Input label="Street Address *" leftIcon="home-outline" value={form.address} onChangeText={(v) => setForm((s) => ({ ...s, address: v }))} />
-              <Input label="City / Town" leftIcon="business-outline" value={form.city} onChangeText={(v) => setForm((s) => ({ ...s, city: v }))} />
+              <Input
+                ref={addressRef}
+                label="Street Address *"
+                leftIcon="home-outline"
+                value={form.address}
+                onChangeText={(v) => setForm((s) => ({ ...s, address: v }))}
+                returnKeyType="next"
+                onSubmitEditing={() => cityRef.current?.focus()}
+              />
+              <Input
+                ref={cityRef}
+                label="City / Town"
+                leftIcon="business-outline"
+                value={form.city}
+                onChangeText={(v) => setForm((s) => ({ ...s, city: v }))}
+                returnKeyType="done"
+              />
 
               {/* County picker */}
               <View style={{ marginBottom: 8 }}>

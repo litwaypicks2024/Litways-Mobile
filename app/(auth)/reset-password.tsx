@@ -50,6 +50,7 @@ export default function ResetPasswordScreen() {
           <InkHeader
             icon="arrow-back"
             onIconPress={() => router.back()}
+            iconAccessibilityLabel="Go back"
             title={'Reset\npassword.'}
             subtitle="We'll send a secure link to your email"
           />

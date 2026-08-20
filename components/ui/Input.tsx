@@ -73,7 +73,13 @@ export const Input = forwardRef<TextInput, Props>(function Input(
           {...rest}
         />
         {isPassword ? (
-          <TouchableOpacity onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
+          <TouchableOpacity
+            onPress={() => setShowPassword((v) => !v)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+            accessibilityState={{ selected: showPassword }}
+          >
             <Ionicons
               name={showPassword ? 'eye-off-outline' : 'eye-outline'}
               size={18}

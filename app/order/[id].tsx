@@ -46,7 +46,7 @@ export default function OrderDetailScreen() {
         className="bg-white border-b border-gray-100 px-5 pb-4 flex-row items-center gap-3"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={22} color={Colors.gray[800]} />
         </TouchableOpacity>
         <View className="flex-1">

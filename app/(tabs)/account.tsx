@@ -271,7 +271,14 @@ function ReviewModal({ state, onClose }: { state: ReviewState | null; onClose: (
             <Text className="text-sm font-semibold mb-2" style={{ color: color.ink }}>Your Rating</Text>
             <View className="flex-row gap-2 mb-5">
               {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity key={star} onPress={() => setRating(star)} hitSlop={8}>
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setRating(star)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                  accessibilityState={{ selected: star <= rating }}
+                >
                   <Ionicons
                     name={star <= rating ? 'star' : 'star-outline'}
                     size={32}

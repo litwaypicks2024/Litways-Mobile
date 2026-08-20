@@ -93,11 +93,16 @@ export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabBu
   { isFocused, iconOn, iconOff, label, badge = 0, ...props },
   ref
 ) {
+  const accessibilityLabel = badge > 0 ? `${label}, ${badge} item${badge === 1 ? '' : 's'}` : label;
+
   if (!isFocused) {
     return (
       <Pressable
         ref={ref}
         {...props}
+        accessibilityRole="tab"
+        accessibilityLabel={accessibilityLabel}
+        accessibilityState={{ selected: false }}
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, height: TAB_BAR_HEIGHT }}
       >
         <View>
@@ -109,7 +114,14 @@ export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabBu
     );
   }
   return (
-    <Pressable ref={ref} {...props} style={{ flex: 1, alignItems: 'center', height: TAB_BAR_HEIGHT }}>
+    <Pressable
+      ref={ref}
+      {...props}
+      accessibilityRole="tab"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ selected: true }}
+      style={{ flex: 1, alignItems: 'center', height: TAB_BAR_HEIGHT }}
+    >
       <Animated.View
         entering={CIRCLE_RISE}
         pointerEvents="none"

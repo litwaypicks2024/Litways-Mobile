@@ -204,7 +204,7 @@ export default function ShopScreen() {
               style={{ flex: 1, fontSize: 14, color: color.ink }}
             />
             {inputValue.length > 0 && (
-              <TouchableOpacity onPress={handleClear} hitSlop={8}>
+              <TouchableOpacity onPress={handleClear} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
                 <Ionicons name="close-circle" size={17} color={color.inkFaint} />
               </TouchableOpacity>
             )}
@@ -213,6 +213,8 @@ export default function ShopScreen() {
           {/* Filter button */}
           <TouchableOpacity
             onPress={() => setFilterVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel={activeFilterCount > 0 ? `Filters, ${activeFilterCount} active` : 'Filters'}
             style={{
               width: 46, height: 46,
               borderRadius: radius.full,
