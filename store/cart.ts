@@ -58,17 +58,16 @@ export function fromWire(raw: any): CartItem | null {
 
   // Mobile rows already carry the effective (post-discount) price in
   // `price`. Web rows carry the list price in `price` plus an optional
-  // `sale_price` — the effective price is the lower of the two, mirroring
-  // web's own `sale_price ?? price` total logic. `raw.productId` is the
-  // mobile-only field, so its presence is what distinguishes the two.
+  // `sale_price` — the effective price is exactly web's own rule,
+  // `sale_price ?? price` (no magnitude check, so both apps always agree on
+  // the displayed price even for odd data; the server re-prices at payment
+  // anyway). `raw.productId` is the mobile-only field, so its presence is
+  // what distinguishes the two shapes.
   let price: number;
   if (raw.productId != null) {
     price = Number(raw.price) || 0;
   } else {
-    const listPrice = raw.price;
-    const salePrice = raw.sale_price;
-    const effective = salePrice != null && salePrice < listPrice ? salePrice : listPrice;
-    price = Number(effective) || 0;
+    price = Number(raw.sale_price ?? raw.price) || 0;
   }
 
   const imageUrl = raw.imageUrl ?? raw.image_urls?.[0] ?? raw.images?.[0] ?? '';
