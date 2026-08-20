@@ -33,6 +33,7 @@ export default function CartScreen() {
   const removeItem = useCartStore((s) => s.removeItem);
   const clearCart = useCartStore((s) => s.clearCart);
   const total = useCartStore((s) => s.subtotal());
+  const itemQuantity = items.reduce((s, i) => s + i.quantity, 0);
   const mergeNotice = useCartStore((s) => s.mergeNotice);
   const dismissMergeNotice = useCartStore((s) => s.dismissMergeNotice);
   const syncFailed = useCartStore((s) => s.syncFailed);
@@ -97,7 +98,8 @@ export default function CartScreen() {
         <View>
           <Text style={{ fontSize: 20, fontFamily: font.display, color: color.ink }}>My Cart</Text>
           <Text style={{ fontSize: 13, color: color.inkMuted, marginTop: 1 }}>
-            {items.length} {items.length === 1 ? 'item' : 'items'}
+            {/* Total quantity, not line-item count — matches the Order Summary's basis below. */}
+            {itemQuantity} {itemQuantity === 1 ? 'item' : 'items'}
           </Text>
         </View>
         <TouchableOpacity onPress={handleClearAll} hitSlop={8}>
@@ -143,7 +145,7 @@ export default function CartScreen() {
         }}>
           <Ionicons name="cloud-offline-outline" size={18} color={color.inkMuted} />
           <Text style={{ flex: 1, fontSize: 12.5, color: color.inkMuted, fontWeight: '600' }}>
-            Changes saved on this device — we'll sync when connection improves
+            Cart changes are saved on this phone but not to your account yet.
           </Text>
           <TouchableOpacity onPress={handleRetrySync} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retry sync">
             <Text style={{ fontSize: 12.5, color: color.accent, fontWeight: '800' }}>Retry</Text>
@@ -166,15 +168,9 @@ export default function CartScreen() {
             <View style={{ gap: 10 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 14, color: color.inkMuted }}>
-                  Subtotal ({items.reduce((s, i) => s + i.quantity, 0)} items)
+                  Subtotal ({itemQuantity} items)
                 </Text>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: color.ink }}>{formatCurrency(total)}</Text>
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 14, color: color.inkMuted }}>Shipping</Text>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: color.inkMuted }}>
-                  Calculated at checkout
-                </Text>
               </View>
               <View style={{ height: 1, backgroundColor: color.border, marginVertical: 4 }} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>

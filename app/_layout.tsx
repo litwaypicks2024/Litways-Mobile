@@ -83,7 +83,10 @@ async function checkPendingPaymentOnStartup(
     'Payment in progress',
     "You have a payment in progress — check its status?",
     [
-      { text: 'Dismiss', style: 'cancel', onPress: () => { void pendingPayment.clear(); } },
+      // Not a decline — the record stays. TTL (PENDING_PAYMENT_MAX_AGE_MS,
+      // checked above) is what eventually stops re-prompting, not this tap;
+      // clearing it here would drop the one payment still worth recovering.
+      { text: 'Not now', style: 'cancel' },
       {
         text: 'Check status',
         onPress: () => {
@@ -156,6 +159,20 @@ function AppContent() {
   // where session is null from the start.
   const hadSessionRef = useRef(false);
 
+  // Whether this launch is already routing to /confirmation on its own —
+  // resolved once startup settles (success or fail-open), then acted on only
+  // once the splash is actually gone (see the appReady effect below), so the
+  // native Alert never fires underneath/before it finishes fading.
+  const pendingPaymentCheckRef = useRef<{ alreadyGoingToConfirmation: boolean } | null>(null);
+  const pendingPaymentCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!appReady) return;
+    if (pendingPaymentCheckedRef.current) return;
+    if (!pendingPaymentCheckRef.current) return;
+    pendingPaymentCheckedRef.current = true;
+    void checkPendingPaymentOnStartup(router, pendingPaymentCheckRef.current.alreadyGoingToConfirmation);
+  }, [appReady]);
+
   // Auth + cart hydration
   useEffect(() => {
     function hydrate(session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) {
@@ -211,25 +228,28 @@ function AppContent() {
           router.replace('/onboarding' as any);
         }
         SplashScreen.hideAsync();
-        setStartupDone(true);
         const notifScreen = (notifResponse?.notification?.request?.content?.data as
           | Record<string, string>
           | undefined)?.screen;
         const goingToConfirmationViaNotification =
           typeof notifScreen === 'string' && notifScreen.startsWith('/confirmation');
-        void checkPendingPaymentOnStartup(
-          router,
-          initialDeepLink?.pathname === '/confirmation' || goingToConfirmationViaNotification
-        );
+        pendingPaymentCheckRef.current = {
+          alreadyGoingToConfirmation:
+            initialDeepLink?.pathname === '/confirmation' || goingToConfirmationViaNotification,
+        };
+        setStartupDone(true);
       })
       .catch((err) => {
         // A storage or network hiccup here used to leave BrandSplash up
         // forever (Promise.all had no catch). Fail open instead: treat the
         // shopper as signed-out with onboarding already seen so a transient
-        // error never traps a returning user on the intro screen.
+        // error never traps a returning user on the intro screen. The
+        // pending-payment check still needs to run on this path too — it
+        // didn't before, silently skipping recovery whenever startup failed.
         console.warn('Startup hydration failed, continuing as signed-out:', err);
         hydrate(null);
         SplashScreen.hideAsync();
+        pendingPaymentCheckRef.current = { alreadyGoingToConfirmation: false };
         setStartupDone(true);
       });
 

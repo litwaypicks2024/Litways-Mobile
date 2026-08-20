@@ -18,6 +18,7 @@ import { FlashList } from '@/components/ui/List';
 import { Image } from 'expo-image';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
 import { useReviewedStore } from '@/store/reviewed';
 import { color, font } from '@/theme/tokens';
@@ -498,6 +499,7 @@ function WishlistTab() {
 function SettingsTab({ onSignOut }: { onSignOut: () => void }) {
   const tabBarClearance = useTabBarClearance();
   const user = useAuthStore((s) => s.user);
+  const syncFailed = useCartStore((s) => s.syncFailed);
   const [changingPw, setChangingPw] = useState(false);
   const [pw, setPw] = useState('');
   const [saving, setSaving] = useState(false);
@@ -514,7 +516,13 @@ function SettingsTab({ onSignOut }: { onSignOut: () => void }) {
   }
 
   function handleSignOut() {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+    // signOut() itself makes a best-effort flush before clearing local cart
+    // state (store/auth.ts), but that write can still fail — warn here so
+    // the shopper isn't surprised by lost changes.
+    const message = syncFailed
+      ? "Some cart changes haven't synced yet and may be lost. Are you sure you want to sign out?"
+      : 'Are you sure you want to sign out?';
+    Alert.alert('Sign Out', message, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: onSignOut },
     ]);

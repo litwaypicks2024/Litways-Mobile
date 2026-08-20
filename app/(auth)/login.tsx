@@ -103,7 +103,7 @@ export default function LoginScreen() {
     if (mode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       setLoading(false);
-      if (error) { Alert.alert('Sign In Failed', error.message); return; }
+      if (error) { Alert.alert('Sign in failed', error.message); return; }
       navigateAfterAuth();
     } else {
       if (!firstName) { Alert.alert('Missing fields', 'Please enter your first name.'); setLoading(false); return; }
@@ -123,7 +123,16 @@ export default function LoginScreen() {
       });
       if (error) { setLoading(false); Alert.alert('Sign Up Failed', error.message); return; }
       setLoading(false);
-      Alert.alert('Account Created', 'Welcome to Litway Picks! Check your email to verify your account.');
+      // Coming from checkout (next=/checkout, see the optional sign-in card
+      // in checkout.tsx) — that order isn't blocked on verifying this new
+      // account, so say so instead of just "check your email".
+      const cameFromCheckout = !!next && NEXT_ALLOWLIST.includes(next);
+      Alert.alert(
+        'Account Created',
+        cameFromCheckout
+          ? 'Check your email to verify, then sign in — you can finish this order as a guest in the meantime.'
+          : 'Welcome to Litway Picks! Check your email to verify your account.'
+      );
       navigateAfterAuth();
     }
   }

@@ -340,7 +340,7 @@ export default function ProductDetailScreen() {
                 <TouchableOpacity
                   key={i}
                   onPress={() => scrollToImage(i)}
-                  hitSlop={16}
+                  hitSlop={{ top: 19, bottom: 19, left: 6, right: 6 }}
                   accessibilityRole="button"
                   accessibilityLabel={`Go to image ${i + 1} of ${images.length}`}
                   accessibilityState={{ selected: i === imageIndex }}

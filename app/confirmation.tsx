@@ -16,6 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/auth';
+import { useCartStore } from '@/store/cart';
 import { momoAPI } from '@/lib/api';
 import { pendingPayment } from '@/lib/storage';
 import { formatCurrency } from '@/lib/currency';
@@ -23,6 +24,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, font, shadow } from '@/theme/tokens';
 import { Card } from '@/components/ui/Card';
 import { MotifBand } from '@/components/brand/Motif';
+
+// Same terminal-status predicate checkout.tsx's finalize() uses to decide the
+// payment succeeded — reused here so this screen never calls a payment
+// "confirmed" (or clears the cart) on a status checkout.tsx wouldn't also
+// treat as success.
+function isTerminalSuccess(rawStatus: string | undefined | null): boolean {
+  const status = (rawStatus ?? '').toUpperCase();
+  return status === 'SUCCESSFUL' || status === 'COMPLETED';
+}
+function isTerminalFailure(rawStatus: string | undefined | null): boolean {
+  const status = (rawStatus ?? '').toUpperCase();
+  return status === 'FAILED' || status === 'DISPUTED';
+}
+
+type Outcome = 'checking' | 'confirmed' | 'pending' | 'failed' | 'unreachable';
 
 export default function ConfirmationScreen() {
   const { referenceId } = useLocalSearchParams<{ referenceId: string }>();
@@ -53,6 +69,16 @@ export default function ConfirmationScreen() {
         // wiped out from under it.
         const stored = await pendingPayment.get();
         if (stored?.referenceId === referenceId) {
+          // A payment recovered here (e.g. after the app was killed
+          // mid-poll and the shopper reopened it via _layout.tsx's cold-start
+          // prompt, or a deep link) never ran checkout.tsx's own finalize(),
+          // so its cart was never cleared. Do it here on verified
+          // terminal-success only — closes the double-charge loop
+          // lib/storage.ts's pendingPayment doc comment warns about. Guests
+          // too: clearCart is local device state, not account-gated.
+          if (isTerminalSuccess(data?.payment_status)) {
+            useCartStore.getState().clearCart();
+          }
           await pendingPayment.clear();
         }
       } catch {
@@ -90,41 +116,121 @@ export default function ConfirmationScreen() {
     opacity: ringOpacity.value,
   }));
 
+  // Gates the hero on what we actually know — never declares success before
+  // it's known. "checking" while the fetch is in flight, "unreachable" if it
+  // never resolved after retries, otherwise one of the three payment_status
+  // outcomes checkout.tsx's finalize() would also recognize.
+  const outcome: Outcome = loading
+    ? 'checking'
+    : !order
+    ? 'unreachable'
+    : isTerminalSuccess(order.payment_status)
+    ? 'confirmed'
+    : isTerminalFailure(order.payment_status)
+    ? 'failed'
+    : 'pending';
+
   return (
     <View style={{ flex: 1, backgroundColor: color.bg }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: insets.top + 32, paddingBottom: 40 }}>
         <View style={{ alignItems: 'center', marginBottom: 24 }}>
-          <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                {
-                  position: 'absolute',
-                  width: 96, height: 96, borderRadius: 48,
-                  backgroundColor: color.accent,
-                },
-                ringAnimatedStyle,
-              ]}
-            />
-            <Animated.View
-              entering={ZoomIn.springify().damping(12).reduceMotion(ReduceMotion.System)}
-              style={{
-                width: 96, height: 96, borderRadius: 48,
-                backgroundColor: color.surface,
-                alignItems: 'center', justifyContent: 'center',
-                ...shadow.card,
-              }}
-            >
-              <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
-                <DrawnCheckmark size={44} delay={250} />
+          {outcome === 'confirmed' ? (
+            <>
+              <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    {
+                      position: 'absolute',
+                      width: 96, height: 96, borderRadius: 48,
+                      backgroundColor: color.accent,
+                    },
+                    ringAnimatedStyle,
+                  ]}
+                />
+                <Animated.View
+                  entering={ZoomIn.springify().damping(12).reduceMotion(ReduceMotion.System)}
+                  style={{
+                    width: 96, height: 96, borderRadius: 48,
+                    backgroundColor: color.surface,
+                    alignItems: 'center', justifyContent: 'center',
+                    ...shadow.card,
+                  }}
+                >
+                  <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
+                    <DrawnCheckmark size={44} delay={250} />
+                  </View>
+                </Animated.View>
               </View>
-            </Animated.View>
-          </View>
-          <Text style={{ fontSize: 22, fontFamily: font.displayHeavy, color: color.ink }}>Thank You!</Text>
-          <Text style={{ fontSize: 17, fontFamily: font.display, color: color.accent, marginTop: 2 }}>Your Order is Confirmed</Text>
-          <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
-            We received your order and it's now being processed.
-          </Text>
+              <Text style={{ fontSize: 22, fontFamily: font.displayHeavy, color: color.ink }}>Thank you!</Text>
+              <Text style={{ fontSize: 17, fontFamily: font.display, color: color.accent, marginTop: 2 }}>Your order is confirmed</Text>
+              <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+                We received your order and it's now being processed.
+              </Text>
+            </>
+          ) : outcome === 'failed' ? (
+            <>
+              <View style={{
+                width: 96, height: 96, borderRadius: 48, marginBottom: 20,
+                backgroundColor: '#fff1f2', alignItems: 'center', justifyContent: 'center',
+                ...shadow.card,
+              }}>
+                <Ionicons name="alert-circle" size={44} color={color.danger} />
+              </View>
+              <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink, textAlign: 'center' }}>
+                This payment didn't go through
+              </Text>
+              <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+                Your payment wasn't completed, so nothing was charged for this order. If you think you were charged, contact support with the reference below.
+              </Text>
+            </>
+          ) : outcome === 'pending' ? (
+            <>
+              <View style={{ marginBottom: 20 }}>
+                <BrandLoader size={80} />
+              </View>
+              <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink, textAlign: 'center' }}>
+                We're still confirming this payment
+              </Text>
+              <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+                This can take a moment. We'll keep checking automatically — you can also check again now.
+              </Text>
+              <Button
+                title="Check again"
+                variant="outline"
+                size="sm"
+                onPress={() => setRetryToken((t) => t + 1)}
+                style={{ marginTop: 14 }}
+              />
+            </>
+          ) : outcome === 'unreachable' ? (
+            <>
+              <View style={{
+                width: 96, height: 96, borderRadius: 48, marginBottom: 20,
+                backgroundColor: color.surfaceSunken, alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Ionicons name="cloud-offline-outline" size={40} color={color.inkFaint} />
+              </View>
+              <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink, textAlign: 'center' }}>
+                We couldn't check your order
+              </Text>
+              <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+                We couldn't reach the server to check this order.
+              </Text>
+            </>
+          ) : (
+            <>
+              <View style={{ marginBottom: 20 }}>
+                <BrandLoader size={80} />
+              </View>
+              <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink, textAlign: 'center' }}>
+                Checking your order…
+              </Text>
+              <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+                Hold on while we verify your payment.
+              </Text>
+            </>
+          )}
         </View>
 
         <Animated.View
@@ -134,11 +240,7 @@ export default function ConfirmationScreen() {
           <MotifBand />
         </Animated.View>
 
-        {loading ? (
-          <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-            <BrandLoader size={56} label="Loading order details…" />
-          </View>
-        ) : order ? (
+        {loading ? null : order ? (
           <>
             <Animated.View
               entering={FadeInDown.duration(280).delay(120 + 1 * 70).reduceMotion(ReduceMotion.System)}
@@ -213,10 +315,7 @@ export default function ConfirmationScreen() {
         ) : (
           <View style={{ backgroundColor: color.peachTint, borderRadius: 20, padding: 16, marginBottom: 24, alignItems: 'center' }}>
             <Text style={{ fontSize: 13, color: color.accentPressed, textAlign: 'center', fontWeight: '600', marginBottom: 14 }}>
-              Your order has been placed! Reference:{'\n'}{referenceId}
-            </Text>
-            <Text style={{ fontSize: 12, color: color.accentPressed, textAlign: 'center', marginBottom: 14, opacity: 0.8 }}>
-              We couldn't load the full order details.
+              Your reference:{'\n'}{referenceId}
             </Text>
             <Button
               title="Try again"

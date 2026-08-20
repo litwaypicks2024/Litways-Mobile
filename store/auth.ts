@@ -42,7 +42,27 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
-    // Cancel any pending debounced cart sync first so a stale write from the
+    // Flush any pending cart sync for the outgoing user BEFORE signing out —
+    // clearCart() below wipes local state, so anything not written by then
+    // is lost for good. Best-effort, one-shot: if syncFailed is already set
+    // (the original write AND its one automatic retry both failed),
+    // flushSync's "only if pending" guard would no-op since neither timer is
+    // still running — use retrySync's always-performs-now semantics for one
+    // last attempt instead. Either way, never block sign-out on this.
+    const userId = useAuthStore.getState().user?.id;
+    if (userId) {
+      const cart = useCartStore.getState();
+      try {
+        if (cart.syncFailed) {
+          await cart.retrySync(userId);
+        } else {
+          await cart.flushSync(userId);
+        }
+      } catch {
+        // Best-effort only — proceed with sign-out regardless.
+      }
+    }
+    // Cancel any pending debounced cart sync so a stale write from the
     // outgoing user can't land after we've cleared local state.
     useCartStore.getState().cancelSync();
     await supabase.auth.signOut();

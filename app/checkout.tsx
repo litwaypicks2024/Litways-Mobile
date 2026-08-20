@@ -44,6 +44,8 @@ export default function CheckoutScreen() {
   const clearCart = useCartStore((s) => s.clearCart);
   const reconcile = useCartStore((s) => s.reconcile);
   const total = useCartStore((s) => s.subtotal());
+  const mergeNotice = useCartStore((s) => s.mergeNotice);
+  const dismissMergeNotice = useCartStore((s) => s.dismissMergeNotice);
   const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
 
@@ -125,6 +127,27 @@ export default function CheckoutScreen() {
 
     let resolved = false;
 
+    // Guests have no order history to point at, so give them their reference
+    // id (plus the confirmation email) instead — and both audiences get a
+    // direct "Check status" action to confirmation.tsx rather than having to
+    // hunt for it, since that screen already knows how to poll/refresh a
+    // still-pending order (see its "Check again" affordance).
+    function showPaymentAlert(title: string, base: string) {
+      Alert.alert(
+        title,
+        user
+          ? `${base} Check your order history for the latest status.`
+          : `${base} Your reference is ${referenceId} — keep it, and check the email we sent you.`,
+        [
+          { text: 'OK', style: 'cancel' },
+          {
+            text: 'Check status',
+            onPress: () => router.push({ pathname: '/confirmation', params: { referenceId } }),
+          },
+        ]
+      );
+    }
+
     // Single settle path shared by the realtime subscription, the polling
     // fallback, and the app-foreground re-check — runs at most once.
     function finalize(rawStatus: string) {
@@ -142,7 +165,7 @@ export default function CheckoutScreen() {
         cleanup();
         void pendingPayment.clear();
         setPaymentStatus('failed');
-        Alert.alert('Payment Failed', 'Your payment was declined. Please try again.');
+        showPaymentAlert('Payment failed', 'Your payment was declined.');
       }
     }
 
@@ -198,7 +221,7 @@ export default function CheckoutScreen() {
       if (resolved) return;
       cleanup();
       setPaymentStatus('failed');
-      Alert.alert('Payment Timeout', 'Payment confirmation timed out. Please check your order history.');
+      showPaymentAlert('Payment timeout', 'Payment confirmation timed out.');
     }, PAYMENT_TIMEOUT_MS);
 
     return () => cleanup();
@@ -361,7 +384,7 @@ export default function CheckoutScreen() {
                     <Text style={{ fontSize: 13, fontWeight: '800', color: color.ink }}>Have an account?</Text>
                     <Text style={{ fontSize: 12, color: color.inkMuted, marginTop: 1 }}>Sign in for faster checkout & order tracking</Text>
                   </View>
-                  <TouchableOpacity onPress={() => router.push('/(auth)/login')} style={{ backgroundColor: color.accent, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 9 }}>
+                  <TouchableOpacity onPress={() => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } })} style={{ backgroundColor: color.accent, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 9 }}>
                     <Text style={{ color: color.onAccent, fontSize: 13, fontWeight: '800' }}>Sign in</Text>
                   </TouchableOpacity>
                 </View>
@@ -541,6 +564,26 @@ export default function CheckoutScreen() {
               </View>
             </SectionCard>
 
+            {mergeNotice && (
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                backgroundColor: color.accentSoft,
+                marginBottom: 12,
+                padding: 12,
+                borderRadius: radius.md,
+              }}>
+                <Ionicons name="information-circle" size={18} color={color.accent} />
+                <Text style={{ flex: 1, fontSize: 12.5, color: color.accentPressed, fontWeight: '600' }}>
+                  We combined this cart with items saved to your account.
+                </Text>
+                <TouchableOpacity onPress={dismissMergeNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
+                  <Ionicons name="close" size={16} color={color.accentPressed} />
+                </TouchableOpacity>
+              </View>
+            )}
+
             {/* Order items summary */}
             <SectionCard title="Order Summary" icon="bag-outline">
               {items.map((item) => (
@@ -565,10 +608,18 @@ export default function CheckoutScreen() {
                 </View>
               ))}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: '800', color: color.ink }}>Total</Text>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: color.ink }}>Subtotal</Text>
                 <Text style={{ fontSize: 15, fontFamily: font.displayHeavy, color: color.accent }}>{formatCurrency(total)}</Text>
               </View>
             </SectionCard>
+
+            {/* We can't compute delivery fees client-side — the MoMo USSD
+                prompt on the shopper's phone is the authoritative total.
+                (Backend handoff: a pre-payment quote endpoint would let us
+                show the true total here instead.) */}
+            <Text style={{ fontSize: 12, color: color.inkFaint, textAlign: 'center', marginTop: -4, marginBottom: 14, lineHeight: 17 }}>
+              Your final total, including any delivery fee, is shown in the MoMo prompt on your phone.
+            </Text>
 
             {/* Polling indicator */}
             {paymentStatus === 'polling' && (
@@ -593,7 +644,7 @@ export default function CheckoutScreen() {
               title={
                 paymentStatus === 'processing' ? 'Initiating...'
                 : paymentStatus === 'polling' ? 'Awaiting MoMo...'
-                : `Pay ${formatCurrency(total)} with MoMo`
+                : 'Pay with MoMo'
               }
               onPress={handlePlaceOrder}
               disabled={isProcessing}
