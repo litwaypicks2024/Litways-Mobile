@@ -91,14 +91,22 @@ export default function CartScreen() {
               disabled={syncing}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Sync cart"
-              style={{ opacity: syncing ? 0.5 : 1 }}
+              accessibilityLabel="Sync cart with your other devices"
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 6,
+                paddingHorizontal: 12, paddingVertical: 7,
+                borderRadius: radius.full, backgroundColor: color.surfaceSunken,
+                opacity: syncing ? 0.6 : 1,
+              }}
             >
               {syncing ? (
-                <ActivityIndicator size="small" color={color.inkMuted} />
+                <ActivityIndicator size="small" color={color.ink} />
               ) : (
-                <Ionicons name="sync-outline" size={20} color={color.inkMuted} />
+                <Ionicons name="sync-outline" size={16} color={color.ink} />
               )}
+              <Text style={{ fontSize: 13, fontWeight: '700', color: color.ink }}>
+                {syncing ? 'Syncing…' : 'Sync'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -156,14 +164,22 @@ export default function CartScreen() {
               disabled={syncing}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Sync cart"
-              style={{ opacity: syncing ? 0.5 : 1 }}
+              accessibilityLabel="Sync cart with your other devices"
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 6,
+                paddingHorizontal: 12, paddingVertical: 7,
+                borderRadius: radius.full, backgroundColor: color.surfaceSunken,
+                opacity: syncing ? 0.6 : 1,
+              }}
             >
               {syncing ? (
-                <ActivityIndicator size="small" color={color.inkMuted} />
+                <ActivityIndicator size="small" color={color.ink} />
               ) : (
-                <Ionicons name="sync-outline" size={20} color={color.inkMuted} />
+                <Ionicons name="sync-outline" size={16} color={color.ink} />
               )}
+              <Text style={{ fontSize: 13, fontWeight: '700', color: color.ink }}>
+                {syncing ? 'Syncing…' : 'Sync'}
+              </Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={handleClearAll} hitSlop={8}>
