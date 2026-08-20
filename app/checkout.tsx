@@ -38,7 +38,10 @@ export default function CheckoutScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const navigation = useNavigation();
-  const { items, subtotal, clearCart, reconcile } = useCartStore();
+  const items = useCartStore((s) => s.items);
+  const clearCart = useCartStore((s) => s.clearCart);
+  const reconcile = useCartStore((s) => s.reconcile);
+  const total = useCartStore((s) => s.subtotal());
   const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
 
@@ -57,7 +60,6 @@ export default function CheckoutScreen() {
   const [referenceId, setReferenceId] = useState<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const total = subtotal();
   const isProcessing = paymentStatus === 'processing' || paymentStatus === 'polling';
 
   // Header back button (above) is already disabled while processing, but that

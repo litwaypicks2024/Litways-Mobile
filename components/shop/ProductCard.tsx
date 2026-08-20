@@ -67,6 +67,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
           contentFit="cover"
           transition={200}
           placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+          recyclingKey={product.id}
         />
 
         {hasDiscount && (

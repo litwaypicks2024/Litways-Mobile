@@ -28,10 +28,12 @@ import type { CartItem } from '@/types';
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { items, updateQuantity, removeItem, subtotal, clearCart } = useCartStore();
+  const items = useCartStore((s) => s.items);
+  const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const removeItem = useCartStore((s) => s.removeItem);
+  const clearCart = useCartStore((s) => s.clearCart);
+  const total = useCartStore((s) => s.subtotal());
   const user = useAuthStore((s) => s.user);
-
-  const total = subtotal();
 
   function handleCheckout() {
     if (!user) {
@@ -165,7 +167,7 @@ export default function CartScreen() {
   );
 }
 
-function CartItemRow({
+const CartItemRow = React.memo(function CartItemRow({
   item,
   onUpdate,
   onRemove,
@@ -178,7 +180,13 @@ function CartItemRow({
   return (
     <Card padded={false} style={{ padding: 12, marginBottom: 10, flexDirection: 'row', gap: 12 }}>
       <PressableScale haptic onPress={() => router.push(`/product/${item.slug}`)} style={{ borderRadius: 12, overflow: 'hidden', width: 88, height: 88, backgroundColor: color.surfaceSunken }}>
-        <Image source={{ uri: item.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
+        <Image
+          source={{ uri: item.imageUrl }}
+          style={{ width: '100%', height: '100%' }}
+          contentFit="cover"
+          transition={200}
+          recyclingKey={`${item.productId}::${item.size ?? ''}::${item.color ?? ''}`}
+        />
       </PressableScale>
 
       <View style={{ flex: 1 }}>
@@ -239,4 +247,4 @@ function CartItemRow({
       </TouchableOpacity>
     </Card>
   );
-}
+});

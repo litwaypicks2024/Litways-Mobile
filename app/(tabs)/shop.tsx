@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -132,7 +132,7 @@ export default function ShopScreen() {
     staleTime: 30_000,
   });
 
-  const products = data?.pages.flatMap((p) => p.items) ?? [];
+  const products = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data]);
 
   function handleCommitSearch(term = inputValue.trim()) {
     if (!term) return;

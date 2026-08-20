@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -142,10 +142,14 @@ export default function HomeScreen() {
   }, [refetchFeatured, refetchCats, refetchNewest, refetchDeals]);
 
   // Biggest genuine discount across the deal products — honest urgency, no fake timers.
-  const maxDiscount = (deals ?? []).reduce((best, p) => {
-    if (p.sale_price == null || p.price == null) return best;
-    return Math.max(best, discountPercent(p.price, p.sale_price));
-  }, 0);
+  const maxDiscount = useMemo(
+    () =>
+      (deals ?? []).reduce((best, p) => {
+        if (p.sale_price == null || p.price == null) return best;
+        return Math.max(best, discountPercent(p.price, p.sale_price));
+      }, 0),
+    [deals]
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bg }}>

@@ -12,6 +12,22 @@ interface WishlistState {
   clear: () => void;
 }
 
+// Membership checks (`isWishlisted`) run once per mounted ProductCard on every
+// wishlist mutation, so a linear `.some()` scan there scales as O(visible
+// cards × wishlist size). Cache a productId Set keyed on the `items` array
+// reference so it's only rebuilt when the wishlist actually changes, and every
+// card's lookup after that is O(1) — without touching the store's public API.
+let cachedItems: WishlistItem[] | null = null;
+let cachedIds: Set<string> = new Set();
+
+function idsFor(items: WishlistItem[]): Set<string> {
+  if (cachedItems !== items) {
+    cachedItems = items;
+    cachedIds = new Set(items.map((i) => i.productId));
+  }
+  return cachedIds;
+}
+
 export const useWishlistStore = create<WishlistState>()(
   persist(
     (set, get) => ({
@@ -19,7 +35,7 @@ export const useWishlistStore = create<WishlistState>()(
 
       addItem: (item) =>
         set((state) => {
-          if (state.items.some((i) => i.productId === item.productId)) return state;
+          if (idsFor(state.items).has(item.productId)) return state;
           return { items: [...state.items, item] };
         }),
 
@@ -35,7 +51,7 @@ export const useWishlistStore = create<WishlistState>()(
         }
       },
 
-      isWishlisted: (productId) => get().items.some((i) => i.productId === productId),
+      isWishlisted: (productId) => idsFor(get().items).has(productId),
 
       clear: () => set({ items: [] }),
     }),

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Platform, ActivityIndicator, RefreshControl } from 'react-native';
 import { FlashList } from '@/components/ui/List';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -48,7 +48,7 @@ export default function CategoryScreen() {
     enabled: !!slug,
   });
 
-  const products = data?.pages.flatMap((p) => p) ?? [];
+  const products = useMemo(() => data?.pages.flatMap((p) => p) ?? [], [data]);
   const categoryName = products[0]?.category_name ?? slug;
 
   return (

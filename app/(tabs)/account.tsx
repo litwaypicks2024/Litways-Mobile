@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -430,6 +430,23 @@ function WishlistTab() {
   const tabBarClearance = useTabBarClearance();
   const items = useWishlistStore((s) => s.items);
 
+  const products = useMemo(
+    () =>
+      items.map((item) => ({
+        id: item.productId,
+        slug: item.slug,
+        name: item.name,
+        brand: item.brand,
+        price: item.price,
+        sale_price: item.salePrice ?? null,
+        stock: item.stock,
+        image_urls: [item.imageUrl],
+        rating: null,
+        review_count: null,
+      } as any)),
+    [items]
+  );
+
   if (!items.length) {
     return (
       <EmptyState
@@ -444,27 +461,14 @@ function WishlistTab() {
 
   return (
     <FlashList
-      data={items}
+      data={products}
       numColumns={2}
       estimatedItemSize={230}
-      keyExtractor={(i) => i.productId}
+      keyExtractor={(i) => i.id}
       contentContainerStyle={{ padding: 12, paddingBottom: tabBarClearance }}
       renderItem={({ item }) => (
         <View style={{ flex: 1, margin: 6 }}>
-          <ProductCard
-            product={{
-              id: item.productId,
-              slug: item.slug,
-              name: item.name,
-              brand: item.brand,
-              price: item.price,
-              sale_price: item.salePrice ?? null,
-              stock: item.stock,
-              image_urls: [item.imageUrl],
-              rating: null,
-              review_count: null,
-            } as any}
-          />
+          <ProductCard product={item} />
         </View>
       )}
     />
