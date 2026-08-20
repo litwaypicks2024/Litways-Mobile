@@ -187,8 +187,18 @@ function AppContent() {
     // on first paint, and whichever wins by chance used to depend on which
     // promise resolved first (wave2 round1 finding: deep-link vs onboarding
     // race). RULING: deep-linked content wins over onboarding this launch.
-    Promise.all([supabase.auth.getSession(), onboarding.hasSeen(), Linking.getInitialURL()])
-      .then(([{ data: { session } }, seenOnboarding, initialUrl]) => {
+    Promise.all([
+      supabase.auth.getSession(),
+      onboarding.hasSeen(),
+      Linking.getInitialURL(),
+      // Also resolved here (in addition to the dedicated cold-start-via-
+      // notification effect below) purely to know whether THIS launch is
+      // about to route to /confirmation on its own, so the pending-payment
+      // prompt below doesn't fire redundantly on top of it. Expo caches this
+      // response until cleared, so reading it twice is safe.
+      getLastNotificationResponse(),
+    ])
+      .then(([{ data: { session } }, seenOnboarding, initialUrl, notifResponse]) => {
         hydrate(session);
         const initialDeepLink = initialUrl ? parseDeepLink(initialUrl) : null;
         if (initialDeepLink) {
@@ -202,7 +212,15 @@ function AppContent() {
         }
         SplashScreen.hideAsync();
         setStartupDone(true);
-        void checkPendingPaymentOnStartup(router, initialDeepLink?.pathname === '/confirmation');
+        const notifScreen = (notifResponse?.notification?.request?.content?.data as
+          | Record<string, string>
+          | undefined)?.screen;
+        const goingToConfirmationViaNotification =
+          typeof notifScreen === 'string' && notifScreen.startsWith('/confirmation');
+        void checkPendingPaymentOnStartup(
+          router,
+          initialDeepLink?.pathname === '/confirmation' || goingToConfirmationViaNotification
+        );
       })
       .catch((err) => {
         // A storage or network hiccup here used to leave BrandSplash up

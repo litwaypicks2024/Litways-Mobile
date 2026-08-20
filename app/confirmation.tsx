@@ -17,6 +17,7 @@ import Animated, {
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/auth';
 import { momoAPI } from '@/lib/api';
+import { pendingPayment } from '@/lib/storage';
 import { formatCurrency } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, font, shadow } from '@/theme/tokens';
@@ -45,6 +46,15 @@ export default function ConfirmationScreen() {
         if (cancelled) return;
         setOrder(data);
         setLoading(false);
+        // Only clear the pending-payment record (see lib/storage.ts and
+        // _layout.tsx's cold-start recovery prompt) if it's for THIS
+        // referenceId — a different payment could have been initiated since
+        // this screen was reached, and its own in-flight record must not be
+        // wiped out from under it.
+        const stored = await pendingPayment.get();
+        if (stored?.referenceId === referenceId) {
+          await pendingPayment.clear();
+        }
       } catch {
         if (cancelled) return;
         if (attempt < ORDER_FETCH_MAX_ATTEMPTS) {

@@ -36,11 +36,11 @@ export default function CartScreen() {
   const mergeNotice = useCartStore((s) => s.mergeNotice);
   const dismissMergeNotice = useCartStore((s) => s.dismissMergeNotice);
   const syncFailed = useCartStore((s) => s.syncFailed);
-  const flushSync = useCartStore((s) => s.flushSync);
+  const retrySync = useCartStore((s) => s.retrySync);
   const userId = useAuthStore((s) => s.user?.id);
 
   function handleRetrySync() {
-    if (userId) void flushSync(userId);
+    if (userId) void retrySync(userId);
   }
 
   function handleCheckout() {

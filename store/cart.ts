@@ -31,10 +31,18 @@ interface CartState {
    * signed-in user's row. */
   cancelSync: () => void;
   syncToDb: (userId: string) => Promise<void>;
-  /** Clears any pending debounced write for this user and performs the sync
-   * immediately. Used to flush on app background, and as the manual retry
-   * affordance the Cart screen offers when syncFailed is true. */
+  /** Clears any pending debounced/retry write for this user and performs the
+   * sync immediately, but only if one is actually pending. No-ops otherwise
+   * — used to flush on app background, where iOS can fire 'inactive' then
+   * 'background' back to back and would otherwise write twice (once with
+   * nothing to flush). */
   flushSync: (userId: string) => Promise<void>;
+  /** Always performs a sync now, regardless of whether a timer is pending.
+   * This is the manual retry affordance the Cart screen offers when
+   * syncFailed is true — by that point both the original write and its one
+   * automatic retry have already fired and cleared their timers, so
+   * flushSync's "only if pending" guard would otherwise no-op here. */
+  retrySync: (userId: string) => Promise<void>;
   loadFromDb: (userId: string) => Promise<void>;
   itemCount: () => number;
   subtotal: () => number;
@@ -138,7 +146,12 @@ export const useCartStore = create<CartState>()(
         }));
       },
 
-      clearCart: () => set({ items: [] }),
+      // Also resets syncFailed — both sign-out paths (store/auth.ts signOut
+      // and _layout.tsx's signed-in-to-signed-out hydrate transition) route
+      // through clearCart(), and syncFailed is otherwise a module-independent
+      // boolean that would leak the outgoing user's failure notice onto the
+      // next signed-in user's Cart screen.
+      clearCart: () => set({ items: [], syncFailed: false }),
 
       cancelSync: () => {
         for (const t of debounceTimers.values()) clearTimeout(t);
@@ -158,10 +171,30 @@ export const useCartStore = create<CartState>()(
       },
 
       flushSync: async (userId) => {
-        const timer = debounceTimers.get(userId);
-        if (timer) {
-          clearTimeout(timer);
+        const debounceT = debounceTimers.get(userId);
+        const retryT = retryTimers.get(userId);
+        if (!debounceT && !retryT) return; // nothing pending — avoid a redundant write
+        if (debounceT) {
+          clearTimeout(debounceT);
           debounceTimers.delete(userId);
+        }
+        if (retryT) {
+          clearTimeout(retryT);
+          retryTimers.delete(userId);
+        }
+        await performSync(userId);
+      },
+
+      retrySync: async (userId) => {
+        const debounceT = debounceTimers.get(userId);
+        const retryT = retryTimers.get(userId);
+        if (debounceT) {
+          clearTimeout(debounceT);
+          debounceTimers.delete(userId);
+        }
+        if (retryT) {
+          clearTimeout(retryT);
+          retryTimers.delete(userId);
         }
         await performSync(userId);
       },
