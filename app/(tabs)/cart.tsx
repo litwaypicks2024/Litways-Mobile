@@ -54,8 +54,9 @@ export default function CartScreen() {
   }
 
   function handleCheckout() {
-    // Checkout itself offers an optional, non-blocking sign-in card — guests
-    // can order without an account, so never force a login wall here.
+    // Checkout gates the payment step itself (sign-in is required to place an
+    // order, with everything typed preserved across the sign-in round-trip) —
+    // so no login wall here: let shoppers review delivery details first.
     router.push('/checkout');
   }
 
