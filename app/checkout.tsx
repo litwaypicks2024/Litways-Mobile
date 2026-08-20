@@ -370,6 +370,29 @@ export default function CheckoutScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
       >
+        {/* A cart merge (e.g. signing in mid-checkout) can land while the
+            shopper is on either step — show it regardless, not just once
+            they reach Payment. */}
+        {mergeNotice && (
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            backgroundColor: color.accentSoft,
+            marginBottom: 12,
+            padding: 12,
+            borderRadius: radius.md,
+          }}>
+            <Ionicons name="information-circle" size={18} color={color.accent} />
+            <Text style={{ flex: 1, fontSize: 12.5, color: color.accentPressed, fontWeight: '600' }}>
+              We combined this cart with items saved to your account.
+            </Text>
+            <TouchableOpacity onPress={dismissMergeNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
+              <Ionicons name="close" size={16} color={color.accentPressed} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ─── STEP 1: Delivery ─── */}
         {step === 1 && (
           <>
@@ -563,26 +586,6 @@ export default function CheckoutScreen() {
                 </View>
               </View>
             </SectionCard>
-
-            {mergeNotice && (
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                backgroundColor: color.accentSoft,
-                marginBottom: 12,
-                padding: 12,
-                borderRadius: radius.md,
-              }}>
-                <Ionicons name="information-circle" size={18} color={color.accent} />
-                <Text style={{ flex: 1, fontSize: 12.5, color: color.accentPressed, fontWeight: '600' }}>
-                  We combined this cart with items saved to your account.
-                </Text>
-                <TouchableOpacity onPress={dismissMergeNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
-                  <Ionicons name="close" size={16} color={color.accentPressed} />
-                </TouchableOpacity>
-              </View>
-            )}
 
             {/* Order items summary */}
             <SectionCard title="Order Summary" icon="bag-outline">

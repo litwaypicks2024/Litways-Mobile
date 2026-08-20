@@ -48,16 +48,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     // (the original write AND its one automatic retry both failed),
     // flushSync's "only if pending" guard would no-op since neither timer is
     // still running — use retrySync's always-performs-now semantics for one
-    // last attempt instead. Either way, never block sign-out on this.
+    // last attempt instead. Either way, never block sign-out on this — capped
+    // at 3s so a hung network write can't stall sign-out indefinitely.
     const userId = useAuthStore.getState().user?.id;
     if (userId) {
       const cart = useCartStore.getState();
+      const write = cart.syncFailed ? cart.retrySync(userId) : cart.flushSync(userId);
+      // Swallow a rejection that arrives after the race below has already
+      // moved on — otherwise it surfaces as an unhandled promise rejection.
+      write.catch(() => {});
+      const timeout = new Promise<void>((resolve) => setTimeout(resolve, 3000));
       try {
-        if (cart.syncFailed) {
-          await cart.retrySync(userId);
-        } else {
-          await cart.flushSync(userId);
-        }
+        await Promise.race([write, timeout]);
       } catch {
         // Best-effort only — proceed with sign-out regardless.
       }

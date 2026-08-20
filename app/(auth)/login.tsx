@@ -37,7 +37,14 @@ export default function LoginScreen() {
   const { next } = useLocalSearchParams<{ next?: string }>();
 
   function navigateAfterAuth() {
-    if (next && NEXT_ALLOWLIST.includes(next)) {
+    if (next === '/checkout') {
+      // checkout.tsx's own sign-in card pushed this screen (see next=/checkout
+      // there), so the in-progress checkout instance — with whatever the
+      // shopper had already typed — is directly beneath us. A replace() would
+      // mount a brand-new checkout and lose all of that; going back to the
+      // existing one re-triggers its [user, profile] backfill effect instead.
+      router.back();
+    } else if (next && NEXT_ALLOWLIST.includes(next)) {
       router.replace(next as any);
     } else {
       router.back();
@@ -121,7 +128,7 @@ export default function LoginScreen() {
           },
         },
       });
-      if (error) { setLoading(false); Alert.alert('Sign Up Failed', error.message); return; }
+      if (error) { setLoading(false); Alert.alert('Sign up failed', error.message); return; }
       setLoading(false);
       // Coming from checkout (next=/checkout, see the optional sign-in card
       // in checkout.tsx) — that order isn't blocked on verifying this new

@@ -38,6 +38,28 @@ function isTerminalFailure(rawStatus: string | undefined | null): boolean {
   return status === 'FAILED' || status === 'DISPUTED';
 }
 
+// Shared by the initial fetch and the background pending-poll below. Only
+// clears the pending-payment recovery record (see lib/storage.ts and
+// _layout.tsx's cold-start prompt) once the order for THIS referenceId has
+// reached a terminal outcome — a PENDING result must leave the record alone,
+// or a payment that's genuinely still in flight loses its only recovery path
+// if the app is killed before it resolves (re-opens the double-charge loop
+// this whole mechanism exists to close). Clears the cart on verified
+// terminal-success only, using the exact predicate checkout.tsx's finalize()
+// uses. Guests too — clearCart is local device state, not account-gated.
+async function reconcilePendingPayment(referenceId: string, data: any) {
+  const stored = await pendingPayment.get();
+  if (stored?.referenceId !== referenceId) return;
+  const terminalSuccess = isTerminalSuccess(data?.payment_status);
+  const terminalFailure = isTerminalFailure(data?.payment_status);
+  if (terminalSuccess) {
+    useCartStore.getState().clearCart();
+  }
+  if (terminalSuccess || terminalFailure) {
+    await pendingPayment.clear();
+  }
+}
+
 type Outcome = 'checking' | 'confirmed' | 'pending' | 'failed' | 'unreachable';
 
 export default function ConfirmationScreen() {
@@ -53,7 +75,14 @@ export default function ConfirmationScreen() {
   const ORDER_FETCH_RETRY_DELAY_MS = 1500;
 
   useEffect(() => {
-    if (!referenceId) return;
+    if (!referenceId) {
+      // No reference to look up at all (malformed/missing param) — without
+      // this, loading stays true forever since fetchOrder never runs. Falls
+      // through to the 'unreachable' outcome below.
+      setLoading(false);
+      setOrder(null);
+      return;
+    }
     let cancelled = false;
 
     async function fetchOrder(attempt: number) {
@@ -62,25 +91,7 @@ export default function ConfirmationScreen() {
         if (cancelled) return;
         setOrder(data);
         setLoading(false);
-        // Only clear the pending-payment record (see lib/storage.ts and
-        // _layout.tsx's cold-start recovery prompt) if it's for THIS
-        // referenceId — a different payment could have been initiated since
-        // this screen was reached, and its own in-flight record must not be
-        // wiped out from under it.
-        const stored = await pendingPayment.get();
-        if (stored?.referenceId === referenceId) {
-          // A payment recovered here (e.g. after the app was killed
-          // mid-poll and the shopper reopened it via _layout.tsx's cold-start
-          // prompt, or a deep link) never ran checkout.tsx's own finalize(),
-          // so its cart was never cleared. Do it here on verified
-          // terminal-success only — closes the double-charge loop
-          // lib/storage.ts's pendingPayment doc comment warns about. Guests
-          // too: clearCart is local device state, not account-gated.
-          if (isTerminalSuccess(data?.payment_status)) {
-            useCartStore.getState().clearCart();
-          }
-          await pendingPayment.clear();
-        }
+        await reconcilePendingPayment(referenceId, data);
       } catch {
         if (cancelled) return;
         if (attempt < ORDER_FETCH_MAX_ATTEMPTS) {
@@ -102,20 +113,6 @@ export default function ConfirmationScreen() {
     };
   }, [referenceId, retryToken]);
 
-  // Radiating ring behind the checkmark badge — plays once on mount.
-  const ringScale = useSharedValue(1);
-  const ringOpacity = useSharedValue(0.35);
-
-  useEffect(() => {
-    ringScale.value = withTiming(1.6, { duration: 700, reduceMotion: ReduceMotion.System });
-    ringOpacity.value = withTiming(0, { duration: 700, reduceMotion: ReduceMotion.System });
-  }, []);
-
-  const ringAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: ringScale.value }],
-    opacity: ringOpacity.value,
-  }));
-
   // Gates the hero on what we actually know — never declares success before
   // it's known. "checking" while the fetch is in flight, "unreachable" if it
   // never resolved after retries, otherwise one of the three payment_status
@@ -129,6 +126,68 @@ export default function ConfirmationScreen() {
     : isTerminalFailure(order.payment_status)
     ? 'failed'
     : 'pending';
+
+  // Background poll for a still-pending payment — the pending copy below
+  // promises we "keep checking automatically", so make that true rather than
+  // relying solely on the manual "Check again" button. Mirrors checkout.tsx's
+  // own live-payment poll cadence. Deliberately doesn't touch `loading`/
+  // `order` via the main fetch effect above — a silent re-fetch here so the
+  // hero doesn't flash back to "Checking your order…" on every tick; only a
+  // changed (terminal) result swaps the hero. Stops on unmount, on leaving
+  // 'pending' (the effect re-runs and its cleanup clears the old interval),
+  // or after ~2 minutes of no resolution.
+  useEffect(() => {
+    if (outcome !== 'pending' || !referenceId) return;
+    let cancelled = false;
+    let attempts = 0;
+    const POLL_INTERVAL_MS = 5000;
+    const POLL_MAX_ATTEMPTS = 24; // ~2 minutes
+
+    const intervalId = setInterval(() => {
+      attempts += 1;
+      if (attempts > POLL_MAX_ATTEMPTS) {
+        clearInterval(intervalId);
+        return;
+      }
+      momoAPI
+        .getOrder(referenceId)
+        .then(async (data) => {
+          if (cancelled) return;
+          setOrder(data);
+          await reconcilePendingPayment(referenceId, data);
+        })
+        .catch(() => {
+          // Transient failure — leave the last-known order in place and let
+          // the next tick (or the manual "Check again") try again.
+        });
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [outcome, referenceId]);
+
+  // Radiating ring behind the checkmark badge — plays when the hero actually
+  // flips to 'confirmed', not on component mount: the ring only renders
+  // inside the confirmed branch below, which can mount long after mount time
+  // (once the fetch resolves), so a mount-keyed animation would already have
+  // finished by then and never visibly play.
+  const ringScale = useSharedValue(1);
+  const ringOpacity = useSharedValue(0.35);
+
+  useEffect(() => {
+    if (outcome !== 'confirmed') return;
+    ringScale.value = 1;
+    ringOpacity.value = 0.35;
+    ringScale.value = withTiming(1.6, { duration: 700, reduceMotion: ReduceMotion.System });
+    ringOpacity.value = withTiming(0, { duration: 700, reduceMotion: ReduceMotion.System });
+  }, [outcome]);
+
+  const ringAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: ringScale.value }],
+    opacity: ringOpacity.value,
+  }));
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bg }}>
@@ -274,7 +333,11 @@ export default function ConfirmationScreen() {
                 </Text>
                 <View style={{ gap: 10 }}>
                   <Row label="Status" value={order.payment_status} highlight />
-                  <Row label="Total Paid" value={formatCurrency(order.final_total)} highlight />
+                  <Row
+                    label={outcome === 'confirmed' ? 'Total Paid' : 'Order total'}
+                    value={formatCurrency(order.final_total)}
+                    highlight
+                  />
                 </View>
               </Card>
             </Animated.View>
@@ -314,15 +377,23 @@ export default function ConfirmationScreen() {
           </>
         ) : (
           <View style={{ backgroundColor: color.peachTint, borderRadius: 20, padding: 16, marginBottom: 24, alignItems: 'center' }}>
-            <Text style={{ fontSize: 13, color: color.accentPressed, textAlign: 'center', fontWeight: '600', marginBottom: 14 }}>
-              Your reference:{'\n'}{referenceId}
-            </Text>
-            <Button
-              title="Try again"
-              variant="outline"
-              size="sm"
-              onPress={() => setRetryToken((t) => t + 1)}
-            />
+            {referenceId ? (
+              <>
+                <Text style={{ fontSize: 13, color: color.accentPressed, textAlign: 'center', fontWeight: '600', marginBottom: 14 }}>
+                  Your reference:{'\n'}{referenceId}
+                </Text>
+                <Button
+                  title="Try again"
+                  variant="outline"
+                  size="sm"
+                  onPress={() => setRetryToken((t) => t + 1)}
+                />
+              </>
+            ) : (
+              <Text style={{ fontSize: 13, color: color.accentPressed, textAlign: 'center', fontWeight: '600' }}>
+                No order reference was provided, so there's nothing to check here.
+              </Text>
+            )}
           </View>
         )}
 
