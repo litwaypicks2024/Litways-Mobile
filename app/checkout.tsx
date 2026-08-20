@@ -27,6 +27,7 @@ import { momoAPI } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/currency';
 import { normalizeLiberianPhone, isValidLiberianMobile } from '@/lib/phone';
+import { pendingPayment } from '@/lib/storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CheckoutForm } from '@/types';
 
@@ -89,10 +90,12 @@ export default function CheckoutScreen() {
             text: 'Leave anyway',
             style: 'destructive',
             onPress: () => {
-              // TODO(wave5): Wave 5 adds pending-payment persistence so a
-              // payment left in flight here is recoverable (e.g. resumable
-              // status lookup) instead of orphaned. Until then, leaving mid
-              // payment means the app loses track of this reference locally.
+              // Wave 5: pending-payment persistence (lib/storage.ts
+              // pendingPayment, written right after initiatePayment()
+              // succeeds below) means this reference isn't lost just because
+              // this screen unmounts here — app/_layout.tsx checks for an
+              // unresolved pending payment on the next cold start and offers
+              // to resume checking its status.
               navigation.dispatch(e.data.action);
             },
           },
@@ -131,11 +134,13 @@ export default function CheckoutScreen() {
         resolved = true;
         cleanup();
         clearCart();
+        void pendingPayment.clear();
         setPaymentStatus('success');
         router.replace({ pathname: '/confirmation', params: { referenceId } });
       } else if (status === 'FAILED' || status === 'DISPUTED') {
         resolved = true;
         cleanup();
+        void pendingPayment.clear();
         setPaymentStatus('failed');
         Alert.alert('Payment Failed', 'Your payment was declined. Please try again.');
       }
@@ -147,6 +152,20 @@ export default function CheckoutScreen() {
         'postgres_changes',
         {
           event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `external_id=eq.${referenceId}`,
+        },
+        (payload) => finalize((payload.new as any).payment_status ?? '')
+      )
+      .on(
+        // The backend's payment webhook could resolve fast enough to INSERT
+        // the order row already in a terminal payment_status rather than
+        // INSERT-then-later-UPDATE — listen for both so realtime confirmation
+        // doesn't silently depend on the 6s poll fallback for that ordering.
+        'postgres_changes',
+        {
+          event: 'INSERT',
           schema: 'public',
           table: 'orders',
           filter: `external_id=eq.${referenceId}`,
@@ -283,6 +302,9 @@ export default function CheckoutScreen() {
       };
 
       const { referenceId: ref } = await momoAPI.initiatePayment(payload);
+      // Persist the moment we have a referenceId — see lib/storage.ts
+      // pendingPayment for why (recoverable if the app is killed mid-poll).
+      void pendingPayment.save({ referenceId: ref, createdAt: Date.now() });
       setReferenceId(ref);
       setPaymentStatus('polling');
     } catch (err: any) {

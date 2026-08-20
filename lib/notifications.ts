@@ -65,6 +65,13 @@ export async function savePushToken(userId: string, token: string) {
   if (IS_EXPO_GO) return;
   try {
     const { supabase } = await import('./supabase');
+    // BACKEND HANDOFF: types/database.types.ts's public.users table has no
+    // push_token (or similar) column, so this is the only place a token is
+    // ever written today. The backend must either (a) read Expo push tokens
+    // from auth.users.raw_user_meta_data.push_token — this write location —
+    // or (b) add a queryable column/table (e.g. push_tokens: user_id, token,
+    // device_id, platform) and this function should be pointed at it
+    // instead. Not fixable client-side without that confirmation.
     await supabase.auth.updateUser({ data: { push_token: token } });
   } catch {}
 }

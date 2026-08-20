@@ -3,6 +3,14 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { WishlistItem } from '@/types';
 import { storageAdapter } from '@/lib/storage';
 
+// BACKEND HANDOFF: this store is local-only by design for now — verified
+// types/database.types.ts has no `wishlists` table (or equivalent), so there
+// is nowhere on the shared backend to read/write a wishlist from. Unlike
+// store/cart.ts, there is no syncToDb/loadFromDb here and none should be
+// added until the backend adds a `wishlists` table + RLS policies. Until
+// then, wishlist items never appear on litwaypicks.com for the same account
+// and are lost on reinstall/new device — that's a known, accepted gap.
+
 interface WishlistState {
   items: WishlistItem[];
   addItem: (item: WishlistItem) => void;

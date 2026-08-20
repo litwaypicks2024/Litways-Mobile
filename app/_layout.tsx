@@ -1,5 +1,6 @@
 import '../global.css';
 import React, { useEffect, useRef, useState } from 'react';
+import { AppState, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
@@ -11,7 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
-import { onboarding } from '@/lib/storage';
+import { onboarding, pendingPayment } from '@/lib/storage';
 import { registerForPushNotifications, savePushToken, useNotificationListener, getLastNotificationResponse } from '@/lib/notifications';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { BrandSplash } from '@/components/BrandSplash';
@@ -60,6 +61,39 @@ function isAllowedNotificationScreen(screen: string): boolean {
   return NOTIFICATION_SCREEN_ALLOWLIST.some((prefix) => screen.startsWith(prefix));
 }
 
+const PENDING_PAYMENT_MAX_AGE_MS = 30 * 60 * 1000;
+
+// Cold start recovery for a payment that was initiated but never reached a
+// terminal state locally (e.g. the app was killed mid-poll — see
+// lib/storage.ts pendingPayment and checkout.tsx's beforeRemove guard). Skip
+// entirely if we're already navigating to confirmation for this launch, or
+// if the record is stale enough that checking is unlikely to be useful.
+async function checkPendingPaymentOnStartup(
+  router: ReturnType<typeof useRouter>,
+  alreadyGoingToConfirmation: boolean
+) {
+  if (alreadyGoingToConfirmation) return;
+  const record = await pendingPayment.get();
+  if (!record) return;
+  if (Date.now() - record.createdAt > PENDING_PAYMENT_MAX_AGE_MS) {
+    await pendingPayment.clear();
+    return;
+  }
+  Alert.alert(
+    'Payment in progress',
+    "You have a payment in progress — check its status?",
+    [
+      { text: 'Dismiss', style: 'cancel', onPress: () => { void pendingPayment.clear(); } },
+      {
+        text: 'Check status',
+        onPress: () => {
+          router.push({ pathname: '/confirmation', params: { referenceId: record.referenceId } } as any);
+        },
+      },
+    ]
+  );
+}
+
 function AppContent() {
   const setSession = useAuthStore((s) => s.setSession);
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
@@ -89,6 +123,20 @@ function AppContent() {
       if (userId) state.syncToDb(userId);
     });
     return unsubscribe;
+  }, []);
+
+  // A debounced cart write is only scheduled 800ms out — if the app is
+  // backgrounded/closed before it fires, that edit would otherwise only ever
+  // reach AsyncStorage, not the shared `carts` row. Flush any pending write
+  // immediately when the app leaves the foreground.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' || state === 'inactive') {
+        const userId = useAuthStore.getState().user?.id;
+        if (userId) void useCartStore.getState().flushSync(userId);
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   // Register for push at most once per signed-in user. onAuthStateChange fires
@@ -154,6 +202,7 @@ function AppContent() {
         }
         SplashScreen.hideAsync();
         setStartupDone(true);
+        void checkPendingPaymentOnStartup(router, initialDeepLink?.pathname === '/confirmation');
       })
       .catch((err) => {
         // A storage or network hiccup here used to leave BrandSplash up

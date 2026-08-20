@@ -12,6 +12,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCartStore } from '@/store/cart';
+import { useAuthStore } from '@/store/auth';
 import { color, font, radius } from '@/theme/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { EmptyBagIllustration } from '@/components/illustrations';
@@ -34,6 +35,13 @@ export default function CartScreen() {
   const total = useCartStore((s) => s.subtotal());
   const mergeNotice = useCartStore((s) => s.mergeNotice);
   const dismissMergeNotice = useCartStore((s) => s.dismissMergeNotice);
+  const syncFailed = useCartStore((s) => s.syncFailed);
+  const flushSync = useCartStore((s) => s.flushSync);
+  const userId = useAuthStore((s) => s.user?.id);
+
+  function handleRetrySync() {
+    if (userId) void flushSync(userId);
+  }
 
   function handleCheckout() {
     // Checkout itself offers an optional, non-blocking sign-in card — guests
@@ -114,6 +122,31 @@ export default function CartScreen() {
           </Text>
           <TouchableOpacity onPress={dismissMergeNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
             <Ionicons name="close" size={16} color={color.accentPressed} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Non-blocking: syncToDb + its one automatic retry both failed. Local
+          cart state is intact — this only means the server copy is behind. */}
+      {syncFailed && userId && (
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          backgroundColor: color.surfaceMuted,
+          marginHorizontal: 12,
+          marginTop: 12,
+          padding: 12,
+          borderRadius: radius.md,
+          borderWidth: 1,
+          borderColor: color.border,
+        }}>
+          <Ionicons name="cloud-offline-outline" size={18} color={color.inkMuted} />
+          <Text style={{ flex: 1, fontSize: 12.5, color: color.inkMuted, fontWeight: '600' }}>
+            Changes saved on this device — we'll sync when connection improves
+          </Text>
+          <TouchableOpacity onPress={handleRetrySync} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retry sync">
+            <Text style={{ fontSize: 12.5, color: color.accent, fontWeight: '800' }}>Retry</Text>
           </TouchableOpacity>
         </View>
       )}

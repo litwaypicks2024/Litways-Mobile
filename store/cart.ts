@@ -15,28 +15,76 @@ interface CartState {
    * shopper what happened instead of silently rewriting their cart. */
   mergeNotice: boolean;
   dismissMergeNotice: () => void;
+  /** Set when a syncToDb write AND its one automatic retry both failed. The
+   * Cart screen surfaces a small non-blocking notice + manual retry when
+   * this is true. Cleared on the next successful sync. Local cart state is
+   * never lost while this is true — only the server copy is behind. */
+  syncFailed: boolean;
   addItem: (item: Omit<CartItem, 'quantity'>) => void;
   removeItem: (productId: string, size?: string, color?: string) => void;
   updateQuantity: (productId: string, quantity: number, size?: string, color?: string) => void;
   reconcile: (fresh: { productId: string; price: number; stock: number }[]) => void;
   clearCart: () => void;
-  /** Cancels a pending debounced syncToDb write without performing it. Used on
-   * sign-out so a stale in-flight write can't resurrect the previous user's
-   * cart onto the next signed-in user's row. */
+  /** Cancels any pending debounced syncToDb writes and scheduled retries,
+   * for every user, without performing them. Used on sign-out so a stale
+   * in-flight write can't resurrect the previous user's cart onto the next
+   * signed-in user's row. */
   cancelSync: () => void;
   syncToDb: (userId: string) => Promise<void>;
+  /** Clears any pending debounced write for this user and performs the sync
+   * immediately. Used to flush on app background, and as the manual retry
+   * affordance the Cart screen offers when syncFailed is true. */
+  flushSync: (userId: string) => Promise<void>;
   loadFromDb: (userId: string) => Promise<void>;
   itemCount: () => number;
   subtotal: () => number;
 }
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+// Keyed per userId so one user's cancel/schedule can never clear or collide
+// with another user's pending write (e.g. across a fast sign-out/sign-in).
+const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export const useCartStore = create<CartState>()(
   persist(
-    (set, get) => ({
+    (set, get) => {
+      // Performs the actual upsert. On failure, schedules exactly one retry
+      // 5s later; if that also fails, sets syncFailed so the UI can surface
+      // it. Never throws — a sync failure must never lose local cart state.
+      async function performSync(userId: string, isRetry = false) {
+        const { items } = get();
+        const { error } = await supabase
+          .from('carts')
+          .upsert({ user_id: userId, items: items as any, updated_at: new Date().toISOString() });
+
+        if (!error) {
+          retryTimers.delete(userId);
+          set({ syncFailed: false });
+          return;
+        }
+
+        console.warn(`Cart syncToDb failed${isRetry ? ' (retry)' : ''}:`, error.message);
+
+        if (isRetry) {
+          // The one automatic retry also failed — surface it, but keep the
+          // local cart exactly as-is.
+          set({ syncFailed: true });
+          return;
+        }
+
+        const existingRetry = retryTimers.get(userId);
+        if (existingRetry) clearTimeout(existingRetry);
+        const retryTimer = setTimeout(() => {
+          retryTimers.delete(userId);
+          void performSync(userId, true);
+        }, 5000);
+        retryTimers.set(userId, retryTimer);
+      }
+
+      return {
       items: [],
       mergeNotice: false,
+      syncFailed: false,
 
       dismissMergeNotice: () => set({ mergeNotice: false }),
 
@@ -93,28 +141,48 @@ export const useCartStore = create<CartState>()(
       clearCart: () => set({ items: [] }),
 
       cancelSync: () => {
-        if (debounceTimer) {
-          clearTimeout(debounceTimer);
-          debounceTimer = null;
-        }
+        for (const t of debounceTimers.values()) clearTimeout(t);
+        debounceTimers.clear();
+        for (const t of retryTimers.values()) clearTimeout(t);
+        retryTimers.clear();
       },
 
       syncToDb: async (userId) => {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(async () => {
-          const { items } = get();
-          await supabase
-            .from('carts')
-            .upsert({ user_id: userId, items: items as any, updated_at: new Date().toISOString() });
+        const existing = debounceTimers.get(userId);
+        if (existing) clearTimeout(existing);
+        const timer = setTimeout(() => {
+          debounceTimers.delete(userId);
+          void performSync(userId);
         }, 800);
+        debounceTimers.set(userId, timer);
+      },
+
+      flushSync: async (userId) => {
+        const timer = debounceTimers.get(userId);
+        if (timer) {
+          clearTimeout(timer);
+          debounceTimers.delete(userId);
+        }
+        await performSync(userId);
       },
 
       loadFromDb: async (userId) => {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('carts')
           .select('items')
           .eq('user_id', userId)
           .single();
+
+        // PGRST116 = "no rows" from .single() — a brand-new user with no
+        // cart row yet, which is a genuinely empty cart, not a fetch error.
+        // Any other error (network, RLS, transient 5xx) must never clobber
+        // local state: log it and leave the local cart untouched, skipping
+        // the merge entirely rather than writing back an empty result.
+        if (error && error.code !== 'PGRST116') {
+          console.warn('Cart loadFromDb failed:', error.message);
+          return;
+        }
+
         const remote = (data?.items as unknown as CartItem[]) ?? [];
         if (remote.length === 0) return;
 
@@ -132,7 +200,10 @@ export const useCartStore = create<CartState>()(
             } else {
               merged.set(k, {
                 ...existing,
-                quantity: Math.min(Math.max(existing.quantity, item.quantity), item.stock),
+                // Cap against the CHOSEN (local-preferred, `existing`)
+                // item's stock, not the remote item's — `existing` is the
+                // metadata that actually won the merge above.
+                quantity: Math.min(Math.max(existing.quantity, item.quantity), existing.stock),
               });
             }
           }
@@ -152,7 +223,8 @@ export const useCartStore = create<CartState>()(
 
       itemCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
       subtotal: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
-    }),
+      };
+    },
     {
       name: 'litways-cart',
       storage: createJSONStorage(() => storageAdapter()),
