@@ -102,13 +102,22 @@ export default function NewPasswordScreen() {
   // signs out itself) so the unmount cleanup below doesn't double-sign-out.
   const completedRef = useRef(false);
 
+  // Tracks HOW phase reached 'ready': true only when establishRecoverySession()
+  // itself succeeded (a real session was freshly created from this reset
+  // link's tokens). If instead we fell through to the getSession() fallback
+  // and found an already-existing session — e.g. an already-signed-in user
+  // tapped a stale/reused reset link — that is the user's normal session, not
+  // one this screen created, and must NOT be torn down on unmount.
+  const recoverySessionRef = useRef(false);
+
   // establishRecoverySession() creates a real, fully authenticated session —
   // not a scoped recovery token. If the user backs out or otherwise leaves
   // this screen (unmount) without completing the password update, end that
-  // session so it doesn't linger signed-in on the device.
+  // session so it doesn't linger signed-in on the device — but only when this
+  // screen was the one that created it.
   useEffect(() => {
     return () => {
-      if (phaseRef.current === 'ready' && !completedRef.current) {
+      if (phaseRef.current === 'ready' && recoverySessionRef.current && !completedRef.current) {
         supabase.auth.signOut();
       }
     };
@@ -119,10 +128,16 @@ export default function NewPasswordScreen() {
     (async () => {
       const url = incomingUrl ?? (await Linking.getInitialURL());
       if (url && (await establishRecoverySession(url))) {
-        if (!cancelled) setPhase('ready');
+        if (!cancelled) {
+          recoverySessionRef.current = true;
+          setPhase('ready');
+        }
         return;
       }
-      // The client may have already established a recovery session on its own.
+      // The client may have already established a recovery session on its own,
+      // or the user may simply already have a normal, unrelated session — we
+      // can't tell those apart here, so recoverySessionRef stays false and the
+      // unmount cleanup above will leave this session alone.
       const { data } = await supabase.auth.getSession();
       if (!cancelled) setPhase(data.session ? 'ready' : 'invalid');
     })();

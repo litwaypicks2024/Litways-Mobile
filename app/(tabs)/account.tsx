@@ -35,6 +35,8 @@ import type { Order } from '@/types';
 
 type Tab = 'profile' | 'orders' | 'wishlist' | 'settings';
 
+const VALID_TABS: Tab[] = ['profile', 'orders', 'wishlist', 'settings'];
+
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -42,13 +44,22 @@ export default function AccountScreen() {
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
   // Lets callers (e.g. confirmation.tsx's "Track Your Order") land directly
-  // on a specific tab — read once as the initial tab, not re-applied on
-  // every re-render so in-screen tab taps aren't fought.
-  const { tab: initialTabParam } = useLocalSearchParams<{ tab?: string }>();
-  const VALID_TABS: Tab[] = ['profile', 'orders', 'wishlist', 'settings'];
+  // on a specific tab. Tab screens commonly stay mounted for the session, so
+  // a plain useState initializer would miss a param that arrives on an
+  // already-mounted instance — react to param changes explicitly instead.
+  const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
   const [activeTab, setActiveTab] = useState<Tab>(
-    VALID_TABS.includes(initialTabParam as Tab) ? (initialTabParam as Tab) : 'profile'
+    VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'profile'
   );
+
+  useEffect(() => {
+    if (tabParam && VALID_TABS.includes(tabParam as Tab)) {
+      setActiveTab(tabParam as Tab);
+      // Consume the param immediately so it doesn't yank the user back to
+      // this tab after they've since switched away manually.
+      router.setParams({ tab: undefined });
+    }
+  }, [tabParam]);
 
   if (!user) {
     return (
