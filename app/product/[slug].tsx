@@ -159,6 +159,7 @@ export default function ProductDetailScreen() {
       name: product.name!,
       brand: product.brand!,
       price: displayPrice,
+      listPrice: hasDiscount ? product.price ?? undefined : undefined,
       imageUrl: images[0] ?? '',
       slug: product.slug!,
       stock: product.stock!,
