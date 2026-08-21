@@ -361,9 +361,16 @@ const CartItemRow = React.memo(function CartItemRow({
         )}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 15, fontFamily: font.displayHeavy, color: color.accent }}>
-            {formatCurrency(item.price * item.quantity)}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+            <Text style={{ fontSize: 15, fontFamily: font.displayHeavy, color: color.accent }}>
+              {formatCurrency(item.price * item.quantity)}
+            </Text>
+            {item.listPrice != null && item.listPrice > item.price && (
+              <Text style={{ fontSize: 12, color: color.inkFaint, textDecorationLine: 'line-through' }}>
+                {formatCurrency(item.listPrice * item.quantity)}
+              </Text>
+            )}
+          </View>
           <QuantityStepper
             quantity={item.quantity}
             max={item.stock}

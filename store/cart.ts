@@ -10,32 +10,32 @@ function cartKey(item: Pick<CartItem, 'productId' | 'size' | 'color'>): string {
 
 /**
  * The `carts` table (`{ user_id, items: jsonb[] }`) is shared with the web
- * app, but the two apps have never agreed on an item shape. A row can be any
- * of three shapes:
+ * app. Both apps write the CANONICAL v1 shape now (see docs/CART_CONTRACT.md
+ * for the full spec):
  *
- *   MOBILE (this app writes):
+ *     { id, slug, name, brand, price, sale_price, stock, quantity, cartKey,
+ *       selectedSize, selectedColor, images }
+ *
+ * `price` is always the LIST price on the wire; the effective price is
+ * `sale_price ?? price` — that's web's rule too, so both apps agree on the
+ * displayed price. Nothing else is persisted.
+ *
+ * A row can still legitimately be one of two OLDER shapes, which readers
+ * stay tolerant of (no data migration):
+ *
+ *   MOBILE-LEGACY (pre-contract mobile writes):
  *     { productId, name, brand, price, imageUrl, size?, color?, quantity,
- *       stock, slug }
- *     `price` is already the effective (discounted) price.
+ *       stock, slug[, listPrice?] } — `price` is already the effective
+ *     (discounted) price; `raw.productId` being present is what identifies
+ *     this shape.
  *
- *   WEB (lib/cart-context.jsx in the web repo):
- *     { ...product, cartKey, selectedSize, selectedColor, quantity }
- *     i.e. id, name, brand, price, sale_price?, image_urls[], images[],
- *     slug, stock, sizes, colors, category, … plus cartKey (composite of
- *     [id, size, color]) and selectedSize/selectedColor (null when unset).
- *     Web's own cart total uses `sale_price ?? price` — `price` alone is
- *     the pre-discount list price.
- *
- *   LEGACY WEB (pre-cartKey web rows): same as WEB but without
+ *   LEGACY WEB (pre-cartKey web rows): the canonical fields above, minus
  *     cartKey/selectedSize/selectedColor.
  *
- * `fromWire`/`toWire` are the adapter pair that lets this store read and
- * write any of the three without the merge engine below ever seeing a raw
- * wire shape — it only ever operates on normalized `CartItem`s. There is no
- * shared contract between the two apps yet (web-side canonicalization onto
- * one shape is a later follow-up); until then `toWire` writes a SUPERSET of
- * fields so either app's reader finds what it expects in a row written by
- * the other.
+ * `fromWire`/`toWire` are the adapter pair that lets this store read any of
+ * these shapes and write only the canonical one, without the merge engine
+ * below ever seeing a raw wire shape — it only ever operates on normalized
+ * `CartItem`s.
  */
 
 /**
@@ -56,21 +56,34 @@ export function fromWire(raw: any): CartItem | null {
   const brand = raw.brand ?? '';
   const slug = raw.slug ?? '';
 
-  // Mobile rows already carry the effective (post-discount) price in
-  // `price`. Web rows carry the list price in `price` plus an optional
-  // `sale_price` — the effective price is exactly web's own rule,
+  // Mobile-legacy rows already carry the effective (post-discount) price in
+  // `price` and never had a `sale_price` field of their own; a `listPrice`
+  // only shows up on them if some earlier mobile write already carried one
+  // through. Canonical/web rows carry the LIST price in `price` plus an
+  // optional `sale_price` — same rule as web's own cart total,
   // `sale_price ?? price` (no magnitude check, so both apps always agree on
   // the displayed price even for odd data; the server re-prices at payment
-  // anyway). `raw.productId` is the mobile-only field, so its presence is
-  // what distinguishes the two shapes.
+  // anyway) — with `listPrice` recovered as the raw `price` whenever
+  // `sale_price` was set. `raw.productId` is the mobile-only field, so its
+  // presence is what distinguishes the two shapes.
   let price: number;
+  let listPrice: number | undefined;
   if (raw.productId != null) {
     price = Number(raw.price) || 0;
+    listPrice = raw.listPrice != null ? Number(raw.listPrice) : undefined;
   } else {
-    price = Number(raw.sale_price ?? raw.price) || 0;
+    const rawPrice = Number(raw.price) || 0;
+    const rawSalePrice = raw.sale_price != null ? Number(raw.sale_price) : null;
+    if (rawSalePrice != null) {
+      price = rawSalePrice;
+      listPrice = rawPrice;
+    } else {
+      price = rawPrice;
+      listPrice = undefined;
+    }
   }
 
-  const imageUrl = raw.imageUrl ?? raw.image_urls?.[0] ?? raw.images?.[0] ?? '';
+  const imageUrl = raw.imageUrl ?? raw.images?.[0] ?? raw.image_urls?.[0] ?? '';
 
   const rawSize = raw.size ?? raw.selectedSize;
   const size = rawSize === null || rawSize === '' || rawSize === undefined ? undefined : rawSize;
@@ -79,52 +92,57 @@ export function fromWire(raw: any): CartItem | null {
 
   const stock = Number(raw.stock ?? 0);
 
-  return { productId, name, brand, price, imageUrl, size, color, quantity, stock, slug };
+  return { productId, name, brand, price, listPrice, imageUrl, size, color, quantity, stock, slug };
 }
 
 /**
- * Serializes a normalized `CartItem` back into the wire superset both apps'
- * readers understand. `raw` — the original remote object this item was last
- * read from (see rawRemoteByCartKey below) — is spread first so any
- * web-only metadata (sizes, colors, category, …) survives a mobile
- * read-modify-write round-trip instead of being dropped.
+ * Serializes a normalized `CartItem` back into ONLY the canonical wire
+ * shape (v1) both apps now write and read — nothing else is persisted:
+ * `id, slug, name, brand, price, sale_price, stock, quantity, cartKey,
+ * selectedSize, selectedColor, images`.
  *
- * `sale_price` is always nulled out here, NOT preserved from `raw`: the
- * item's `price` already holds the effective (post-discount) price computed
- * by `fromWire`, and web's total reads `sale_price ?? price` — leaving a
- * stale `sale_price` in place would make web double-apply the discount.
+ * `price`/`sale_price` are written LIST/SALE, the inverse of how this store
+ * keeps `item.price` internally (always the EFFECTIVE price): `price` is
+ * `item.listPrice ?? item.price` and `sale_price` is `item.price` whenever
+ * `listPrice` is set and genuinely higher, else `null` — so a plain
+ * (non-sale) item round-trips with `sale_price: null` and `price` equal to
+ * its one true price, exactly like a web row that was never on sale.
  *
- * `image_urls`/`images` keep the raw row's full gallery when present (web
- * may have uploaded several images) and only fall back to a single-entry
- * array derived from `imageUrl` when the raw row had none.
+ * `images` keeps the raw row's gallery (`images` or, failing that,
+ * `image_urls`) when the raw map has one — web may have uploaded several —
+ * and only falls back to a single-entry array derived from `item.imageUrl`
+ * when the raw row had none. Everything else about `raw` (web-only
+ * metadata, legacy mobile fields) is intentionally NOT spread through
+ * anymore: the contract says nothing else is persisted, and both apps'
+ * readers (this file's `fromWire`, the web's tolerant reader) already
+ * handle exactly this shape.
  */
 export function toWire(item: CartItem, raw?: Record<string, unknown>): Record<string, unknown> {
-  const base = raw ?? {};
-  const rawImageUrls = (base as { image_urls?: unknown }).image_urls;
-  const rawImages = (base as { images?: unknown }).images;
-  const imageUrls =
-    Array.isArray(rawImageUrls) && rawImageUrls.length > 0 ? rawImageUrls : [item.imageUrl].filter(Boolean);
-  const images = Array.isArray(rawImages) && rawImages.length > 0 ? rawImages : [item.imageUrl].filter(Boolean);
+  const rawImages = (raw as { images?: unknown } | undefined)?.images;
+  const rawImageUrls = (raw as { image_urls?: unknown } | undefined)?.image_urls;
+  const images =
+    Array.isArray(rawImages) && rawImages.length > 0
+      ? rawImages
+      : Array.isArray(rawImageUrls) && rawImageUrls.length > 0
+        ? rawImageUrls
+        : [item.imageUrl].filter(Boolean);
+
+  const price = item.listPrice ?? item.price;
+  const sale_price = item.listPrice != null && item.price < item.listPrice ? item.price : null;
 
   return {
-    ...base, // web-only metadata survives a mobile round-trip
     id: item.productId,
-    productId: item.productId,
+    slug: item.slug,
     name: item.name,
     brand: item.brand,
-    slug: item.slug,
+    price,
+    sale_price,
     stock: item.stock,
     quantity: item.quantity,
-    price: item.price, // effective price; web reads sale_price ?? price
-    sale_price: null, // never let a stale web sale_price override our effective price
-    imageUrl: item.imageUrl,
-    image_urls: imageUrls,
-    images,
-    size: item.size ?? null,
-    color: item.color ?? null,
+    cartKey: [item.productId, item.size, item.color].filter(Boolean).join('::') || item.productId,
     selectedSize: item.size ?? null,
     selectedColor: item.color ?? null,
-    cartKey: [item.productId, item.size, item.color].filter(Boolean).join('::') || item.productId,
+    images,
   };
 }
 
@@ -223,9 +241,13 @@ export function threeWayMergeCarts(base: CartItem[], local: CartItem[], remote: 
  *
  * Missing product id or stock <= 0 drops the item (counted in `dropped`).
  * qty > live stock clamps to live stock (counted in `adjusted`). Surviving
- * items get their price refreshed to (sale_price ?? price) and stock to the
- * live value. Throws on a query error — the caller decides how to surface
- * that rather than this silently reporting an empty result.
+ * items get their price/listPrice refreshed from the live catalog exactly
+ * like `fromWire` does for a canonical row — `price = sale_price ?? price`
+ * (the effective price this store keeps internally), `listPrice =
+ * sale_price != null ? price : undefined` (the pre-discount price, only set
+ * while genuinely on sale) — and stock to the live value. Throws on a query
+ * error — the caller decides how to surface that rather than this silently
+ * reporting an empty result.
  */
 export async function refreshAvailability(
   items: CartItem[]
@@ -252,10 +274,13 @@ export async function refreshAvailability(
       continue;
     }
     const liveStock = p.stock ?? 0;
-    const livePrice = p.sale_price ?? p.price ?? item.price;
+    const liveSalePrice = p.sale_price;
+    const liveListPrice = p.price ?? item.price;
+    const livePrice = liveSalePrice ?? liveListPrice;
+    const listPrice = liveSalePrice != null ? liveListPrice : undefined;
     const clampedQty = Math.min(item.quantity, liveStock);
     if (clampedQty !== item.quantity) adjusted++;
-    result.push({ ...item, price: livePrice, stock: liveStock, quantity: clampedQty });
+    result.push({ ...item, price: livePrice, listPrice, stock: liveStock, quantity: clampedQty });
   }
 
   return { items: result, dropped, adjusted };

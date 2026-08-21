@@ -20,6 +20,11 @@ export interface CartItem {
   name: string;
   brand: string;
   price: number;
+  /** The list price, present only when this item was added while on sale.
+   * `price` above is always the EFFECTIVE price and is what every subtotal/
+   * checkout total is computed from — `listPrice` is display-only (the
+   * struck-through price on the Cart screen). */
+  listPrice?: number;
   imageUrl: string;
   size?: string;
   color?: string;

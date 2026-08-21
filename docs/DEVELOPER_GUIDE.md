@@ -1283,6 +1283,17 @@ export async function refreshAvailability(
 
 Note what the comment rules *out*: `loadFromDb` — the sign-in path — deliberately does **not** call this. Sign-in has to work on a bad connection and must not stall behind a second query, and checkout re-validates everything against the live catalog before charging anybody anyway ([§5e](#5e-payments-end-to-end)). Two checks in the place that matters beats a slow check in the place that doesn't.
 
+**The wire contract.** Everything above — the merge, the availability check — operates on this store's own `CartItem`, never on the raw row that came off the network. `fromWire`/`toWire` are the seam: `fromWire` turns whatever's sitting in `carts.items[]` into a `CartItem`, `toWire` turns a `CartItem` back into a row. What they agree to write is the **canonical v1 shape** both this app and the website now target ([`docs/CART_CONTRACT.md`](../docs/CART_CONTRACT.md) has the full spec): twelve fields — `id, slug, name, brand, price, sale_price, stock, quantity, cartKey, selectedSize, selectedColor, images` — and nothing else. `price` on the wire is always the *list* price; the effective price either app charges is `sale_price ?? price`. `fromWire` stays tolerant of two older shapes it can still meet in the wild (a legacy mobile row, identified by a `productId` field, whose `price` is already effective; a legacy web row missing `cartKey`), but there's no migration step — old rows are simply normalized on read, forever, rather than rewritten in place.
+
+Inside the store, `CartItem.price` keeps meaning what it always meant: the **effective** price, the only number subtotal/checkout math ever touches. A new optional `CartItem.listPrice` carries the pre-discount price *only* while the item was added on sale — nothing downstream of `price` needs to know or care that a discount exists. `toWire` is where that gets inverted back into the wire's list/sale form:
+
+**`store/cart.ts`**
+```ts
+const price = item.listPrice ?? item.price;
+const sale_price = item.listPrice != null && item.price < item.listPrice ? item.price : null;
+```
+No `listPrice`, or a `listPrice` that isn't actually higher than `price` (bad data, a client-side clamp, whatever) → `sale_price: null` and the item writes exactly like it was never discounted. That asymmetry — effective internally, list+sale on the wire — is deliberate: it means every existing call site that reads `item.price` for money (subtotal, line totals, the checkout total) didn't have to change at all when this contract landed; only the two places that *display* a struck-through list price, and this one adapter function, needed to know `listPrice` exists.
+
 **The ordering inside `manualSync`, which is the part a reviewer caught.** Five steps, and their order is the whole point:
 
 **`store/cart.ts`**
