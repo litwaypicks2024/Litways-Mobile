@@ -25,7 +25,7 @@ import { LIBERIAN_COUNTIES } from '@/constants/counties';
 import { momoAPI } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/currency';
-import { normalizeLiberianPhone, isValidLiberianMobile } from '@/lib/phone';
+import { normalizeLiberianPhone, isValidLiberianMobile, isMtnMobile } from '@/lib/phone';
 import { pendingPayment } from '@/lib/storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LoadingOverlay } from '@/components/motion/LoadingOverlay';
@@ -175,7 +175,7 @@ export default function CheckoutScreen() {
           event: 'UPDATE',
           schema: 'public',
           table: 'orders',
-          filter: `external_id=eq.${referenceId}`,
+          filter: `reference_id=eq.${referenceId}`,
         },
         (payload) => finalize((payload.new as any).payment_status ?? '')
       )
@@ -189,7 +189,7 @@ export default function CheckoutScreen() {
           event: 'INSERT',
           schema: 'public',
           table: 'orders',
-          filter: `external_id=eq.${referenceId}`,
+          filter: `reference_id=eq.${referenceId}`,
         },
         (payload) => finalize((payload.new as any).payment_status ?? '')
       )
@@ -253,6 +253,12 @@ export default function CheckoutScreen() {
     }
     if (!isValidLiberianMobile(form.phone)) {
       Alert.alert('Invalid phone number', 'Enter a valid Liberian mobile number, e.g. 0888 640 502.');
+      return false;
+    }
+    // MoMo collection requests only reach MTN (Lonestar) numbers — the server
+    // rejects other operators, so say so here instead of after the overlay.
+    if (!isMtnMobile(form.phone)) {
+      Alert.alert('MTN number needed', 'MoMo payments need an MTN Mobile Money number (starting 055 or 088).');
       return false;
     }
     return true;
@@ -320,41 +326,30 @@ export default function CheckoutScreen() {
         return;
       }
 
+      // Exactly the shape the web pay route destructures (see the web repo's
+      // app/api/momo/pay/route.js and its own checkout page): top-level
+      // `phone`, `items`, `userInfo`, `deliveryInfo`. Identity (user_id,
+      // email) comes from the Bearer session server-side, and prices/totals
+      // are recomputed from the products table — only cart selection and
+      // contact/delivery details are sent.
       const payload = {
-        customer: {
-          firstName: form.firstName,
-          lastName: form.lastName,
-          email: form.email,
-          phone: normalizeLiberianPhone(form.phone),
-        },
-        delivery: {
-          address: form.address,
-          city: form.city,
-          state: form.county,
-        },
-        // SECURITY (backend handoff): `price` here is client-held and only
-        // reconciled against the catalog for UI purposes above — the server
-        // must re-price every line item (and the total) from its own product
-        // data rather than trusting this payload. Not fixable client-side.
+        phone: normalizeLiberianPhone(form.phone),
+        payerMessage: 'Payment for Litway Picks Order',
         items: items.map((i) => ({
           id: i.productId,
-          name: i.name,
-          price: i.price,
           quantity: i.quantity,
-          size: i.size,
-          color: i.color,
-          // The web pay route (app/api/momo/pay/route.js) reads
-          // selectedSize/selectedColor, not size/color — send both so the
-          // chosen variant survives into the order instead of being
-          // silently dropped.
-          selectedSize: i.size,
-          selectedColor: i.color,
-          // Order History (account.tsx) and Order Detail (order/[id].tsx)
-          // render thumbnails from imageUrl and gate tap-to-view-product on
-          // slug — both must round-trip through the backend's stored order.
-          slug: i.slug,
-          imageUrl: i.imageUrl,
+          ...(i.size ? { selectedSize: i.size } : {}),
+          ...(i.color ? { selectedColor: i.color } : {}),
         })),
+        userInfo: {
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+        },
+        deliveryInfo: {
+          deliveryAddress: form.address.trim(),
+          city: form.city.trim(),
+          state: form.county,
+        },
       };
 
       const { referenceId: ref } = await momoAPI.initiatePayment(payload);

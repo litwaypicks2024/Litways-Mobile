@@ -40,7 +40,7 @@ export const momoAPI = {
       const err = await res.json().catch(() => ({}));
       throw new Error((err as any).error ?? (err as any).message ?? 'Payment initiation failed');
     }
-    return res.json() as Promise<{ referenceId: string; externalId: string }>;
+    return res.json() as Promise<{ success: boolean; referenceId: string; orderId: string; amount: number }>;
   },
 
   async checkStatus(referenceId: string) {
