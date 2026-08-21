@@ -17,3 +17,13 @@ export function isValidLiberianMobile(input: string): boolean {
   // 231 + 8–9 subscriber digits (length varies by carrier).
   return /^231\d{8,9}$/.test(n);
 }
+
+/** MTN Liberia (Lonestar Cell MTN) is the only operator that can receive a
+ *  MoMo collection prompt — mirrors the server's MTN_PREFIXES check so the
+ *  shopper hears it before paying, not after. National numbers start 55/88
+ *  (dialled locally as 055…/088…). */
+export function isMtnMobile(input: string): boolean {
+  const n = normalizeLiberianPhone(input);
+  const national = n.slice(3);
+  return /^(55|88)\d{7}$/.test(national);
+}
