@@ -82,13 +82,19 @@ export function LogoLockup({ variant = 'onLight', markSize = 34, textColor }: Lo
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: markSize * 0.14 }}>
       <LogoMark size={markSize} variant={variant} />
-      <View>
+      {/* flexShrink 0 + a little right slack: Yoga measures the heavy display
+          face a hair narrower than it renders, which clipped the last glyph
+          ("Litwa") inside an auto-sized column. */}
+      <View style={{ flexShrink: 0 }}>
         <Text
+          numberOfLines={1}
           style={{
             fontFamily: font.displayHeavy,
             fontSize: nameSize,
             lineHeight: nameSize * 1.15,
             color: resolvedText,
+            paddingRight: Math.ceil(nameSize * 0.2),
+            includeFontPadding: false,
           }}
         >
           Litway

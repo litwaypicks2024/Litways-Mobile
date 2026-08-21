@@ -59,6 +59,16 @@ export default function CheckoutScreen() {
     city: profile?.city ?? '',
     county: '',
   });
+  // Once the shopper has firstName, email, phone AND address on file, step 1
+  // shows a compact "Your details" summary instead of the full form. Starts
+  // collapsed only when all four are already present; the backfill effect
+  // below can also collapse it later (signing in mid-checkout), but a tap on
+  // "Edit" latches detailsExpandedByUserRef so it's never auto-collapsed
+  // back out from under someone actively editing.
+  const [detailsExpanded, setDetailsExpanded] = useState(
+    () => !(form.firstName && form.email && form.phone && form.address)
+  );
+  const detailsExpandedByUserRef = useRef(false);
   const [showCountyPicker, setShowCountyPicker] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
   const [referenceId, setReferenceId] = useState<string | null>(null);
@@ -120,6 +130,21 @@ export default function CheckoutScreen() {
       address: s.address || profile?.address || '',
       city: s.city || profile?.city || '',
     }));
+  }, [user, profile]);
+
+  // Mirrors the merge the effect above performs, so the "Your details" card
+  // can appear the moment a profile lands mid-checkout — without waiting a
+  // render for the setForm above to commit, and without collapsing a form
+  // the shopper explicitly opened via Edit.
+  useEffect(() => {
+    if (!user && !profile) return;
+    if (detailsExpandedByUserRef.current) return;
+    const hasAllDetails =
+      (form.firstName || profile?.first_name) &&
+      (form.email || user?.email) &&
+      (form.phone || profile?.phone) &&
+      (form.address || profile?.address);
+    if (hasAllDetails) setDetailsExpanded(false);
   }, [user, profile]);
 
   useEffect(() => {
@@ -451,71 +476,85 @@ export default function CheckoutScreen() {
               </View>
             )}
 
-            <SectionCard title="Contact Info" icon="person-outline">
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Input
-                    label="First Name *"
-                    leftIcon="person-outline"
-                    value={form.firstName}
-                    onChangeText={(v) => setForm((s) => ({ ...s, firstName: v }))}
-                    returnKeyType="next"
-                    onSubmitEditing={() => lastNameRef.current?.focus()}
-                  />
+            {detailsExpanded ? (
+              <SectionCard title="Contact Info" icon="person-outline">
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Input
+                      label="First Name *"
+                      leftIcon="person-outline"
+                      value={form.firstName}
+                      onChangeText={(v) => setForm((s) => ({ ...s, firstName: v }))}
+                      returnKeyType="next"
+                      onSubmitEditing={() => lastNameRef.current?.focus()}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Input
+                      ref={lastNameRef}
+                      label="Last Name"
+                      leftIcon="person-outline"
+                      value={form.lastName}
+                      onChangeText={(v) => setForm((s) => ({ ...s, lastName: v }))}
+                      returnKeyType="next"
+                      onSubmitEditing={() => emailRef.current?.focus()}
+                    />
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Input
-                    ref={lastNameRef}
-                    label="Last Name"
-                    leftIcon="person-outline"
-                    value={form.lastName}
-                    onChangeText={(v) => setForm((s) => ({ ...s, lastName: v }))}
-                    returnKeyType="next"
-                    onSubmitEditing={() => emailRef.current?.focus()}
-                  />
-                </View>
-              </View>
-              <Input
-                ref={emailRef}
-                label="Email *"
-                leftIcon="mail-outline"
-                value={form.email}
-                onChangeText={(v) => setForm((s) => ({ ...s, email: v }))}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                returnKeyType="next"
-                onSubmitEditing={() => phoneRef.current?.focus()}
+                <Input
+                  ref={emailRef}
+                  label="Email *"
+                  leftIcon="mail-outline"
+                  value={form.email}
+                  onChangeText={(v) => setForm((s) => ({ ...s, email: v }))}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  returnKeyType="next"
+                  onSubmitEditing={() => phoneRef.current?.focus()}
+                />
+                <Input
+                  ref={phoneRef}
+                  label="Phone *"
+                  leftIcon="call-outline"
+                  value={form.phone}
+                  onChangeText={(v) => setForm((s) => ({ ...s, phone: v }))}
+                  keyboardType="phone-pad"
+                  returnKeyType="next"
+                  onSubmitEditing={() => addressRef.current?.focus()}
+                />
+              </SectionCard>
+            ) : (
+              <KnownDetailsCard
+                form={form}
+                onEdit={() => {
+                  detailsExpandedByUserRef.current = true;
+                  setDetailsExpanded(true);
+                }}
               />
-              <Input
-                ref={phoneRef}
-                label="Phone *"
-                leftIcon="call-outline"
-                value={form.phone}
-                onChangeText={(v) => setForm((s) => ({ ...s, phone: v }))}
-                keyboardType="phone-pad"
-                returnKeyType="next"
-                onSubmitEditing={() => addressRef.current?.focus()}
-              />
-            </SectionCard>
+            )}
 
             <SectionCard title="Delivery Address" icon="location-outline">
-              <Input
-                ref={addressRef}
-                label="Street Address *"
-                leftIcon="home-outline"
-                value={form.address}
-                onChangeText={(v) => setForm((s) => ({ ...s, address: v }))}
-                returnKeyType="next"
-                onSubmitEditing={() => cityRef.current?.focus()}
-              />
-              <Input
-                ref={cityRef}
-                label="City / Town"
-                leftIcon="business-outline"
-                value={form.city}
-                onChangeText={(v) => setForm((s) => ({ ...s, city: v }))}
-                returnKeyType="done"
-              />
+              {detailsExpanded && (
+                <>
+                  <Input
+                    ref={addressRef}
+                    label="Street Address *"
+                    leftIcon="home-outline"
+                    value={form.address}
+                    onChangeText={(v) => setForm((s) => ({ ...s, address: v }))}
+                    returnKeyType="next"
+                    onSubmitEditing={() => cityRef.current?.focus()}
+                  />
+                  <Input
+                    ref={cityRef}
+                    label="City / Town"
+                    leftIcon="business-outline"
+                    value={form.city}
+                    onChangeText={(v) => setForm((s) => ({ ...s, city: v }))}
+                    returnKeyType="done"
+                  />
+                </>
+              )}
 
               {/* County picker */}
               <View style={{ marginBottom: 8 }}>
@@ -695,6 +734,44 @@ export default function CheckoutScreen() {
       subtitle={`Approve the MoMo prompt sent to ${form.phone || 'your phone'}. We'll confirm automatically.`}
     />
     </>
+  );
+}
+
+function KnownDetailsCard({ form, onEdit }: { form: CheckoutForm; onEdit: () => void }) {
+  const rows: { icon: keyof typeof Ionicons.glyphMap; text: string }[] = [
+    { icon: 'person-outline', text: `${form.firstName} ${form.lastName}`.trim() },
+    { icon: 'call-outline', text: form.phone },
+    { icon: 'mail-outline', text: form.email },
+    { icon: 'location-outline', text: form.city ? `${form.address}, ${form.city}` : form.address },
+  ];
+
+  return (
+    <Card style={{ marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+        <View style={{ flex: 1, paddingRight: 12 }}>
+          <Text style={{ fontSize: 14, fontWeight: '800', color: color.ink }}>Your details</Text>
+          <Text style={{ fontSize: 12, color: color.inkMuted, marginTop: 2, lineHeight: 16 }}>
+            We'll deliver to the details on file — edit if anything changed.
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={onEdit}
+          accessibilityRole="button"
+          accessibilityLabel="Edit your details"
+          style={{ backgroundColor: color.accentSoft, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 7 }}
+        >
+          <Text style={{ fontSize: 12.5, fontWeight: '800', color: color.accent }}>Edit</Text>
+        </TouchableOpacity>
+      </View>
+      {rows.map((r, i) => (
+        <View key={r.icon} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: i === rows.length - 1 ? 0 : 10 }}>
+          <View style={{ width: 28, height: 28, borderRadius: 9, backgroundColor: color.surfaceMuted, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name={r.icon} size={14} color={color.inkMuted} />
+          </View>
+          <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: color.ink }} numberOfLines={1}>{r.text}</Text>
+        </View>
+      ))}
+    </Card>
   );
 }
 

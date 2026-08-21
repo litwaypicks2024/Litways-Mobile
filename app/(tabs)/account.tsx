@@ -10,6 +10,7 @@ import {
   Modal,
   Pressable,
   RefreshControl,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -182,32 +183,39 @@ function ProfileTab() {
   ] as const;
 
   return (
-    <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: tabBarClearance }}>
-      <Card>
-        {fields.map((f) => (
-          <Input
-            key={f.key}
-            label={f.label}
-            leftIcon={f.icon}
-            value={form[f.key]}
-            onChangeText={(v) => setForm((s) => ({ ...s, [f.key]: v }))}
-            editable={editing}
-            containerStyle={!editing ? { backgroundColor: color.surfaceSunken } : undefined}
-          />
-        ))}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: tabBarClearance }}>
+        <Card>
+          {fields.map((f) => (
+            <Input
+              key={f.key}
+              label={f.label}
+              leftIcon={f.icon}
+              value={form[f.key]}
+              onChangeText={(v) => setForm((s) => ({ ...s, [f.key]: v }))}
+              editable={editing}
+              outlined={editing}
+              containerStyle={!editing ? { backgroundColor: color.surfaceSunken } : undefined}
+            />
+          ))}
 
-        <View className="flex-row gap-3 mt-2">
-          {editing ? (
-            <>
-              <Button title="Cancel" variant="outline" onPress={() => setEditing(false)} style={{ flex: 1 }} />
-              <Button title="Save" onPress={handleSave} loading={saving} style={{ flex: 1 }} />
-            </>
-          ) : (
-            <Button title="Edit Profile" variant="outline" onPress={() => setEditing(true)} fullWidth icon={<Ionicons name="pencil-outline" size={16} color={color.accent} />} />
-          )}
-        </View>
-      </Card>
-    </ScrollView>
+          <View className="flex-row gap-3 mt-4">
+            {editing ? (
+              <>
+                <Button title="Cancel" variant="outline" onPress={() => setEditing(false)} style={{ flex: 1 }} />
+                <Button title="Save changes" onPress={handleSave} loading={saving} style={{ flex: 1 }} />
+              </>
+            ) : (
+              <Button title="Edit Profile" variant="outline" onPress={() => setEditing(true)} fullWidth icon={<Ionicons name="pencil-outline" size={16} color={color.accent} />} />
+            )}
+          </View>
+        </Card>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
