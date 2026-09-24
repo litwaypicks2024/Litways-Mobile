@@ -1,533 +1,192 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  View,
-  ScrollView,
-  TouchableOpacity,
-  Platform,
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  RefreshControl,
-  KeyboardAvoidingView,
-} from 'react-native';
+import React, { useEffect } from 'react';
+import { View, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FlashList } from '@/components/ui/List';
-import { Image } from 'expo-image';
-import { supabase } from '@/lib/supabase';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth';
 import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
-import { useReviewedStore } from '@/store/reviewed';
-import { color, font } from '@/theme/tokens';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Badge } from '@/components/ui/Badge';
-import { Card } from '@/components/ui/Card';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { ErrorState } from '@/components/ui/ErrorState';
-import { HeartIllustration, ReceiptIllustration } from '@/components/illustrations';
-import { ProductCard } from '@/components/shop/ProductCard';
+import { color, gutter, radius, shadow, spacing } from '@/theme/tokens';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
-import { formatCurrency } from '@/lib/currency';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { Order } from '@/types';
-import { alertDialog } from '@/components/ui/Dialog';
+import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { alertDialog } from '@/components/ui/Dialog';
+import { ListGroup, ListRow } from '@/components/account/ListRow';
+import { ActiveOrderCard } from '@/components/home/ActiveOrderCard';
 
-type Tab = 'profile' | 'orders' | 'settings';
-
-const VALID_TABS: Tab[] = ['profile', 'orders', 'settings'];
-
+/**
+ * Account hub. Nothing is edited here: every task is a row or tile that opens
+ * its own screen (personal details, orders, password, support, legal), the way
+ * the account tabs in Uber Eats / Gojek / Crate & Barrel work. Signed-out
+ * shoppers get the same support and legal rows under a sign-in prompt.
+ */
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const clearance = useTabBarClearance();
   const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
-  // Lets callers (e.g. confirmation.tsx's "Track Your Order") land directly
-  // on a specific tab. Tab screens commonly stay mounted for the session, so
-  // a plain useState initializer would miss a param that arrives on an
-  // already-mounted instance — react to param changes explicitly instead.
-  const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
-  const [activeTab, setActiveTab] = useState<Tab>(
-    VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'profile'
-  );
+  const syncFailed = useCartStore((s) => s.syncFailed);
+  const favoriteCount = useWishlistStore((s) => s.items.length);
 
+  // Older deep links (confirmation → "Track your order", Home shortcut) land here with ?tab=orders.
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
   useEffect(() => {
-    if (tabParam && VALID_TABS.includes(tabParam as Tab)) {
-      setActiveTab(tabParam as Tab);
-      // Consume the param immediately so it doesn't yank the user back to
-      // this tab after they've since switched away manually.
-      router.setParams({ tab: undefined });
-    }
-  }, [tabParam]);
+    if (!tab) return;
+    router.setParams({ tab: undefined });
+    if (tab === 'orders') router.push('/orders');
+  }, [tab]);
 
-  if (!user) {
-    return (
-      <View className="flex-1" style={{ backgroundColor: color.bg }}>
-        <View className="bg-white border-b border-gray-100 px-5 pb-4" style={{ paddingTop: insets.top + 12 }}>
-          <Text variant="title">Account</Text>
-        </View>
-        <EmptyState
-          icon="person-circle-outline"
-          title="Sign in to your account"
-          description="Access your orders and profile settings."
-          actionLabel="Sign In"
-          onAction={() => router.push('/(auth)/login')}
-        />
-      </View>
-    );
+  function handleSignOut() {
+    // signOut() flushes the cart best-effort first, but that can fail — say so.
+    const message = syncFailed
+      ? "Some cart changes haven't synced yet and may be lost. Are you sure you want to sign out?"
+      : 'Are you sure you want to sign out?';
+    alertDialog('Sign out', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign out', style: 'destructive', onPress: signOut },
+    ]);
   }
 
-  const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: 'profile', label: 'Profile', icon: 'person-outline' },
-    { key: 'orders', label: 'Orders', icon: 'receipt-outline' },
-    { key: 'settings', label: 'Settings', icon: 'settings-outline' },
-  ];
+  const fullName = profile ? `${profile.first_name} ${profile.last_name ?? ''}`.trim() : '';
+  const initial = (profile?.first_name?.[0] ?? user?.email?.[0] ?? '?').toUpperCase();
+  const profileIncomplete = !!user && (!profile?.phone || !profile?.address);
 
   return (
-    <View className="flex-1" style={{ backgroundColor: color.bg }}>
-      <View className="bg-white border-b border-gray-100" style={{ paddingTop: insets.top + 12 }}>
-        {/* Profile header */}
-        <View className="flex-row items-center px-5 pb-4 gap-4">
-          <View className="w-14 h-14 rounded-full bg-primary-100 items-center justify-center">
-            <Text variant="title" tone="accent">
-              {(profile?.first_name?.[0] ?? user.email?.[0] ?? 'U').toUpperCase()}
-            </Text>
-          </View>
-          <View className="flex-1">
-            <Text variant="heading">
-              {profile ? `${profile.first_name} ${profile.last_name ?? ''}`.trim() : 'Welcome back'}
-            </Text>
-            <Text variant="body" tone="muted">{user.email}</Text>
-          </View>
-        </View>
+    <View style={{ flex: 1, backgroundColor: color.bg }}>
+      <StatusBar barStyle="dark-content" />
 
-        {/* Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 4 }}>
-          {tabs.map((t) => (
+      {/* Header */}
+      <View style={{ backgroundColor: color.surface, paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: gutter, ...shadow.header }}>
+        {user ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+            <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+              <Text variant="title" tone="accent">{initial}</Text>
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text variant="title" numberOfLines={1}>{fullName || 'Welcome back'}</Text>
+              <Text variant="body" tone="muted" numberOfLines={1}>{user.email}</Text>
+            </View>
             <TouchableOpacity
-              key={t.key}
-              onPress={() => setActiveTab(t.key)}
-              className={`flex-row items-center px-4 py-2 rounded-full mr-2 ${activeTab === t.key ? 'bg-primary-600' : 'bg-gray-100'}`}
-              style={{ gap: 6 }}
+              onPress={() => router.push('/edit-profile')}
+              accessibilityRole="button"
+              accessibilityLabel="Edit profile"
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0,
+                paddingHorizontal: 14, height: 38, borderRadius: radius.full,
+                borderWidth: 1.5, borderColor: color.fieldBorder, backgroundColor: color.surface,
+              }}
             >
-              <Ionicons name={t.icon as any} size={14} color={activeTab === t.key ? '#fff' : color.inkMuted} />
-              <Text variant="bodyStrong" style={{ color: activeTab === t.key ? color.onAccent : color.inkMuted }}>{t.label}</Text>
+              <Ionicons name="pencil" size={14} color={color.ink} />
+              <Text variant="small">Edit</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <View className="h-3" />
+          </View>
+        ) : (
+          <View>
+            <Text variant="display">Your account</Text>
+            <Text variant="bodyLg" tone="body" style={{ marginTop: 4 }}>
+              Sign in to track orders, save favorites and check out faster.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg }}>
+              <View style={{ flex: 1 }}>
+                <Button title="Sign in" onPress={() => router.push('/(auth)/login')} fullWidth />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button title="Create account" variant="outline" onPress={() => router.push({ pathname: '/(auth)/login', params: { mode: 'signup' } })} fullWidth />
+              </View>
+            </View>
+          </View>
+        )}
       </View>
 
-      {activeTab === 'profile' && <ProfileTab />}
-      {activeTab === 'orders' && <OrdersTab userId={user.id} />}
-      {activeTab === 'settings' && <SettingsTab onSignOut={signOut} />}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: clearance + spacing.lg }}>
+        {user && <ActiveOrderCard />}
+
+        {/* Quick tiles */}
+        {user && (
+          <View style={{ flexDirection: 'row', gap: spacing.md, paddingHorizontal: gutter, marginTop: spacing.lg }}>
+            <Tile icon="receipt-outline" label="Orders" onPress={() => router.push('/orders')} />
+            <Tile icon="heart-outline" label="Favorites" count={favoriteCount} onPress={() => router.push('/(tabs)/favorites')} />
+            <Tile icon="headset-outline" label="Help" onPress={() => router.push('/contact')} />
+          </View>
+        )}
+
+        {/* Nudge until phone and address are filled in */}
+        {profileIncomplete && (
+          <PressableScale
+            onPress={() => router.push('/edit-profile')}
+            accessibilityRole="button"
+            style={{ marginHorizontal: gutter, marginTop: spacing.lg }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: color.accentSoft, borderRadius: radius.lg, padding: spacing.lg }}>
+              <Ionicons name="flash-outline" size={22} color={color.accent} />
+              <View style={{ flex: 1 }}>
+                <Text variant="bodyStrong">Finish your profile</Text>
+                <Text variant="meta" tone="body">Add your phone and delivery address to check out faster.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={color.accentText} />
+            </View>
+          </PressableScale>
+        )}
+
+        {user && (
+          <ListGroup title="Account">
+            <ListRow
+              icon="person-outline"
+              label="Personal details"
+              subtitle={profile?.phone ? profile.phone : 'Name, phone and delivery address'}
+              onPress={() => router.push('/edit-profile')}
+            />
+            <ListRow icon="receipt-outline" label="My orders" subtitle="Track, review and reorder" onPress={() => router.push('/orders')} />
+            <ListRow icon="lock-closed-outline" label="Change password" onPress={() => router.push('/change-password')} />
+          </ListGroup>
+        )}
+
+        <ListGroup title="Support">
+          <ListRow icon="headset-outline" label="Contact us" subtitle="We reply within 24 hours" onPress={() => router.push('/contact')} />
+          <ListRow icon="bicycle-outline" label="Shipping & delivery" onPress={() => router.push('/shipping')} />
+          <ListRow icon="return-down-back-outline" label="Returns & refunds" onPress={() => router.push('/returns')} />
+        </ListGroup>
+
+        <ListGroup title="About">
+          <ListRow icon="information-circle-outline" label="About Litway Picks" onPress={() => router.push('/about')} />
+          <ListRow icon="shield-checkmark-outline" label="Privacy policy" onPress={() => router.push('/privacy')} />
+          <ListRow icon="document-text-outline" label="Terms & conditions" onPress={() => router.push('/terms')} />
+        </ListGroup>
+
+        {user && (
+          <ListGroup>
+            <ListRow icon="log-out-outline" label="Sign out" danger noChevron onPress={handleSignOut} />
+          </ListGroup>
+        )}
+
+        <Text variant="meta" tone="muted" style={{ textAlign: 'center', marginTop: spacing.xl }}>
+          Litway Picks · v{Constants.expoConfig?.version ?? '1.0.0'}
+        </Text>
+      </ScrollView>
     </View>
   );
 }
 
-function ProfileTab() {
-  const tabBarClearance = useTabBarClearance();
-  const profile = useAuthStore((s) => s.profile);
-  const fetchProfile = useAuthStore((s) => s.fetchProfile);
-  const user = useAuthStore((s) => s.user);
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    first_name: profile?.first_name ?? '',
-    last_name: profile?.last_name ?? '',
-    phone: profile?.phone ?? '',
-    address: profile?.address ?? '',
-    city: profile?.city ?? '',
-  });
-
-  useEffect(() => {
-    if (profile) {
-      setForm({
-        first_name: profile.first_name ?? '',
-        last_name: profile.last_name ?? '',
-        phone: profile.phone ?? '',
-        address: profile.address ?? '',
-        city: profile.city ?? '',
-      });
-    }
-  }, [profile]);
-
-  async function handleSave() {
-    if (!user) return;
-    setSaving(true);
-    try {
-      const { error } = await supabase.from('users').update(form).eq('id', user.id);
-      if (error) {
-        alertDialog("Couldn't save changes", error.message);
-        return;
-      }
-      await fetchProfile(user.id);
-      setEditing(false);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const fields = [
-    { key: 'first_name', label: 'First Name', icon: 'person-outline' as const },
-    { key: 'last_name', label: 'Last Name', icon: 'person-outline' as const },
-    { key: 'phone', label: 'Phone', icon: 'call-outline' as const },
-    { key: 'address', label: 'Address', icon: 'location-outline' as const },
-    { key: 'city', label: 'City', icon: 'business-outline' as const },
-  ] as const;
-
+function Tile({ icon, label, count, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; count?: number; onPress: () => void }) {
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: tabBarClearance }}>
-        <Card>
-          {fields.map((f) => (
-            <Input
-              key={f.key}
-              label={f.label}
-              leftIcon={f.icon}
-              value={form[f.key]}
-              onChangeText={(v) => setForm((s) => ({ ...s, [f.key]: v }))}
-              editable={editing}
-              outlined={editing}
-              containerStyle={!editing ? { backgroundColor: color.surfaceSunken } : undefined}
-            />
-          ))}
-
-          <View className="flex-row gap-3 mt-4">
-            {editing ? (
-              <>
-                <Button title="Cancel" variant="outline" onPress={() => setEditing(false)} style={{ flex: 1 }} />
-                <Button title="Save changes" onPress={handleSave} loading={saving} style={{ flex: 1 }} />
-              </>
-            ) : (
-              <Button title="Edit Profile" variant="outline" onPress={() => setEditing(true)} fullWidth icon={<Ionicons name="pencil-outline" size={16} color={color.accent} />} />
-            )}
+    <PressableScale haptic onPress={onPress} accessibilityRole="button" accessibilityLabel={count ? `${label}, ${count}` : label} style={{ flex: 1 }}>
+      <View style={{ backgroundColor: color.surface, borderRadius: radius.lg, paddingVertical: spacing.lg, alignItems: 'center', gap: spacing.sm, ...shadow.card }}>
+        <View>
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name={icon} size={22} color={color.accent} />
           </View>
-        </Card>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-
-interface ReviewState {
-  order: Order;
-  item: { id: string; name: string; imageUrl?: string };
-}
-
-function ReviewModal({ state, onClose }: { state: ReviewState | null; onClose: () => void }) {
-  const user = useAuthStore((s) => s.user);
-  const markReviewed = useReviewedStore((s) => s.markReviewed);
-  const queryClient = useQueryClient();
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  // Shown inline: the app dialog is an overlay and can't sit above this Modal.
-  const [error, setError] = useState<string | null>(null);
-
-  if (!state) return null;
-
-  async function handleSubmit() {
-    if (!rating) return;
-    setError(null);
-    setSubmitting(true);
-    const { error } = await supabase.from('reviews').insert({
-      product_id: state!.item.id,
-      order_id: state!.order.id,
-      user_id: user!.id,
-      rating,
-      comment: comment.trim() || null,
-    });
-    setSubmitting(false);
-    if (error) {
-      setError('Could not submit review. You may have already reviewed this product.');
-    } else {
-      markReviewed(state!.order.id, state!.item.id);
-      queryClient.invalidateQueries({ queryKey: ['reviews', state!.item.id] });
-      alertDialog('Review submitted', 'Thank you for your feedback!');
-      setRating(5);
-      setComment('');
-      onClose();
-    }
-  }
-
-  return (
-    <Modal transparent visible animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable
-        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
-        onPress={onClose}
-      >
-        <Pressable onPress={() => {}}>
-          <View
-            className="bg-white rounded-t-3xl px-6 pt-5 pb-10"
-            style={{ paddingBottom: Platform.OS === 'ios' ? 40 : 24 }}
-          >
-            {/* Handle */}
-            <View className="items-center mb-4">
-              <View className="w-10 h-1 bg-gray-200 rounded-full" />
+          {!!count && (
+            <View style={{ position: 'absolute', top: -4, right: -8, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 5, backgroundColor: color.accentFill, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: color.surface }}>
+              <Text variant="overline" style={{ color: '#fff', textTransform: 'none', letterSpacing: 0 }}>{count > 99 ? '99+' : count}</Text>
             </View>
-
-            <Text variant="heading" style={{ marginBottom: 4 }}>Write a Review</Text>
-            <Text variant="body" tone="muted" numberOfLines={1} style={{ marginBottom: 20 }}>{state.item.name}</Text>
-
-            {/* Star rating */}
-            <Text variant="bodyStrong" style={{ marginBottom: 8 }}>Your Rating</Text>
-            <View className="flex-row gap-2 mb-5">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity
-                  key={star}
-                  onPress={() => setRating(star)}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Rate ${star} star${star > 1 ? 's' : ''}`}
-                  accessibilityState={{ selected: star <= rating }}
-                >
-                  <Ionicons
-                    name={star <= rating ? 'star' : 'star-outline'}
-                    size={32}
-                    color={star <= rating ? color.star : color.surfaceSunken}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Comment */}
-            <Text variant="bodyStrong" style={{ marginBottom: 8 }}>Comment (optional)</Text>
-            <Input
-              value={comment}
-              onChangeText={setComment}
-              placeholder="Share your experience with this product..."
-              multiline
-              numberOfLines={4}
-              style={{ minHeight: 90, textAlignVertical: 'top' }}
-            />
-
-            {!!error && (
-              <Text variant="body" tone="danger" accessibilityLiveRegion="polite" style={{ marginTop: 12 }}>{error}</Text>
-            )}
-
-            <View className="flex-row gap-3">
-              <Button title="Cancel" variant="outline" onPress={onClose} style={{ flex: 1 }} />
-              <Button title="Submit Review" onPress={handleSubmit} loading={submitting} style={{ flex: 1 }} />
-            </View>
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
-
-function OrdersTab({ userId }: { userId: string }) {
-  const router = useRouter();
-  const tabBarClearance = useTabBarClearance();
-  const [reviewState, setReviewState] = useState<ReviewState | null>(null);
-  const isReviewed = useReviewedStore((s) => s.isReviewed);
-
-  const { data: orders, isLoading, isError, isFetching, refetch } = useQuery({
-    queryKey: ['my-orders', userId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data as Order[];
-    },
-  });
-
-  if (isLoading) {
-    return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator color={color.accent} />
+          )}
+        </View>
+        <Text variant="small">{label}</Text>
       </View>
-    );
-  }
-
-  if (isError) {
-    return (
-      <ErrorState
-        message="Couldn't load your orders. Check your connection and try again."
-        onRetry={() => refetch()}
-        loading={isFetching}
-      />
-    );
-  }
-
-  if (!orders?.length) {
-    return (
-      <EmptyState
-        illustration={<ReceiptIllustration />}
-        title="No orders yet"
-        description="Your order history will appear here."
-        actionLabel="Start Shopping"
-        onAction={() => router.push('/(tabs)/shop')}
-      />
-    );
-  }
-
-  const COMPLETED_STATUSES = ['SUCCESSFUL', 'COMPLETED'];
-
-  return (
-    <>
-      <FlashList
-        data={orders}
-        estimatedItemSize={140}
-        keyExtractor={(o) => o.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: tabBarClearance }}
-        refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={() => refetch()} tintColor={color.accent} />
-        }
-        renderItem={({ item: order }) => {
-          const items = (order.items as any[]) ?? [];
-          const firstImg = items[0]?.imageUrl;
-          const isCompleted = COMPLETED_STATUSES.includes(order.payment_status ?? '');
-
-          return (
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => router.push(`/order/${order.id}` as any)}
-              className="bg-white rounded-2xl p-4 mb-3 shadow-sm"
-            >
-              <View className="flex-row items-center justify-between mb-3">
-                <View>
-                  <Text variant="metaStrong" tone="muted">{order.external_id}</Text>
-                  <Text variant="meta" tone="muted" style={{ marginTop: 2 }}>
-                    {new Date(order.created_at!).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </Text>
-                </View>
-                <Badge label={order.payment_status} status={order.payment_status} />
-              </View>
-
-              <View className="flex-row items-center gap-3">
-                {firstImg && (
-                  <View className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100">
-                    <Image source={{ uri: firstImg }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                  </View>
-                )}
-                <View className="flex-1">
-                  <Text variant="body" tone="muted" numberOfLines={1}>
-                    {items.length} {items.length === 1 ? 'item' : 'items'} · {order.delivery_state}
-                  </Text>
-                  <Text variant="price" tone="accent" style={{ marginTop: 4 }}>
-                    {formatCurrency(order.final_total)}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Write review for completed orders */}
-              {isCompleted && items.length > 0 && (
-                <View className="mt-3 pt-3 border-t border-gray-50">
-                  <Text variant="metaStrong" tone="muted" style={{ marginBottom: 8 }}>Leave a review:</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                    {items.map((item: any) => {
-                      const reviewed = isReviewed(order.id, item.id);
-                      return (
-                        <TouchableOpacity
-                          key={item.id}
-                          disabled={reviewed}
-                          onPress={() => setReviewState({ order, item: { id: item.id, name: item.name, imageUrl: item.imageUrl } })}
-                          className={`flex-row items-center gap-2 rounded-full px-3 py-2 border ${reviewed ? 'bg-gray-50 border-gray-100' : 'bg-primary-50 border-primary-100'}`}
-                        >
-                          {!reviewed && <Ionicons name="star-outline" size={13} color={color.accent} />}
-                          <Text
-                            variant="metaStrong"
-                            tone={reviewed ? 'muted' : 'accent'}
-                            numberOfLines={1}
-                            style={{ maxWidth: 120 }}
-                          >
-                            {reviewed ? 'Reviewed ✓' : item.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        }}
-      />
-      <ReviewModal state={reviewState} onClose={() => setReviewState(null)} />
-    </>
-  );
-}
-
-function SettingsTab({ onSignOut }: { onSignOut: () => void }) {
-  const tabBarClearance = useTabBarClearance();
-  const user = useAuthStore((s) => s.user);
-  const syncFailed = useCartStore((s) => s.syncFailed);
-  const [changingPw, setChangingPw] = useState(false);
-  const [pw, setPw] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  async function handleChangePassword() {
-    if (pw.length < 8) { alertDialog('Weak password', 'Password must be at least 8 characters.'); return; }
-    setSaving(true);
-    const { error } = await supabase.auth.updateUser({ password: pw });
-    setSaving(false);
-    if (error) { alertDialog('Error', error.message); return; }
-    alertDialog('Success', 'Password updated successfully');
-    setChangingPw(false);
-    setPw('');
-  }
-
-  function handleSignOut() {
-    // signOut() itself makes a best-effort flush before clearing local cart
-    // state (store/auth.ts), but that write can still fail — warn here so
-    // the shopper isn't surprised by lost changes.
-    const message = syncFailed
-      ? "Some cart changes haven't synced yet and may be lost. Are you sure you want to sign out?"
-      : 'Are you sure you want to sign out?';
-    alertDialog('Sign Out', message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: onSignOut },
-    ]);
-  }
-
-  return (
-    <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: tabBarClearance }}>
-      <Card padded={false} style={{ overflow: 'hidden', marginBottom: 16 }}>
-        <View className="px-4 py-3 border-b border-gray-50">
-          <Text variant="overline" tone="muted">Account</Text>
-        </View>
-        <View className="px-4 py-3 border-b border-gray-50">
-          <Text variant="meta" tone="muted">Email</Text>
-          <Text variant="bodyStrong" style={{ marginTop: 2 }}>{user?.email}</Text>
-        </View>
-        <TouchableOpacity onPress={() => setChangingPw(!changingPw)} className="px-4 py-3 flex-row items-center justify-between">
-          <Text variant="bodyStrong">Change Password</Text>
-          <Ionicons name={changingPw ? 'chevron-up' : 'chevron-down'} size={16} color={color.inkFaint} />
-        </TouchableOpacity>
-        {changingPw && (
-          <View className="px-4 pb-4">
-            <Input
-              label="New Password"
-              isPassword
-              value={pw}
-              onChangeText={setPw}
-              placeholder="Minimum 8 characters"
-            />
-            <Button title="Update Password" onPress={handleChangePassword} loading={saving} size="sm" />
-          </View>
-        )}
-      </Card>
-
-      <Button
-        title="Sign Out"
-        variant="outline"
-        onPress={handleSignOut}
-        fullWidth
-        icon={<Ionicons name="log-out-outline" size={18} color={color.accent} />}
-        style={{ borderColor: color.danger, marginBottom: 12 }}
-      />
-    </ScrollView>
+    </PressableScale>
   );
 }

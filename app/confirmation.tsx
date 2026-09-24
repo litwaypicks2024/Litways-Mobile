@@ -455,7 +455,7 @@ export default function ConfirmationScreen() {
           {user ? (
             <Button
               title="Track Your Order"
-              onPress={() => router.replace({ pathname: '/(tabs)/account', params: { tab: 'orders' } })}
+              onPress={() => router.replace('/orders')}
               variant="primary"
               fullWidth
               size="lg"
