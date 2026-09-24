@@ -12,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { color } from '@/theme/tokens';
 import { useCartStore } from '@/store/cart';
+import { useWishlistStore } from '@/store/wishlist';
 
 /** Height of the bar's content, above the bottom safe-area inset. */
 export const TAB_BAR_HEIGHT = 56;
@@ -103,6 +104,15 @@ export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabBu
       <Text variant="label" weight={isFocused ? 'bold' : 'semibold'} style={{ color: tint, letterSpacing: 0 }}>{label}</Text>
     </Pressable>
   );
+});
+
+/* Favorites carries a live count of saved items, like Cart does. */
+export const FavoritesTabButton = React.forwardRef<RNView, TabTriggerSlotProps>(function FavoritesTabButton(
+  props,
+  ref
+) {
+  const count = useWishlistStore((s) => s.items.length);
+  return <TabButton ref={ref} {...props} iconOn="heart" iconOff="heart-outline" label="Favorites" badge={count} />;
 });
 
 /* Cart is a plain tab like the others — it just carries the live item-count badge. */

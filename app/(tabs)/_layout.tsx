@@ -2,7 +2,7 @@ import React from 'react';
 import { Tabs, TabList, TabTrigger, TabSlot } from 'expo-router/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color } from '@/theme/tokens';
-import { TabButton, CartTabButton, TAB_BAR_HEIGHT } from '@/components/navigation/TabBar';
+import { TabButton, CartTabButton, FavoritesTabButton, TAB_BAR_HEIGHT } from '@/components/navigation/TabBar';
 
 /**
  * Fixed bottom bar: Home · Shop · Favorites · You · Cart. It's a normal
@@ -32,7 +32,7 @@ export default function TabLayout() {
           <TabButton iconOn="search" iconOff="search-outline" label="Shop" />
         </TabTrigger>
         <TabTrigger name="favorites" href="/favorites" asChild>
-          <TabButton iconOn="heart" iconOff="heart-outline" label="Favorites" />
+          <FavoritesTabButton />
         </TabTrigger>
         <TabTrigger name="account" href="/account" asChild>
           <TabButton iconOn="person" iconOff="person-outline" label="You" />
