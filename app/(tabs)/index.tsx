@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
-  Text,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
@@ -22,7 +21,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { FlashList } from '@/components/ui/List';
 import { supabase } from '@/lib/supabase';
-import { color, font, radius, spacing, gutter, shadow, type as t } from '@/theme/tokens';
+import { color, radius, spacing, gutter, shadow, type as t } from '@/theme/tokens';
 import { useAuthStore } from '@/store/auth';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { PressableScale } from '@/components/ui/PressableScale';
@@ -40,6 +39,7 @@ import { ProductRail } from '@/components/shop/ProductRail';
 import { useTasteStore, rankedCategories } from '@/store/taste';
 import { usePickedForYou, useCategoryRail } from '@/lib/personalization';
 import type { Product, Category } from '@/types';
+import { Text } from '@/components/ui/Text';
 
 /* Bundled brand campaign shot — subjects right, quiet left half for the copy. */
 const HERO_IMAGE = require('@/assets/images/home-hero.jpg');
@@ -218,10 +218,10 @@ export default function HomeScreen() {
           {/* Greeting fills the row the way Walmart / Instacart headers do; it
               shrinks and truncates on its own, so it can never clip the mark */}
           <View style={{ flex: 1 }}>
-            <Text numberOfLines={1} style={{ fontSize: 13, color: color.inkBody }}>
+            <Text variant="caption" tone="body" numberOfLines={1}>
               {firstName ? `Hi, ${firstName}` : 'Welcome'}
             </Text>
-            <Text numberOfLines={1} style={{ fontSize: 17, fontFamily: font.display, color: color.ink, marginTop: 1 }}>
+            <Text variant="heading" numberOfLines={1} style={{ marginTop: 1 }}>
               What are you shopping for?
             </Text>
           </View>
@@ -246,7 +246,7 @@ export default function HomeScreen() {
           }}
         >
           <Ionicons name="search" size={19} color={color.inkMuted} />
-          <Text style={{ ...t.body, color: color.inkMuted, flex: 1 }}>Search for anything…</Text>
+          <Text variant="body" tone="muted" style={{ flex: 1 }}>Search for anything…</Text>
         </TouchableOpacity>
       </View>
 
@@ -265,11 +265,8 @@ export default function HomeScreen() {
             {['New season drops', 'Pay with MTN MoMo', 'Delivering to all 15 counties', 'Monrovia & beyond'].map(
               (phrase) => (
                 <View key={phrase} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text
-                    style={{
-                      color: color.onInk, fontSize: 11, fontWeight: '700',
-                      letterSpacing: 1.2, textTransform: 'uppercase',
-                    }}
+                  <Text variant="label"
+                    style={{ color: color.onInk, textTransform: 'uppercase' }}
                   >
                     {phrase}
                   </Text>
@@ -298,19 +295,19 @@ export default function HomeScreen() {
               <View style={{ width: 18, height: 3.5, borderRadius: 2, backgroundColor: color.accent }} />
               <View style={{ width: 12, height: 3.5, borderRadius: 2, backgroundColor: color.ink, marginRight: 3 }} />
             </View>
-            <Text style={{ ...t.overline, color: color.accent, fontSize: 11 }}>
+            <Text variant="overline" tone="accent">
               {daypartGreeting()} · Monrovia
             </Text>
           </Animated.View>
 
           {/* Headline lines land one after the other */}
           <Animated.View entering={FadeInDown.duration(320).delay(2 * 60).reduceMotion(ReduceMotion.System)}>
-            <Text style={{ fontSize: 34, fontFamily: font.displayHeavy, lineHeight: 39, letterSpacing: -0.8, color: color.ink }}>
+            <Text variant="hero">
               Everything you
             </Text>
           </Animated.View>
           <Animated.View entering={FadeInDown.duration(320).delay(3 * 60).reduceMotion(ReduceMotion.System)}>
-            <Text style={{ fontSize: 34, fontFamily: font.displayHeavy, lineHeight: 39, letterSpacing: -0.8, color: color.ink }}>
+            <Text variant="hero">
               need, <Text style={{ color: color.accent }}>delivered.</Text>
             </Text>
           </Animated.View>
@@ -396,7 +393,7 @@ export default function HomeScreen() {
                         </View>
                       )}
                     </View>
-                    <Text numberOfLines={2} style={{ fontSize: 12, fontWeight: '600', color: color.text, textAlign: 'center', lineHeight: 15 }}>
+                    <Text variant="metaStrong" numberOfLines={2} style={{ textAlign: 'center' }}>
                       {cat.name}
                     </Text>
                   </PressableScale>
@@ -437,12 +434,12 @@ export default function HomeScreen() {
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                         <Ionicons name="pricetag" size={14} color={color.accent} />
-                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>Deals on now</Text>
+                        <Text variant="metaStrong" style={{ color: '#fff', textTransform: 'uppercase' }}>Deals on now</Text>
                       </View>
-                      <Text style={{ color: '#fff', fontSize: 28, fontFamily: font.displayHeavy, letterSpacing: -0.5 }}>
+                      <Text variant="display" style={{ color: '#fff' }}>
                         {maxDiscount > 0 ? `Up to ${maxDiscount}% off` : 'Save on selected items'}
                       </Text>
-                      <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 3 }}>Selected items · while stocks last</Text>
+                      <Text variant="caption" style={{ color: 'rgba(255,255,255,0.65)', marginTop: 3 }}>Selected items · while stocks last</Text>
                     </View>
                     <View style={{ width: 44, height: 44, borderRadius: radius.full, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
                       <Ionicons name="arrow-forward" size={20} color={color.onAccent} />
@@ -562,7 +559,7 @@ export default function HomeScreen() {
                   flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
-                <Text style={{ color: color.text, fontWeight: '700', fontSize: 14 }}>See all products</Text>
+                <Text variant="bodyStrong">See all products</Text>
                 <Ionicons name="arrow-forward" size={15} color={color.text} />
               </TouchableOpacity>
             </View>
@@ -577,12 +574,12 @@ function SectionHeader({ title, subtitle, onSeeAll }: { title: string; subtitle?
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: gutter, marginBottom: spacing.lg }}>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 20, fontFamily: font.display, color: color.text, letterSpacing: -0.4 }}>{title}</Text>
-        {subtitle && <Text style={{ fontSize: 12, color: color.textMuted, fontWeight: '400', marginTop: 3 }}>{subtitle}</Text>}
+        <Text variant="title">{title}</Text>
+        {subtitle && <Text variant="meta" tone="muted" style={{ marginTop: 3 }}>{subtitle}</Text>}
       </View>
       {onSeeAll && (
         <TouchableOpacity onPress={onSeeAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }} hitSlop={8}>
-          <Text style={{ fontSize: 13, color: color.accent, fontWeight: '700' }}>See all</Text>
+          <Text variant="small" tone="accent">See all</Text>
           <Ionicons name="chevron-forward" size={14} color={color.accent} />
         </TouchableOpacity>
       )}

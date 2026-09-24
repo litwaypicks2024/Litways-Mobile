@@ -1,11 +1,11 @@
 import React, { memo, useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, type GestureResponderEvent } from 'react-native';
+import { View, TouchableOpacity, type GestureResponderEvent } from 'react-native';
 import { Image } from 'expo-image';
 import Animated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { color, font, radius, type } from '@/theme/tokens';
+import { color, radius, type } from '@/theme/tokens';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useWishlistStore } from '@/store/wishlist';
 import { useCartStore } from '@/store/cart';
@@ -14,6 +14,7 @@ import { showToast } from '@/components/ui/Toast';
 import { openQuickAdd } from '@/components/shop/QuickAddSheet';
 import { formatCurrency, discountPercent } from '@/lib/currency';
 import type { Product } from '@/types';
+import { Text } from '@/components/ui/Text';
 
 interface Props {
   product: Product;
@@ -147,7 +148,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
               borderRadius: radius.sm,
             }}
           >
-            <Text style={{ color: color.onAccent, fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }}>
+            <Text variant="label" tone="onAccent">
               -{discount}%
             </Text>
           </View>
@@ -162,7 +163,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
             }}
           >
             <View style={{ backgroundColor: '#000', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
-              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 }}>SOLD OUT</Text>
+              <Text variant="label" style={{ color: '#fff' }}>SOLD OUT</Text>
             </View>
           </View>
         )}
@@ -208,7 +209,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
             {justAdded ? (
               <Ionicons name="checkmark" size={20} color="#fff" />
             ) : inCart > 0 ? (
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>{inCart}</Text>
+              <Text variant="bodyStrong" style={{ color: '#fff' }}>{inCart}</Text>
             ) : (
               <Ionicons name="add" size={22} color={color.ink} />
             )}
@@ -218,25 +219,25 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
 
       {/* Caption — sits directly on the grey canvas, no card box */}
       <View style={{ paddingTop: 8, paddingHorizontal: 2 }}>
-        <Text numberOfLines={1} style={{ ...type.overline, color: color.inkMuted, marginBottom: 3 }}>
+        <Text variant="overline" tone="muted" numberOfLines={1} style={{ marginBottom: 3 }}>
           {product.brand ?? '—'}
         </Text>
-        <Text numberOfLines={2} style={{ fontSize: 13, fontWeight: '600', color: color.ink, lineHeight: 18, marginBottom: 4 }}>
+        <Text variant="small" numberOfLines={2} style={{ marginBottom: 4 }}>
           {product.name}
         </Text>
         {rating > 0 && (
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
             <Ionicons name="star" size={12} color={color.star} />
-            <Text style={{ fontSize: 11, color: color.inkMuted, fontWeight: '600', marginLeft: 4 }}>
+            <Text variant="label" tone="muted" style={{ marginLeft: 4 }}>
               {rating.toFixed(1)}
               {reviewCount > 0 ? ` · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}` : ''}
             </Text>
           </View>
         )}
-        <Text style={{ fontSize: 16, fontFamily: font.displayHeavy, color: color.accent, letterSpacing: -0.2 }}>
+        <Text variant="price" tone="accent">
           {formatCurrency(displayPrice)}
           {hasDiscount && (
-            <Text style={{ fontSize: 12, fontWeight: '400', color: color.inkFaint, textDecorationLine: 'line-through' }}>
+            <Text variant="meta" tone="faint" style={{ textDecorationLine: 'line-through' }}>
               {'  '}{formatCurrency(product.price!)}
             </Text>
           )}

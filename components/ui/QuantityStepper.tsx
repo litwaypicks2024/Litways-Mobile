@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { color, radius } from '@/theme/tokens';
 import { PressableScale } from './PressableScale';
+import { Text } from '@/components/ui/Text';
 
 export function clampQuantity(current: number, delta: number, max: number): number {
   return Math.max(0, Math.min(current + delta, max));
@@ -41,7 +42,7 @@ export function QuantityStepper({ quantity, max, onDecrement, onIncrement }: Pro
           color={quantity === 1 ? color.danger : color.ink}
         />
       </PressableScale>
-      <Text style={{ fontSize: 13, fontWeight: '700', color: color.ink, width: 28, textAlign: 'center' }}>
+      <Text variant="small" style={{ width: 28, textAlign: 'center' }}>
         {quantity}
       </Text>
       <PressableScale

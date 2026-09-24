@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@/components/ui/List';
-import { color, font, gutter, radius, shadow } from '@/theme/tokens';
+import { color, gutter, radius, shadow } from '@/theme/tokens';
 import { useWishlistStore } from '@/store/wishlist';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { HeartIllustration } from '@/components/illustrations';
 import { useCategoryRail, usePickedForYou } from '@/lib/personalization';
 import type { Product } from '@/types';
+import { Text } from '@/components/ui/Text';
 
 /**
  * Saved items. Signed-out shoppers can save too (the list lives on-device and
@@ -74,8 +75,8 @@ export default function FavoritesScreen() {
   const header = (
     <View style={{ backgroundColor: color.surface, paddingTop: insets.top + 12, paddingBottom: 12, ...shadow.header }}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: gutter }}>
-        <Text style={{ fontSize: 28, fontFamily: font.displayHeavy, color: color.ink, letterSpacing: -0.5 }}>Favorites</Text>
-        {items.length > 0 && <Text style={{ fontSize: 14, color: color.inkMuted, fontWeight: '600' }}>{items.length}</Text>}
+        <Text variant="display">Favorites</Text>
+        {items.length > 0 && <Text variant="bodyStrong" tone="muted">{items.length}</Text>}
       </View>
       {categories.length > 1 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }} contentContainerStyle={{ paddingHorizontal: gutter, gap: 6 }}>
@@ -96,10 +97,10 @@ export default function FavoritesScreen() {
         <ScrollView contentContainerStyle={{ paddingBottom: clearance }} showsVerticalScrollIndicator={false}>
           <View style={{ paddingHorizontal: 32, paddingTop: 40, alignItems: 'center' }}>
             <HeartIllustration />
-            <Text style={{ fontSize: 20, fontFamily: font.display, color: color.ink, textAlign: 'center', marginTop: 16, marginBottom: 6 }}>
+            <Text variant="title" style={{ textAlign: 'center', marginTop: 16, marginBottom: 6 }}>
               Nothing saved yet
             </Text>
-            <Text style={{ fontSize: 14, color: color.inkMuted, textAlign: 'center', lineHeight: 20 }}>
+            <Text variant="body" tone="muted" style={{ textAlign: 'center' }}>
               Tap the heart on anything you like and it'll wait for you here.
             </Text>
           </View>
@@ -165,7 +166,7 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
         borderColor: active ? color.accent : color.fieldBorder,
       }}
     >
-      <Text style={{ fontSize: 12, fontWeight: '700', color: active ? color.onAccent : color.inkBody }}>{label}</Text>
+      <Text variant="metaStrong" style={{ color: active ? color.onAccent : color.inkBody }}>{label}</Text>
     </TouchableOpacity>
   );
 }

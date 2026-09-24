@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
-  Text,
   ScrollView,
   TouchableOpacity,
   Dimensions,
@@ -29,7 +28,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { FlashList } from '@/components/ui/List';
 import { supabase } from '@/lib/supabase';
-import { color, font, radius } from '@/theme/tokens';
+import { color, radius } from '@/theme/tokens';
 import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
 import { useTasteStore } from '@/store/taste';
@@ -42,6 +41,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { formatCurrency, discountPercent } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Product, Review } from '@/types';
+import { Text } from '@/components/ui/Text';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const IMAGE_HEIGHT = Math.round(SH * 0.52);
@@ -348,7 +348,7 @@ export default function ProductDetailScreen() {
         ]}
       >
         <View style={{ height: 42, marginBottom: 10, justifyContent: 'center', marginLeft: 70, marginRight: 116 }}>
-          <Text numberOfLines={1} style={{ fontSize: 16, fontFamily: font.display, color: color.ink }}>
+          <Text variant="heading" numberOfLines={1}>
             {product.name}
           </Text>
         </View>
@@ -442,7 +442,7 @@ export default function ProductDetailScreen() {
 
           {hasDiscount && (
             <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + 72, left: 16, backgroundColor: color.accent, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700', letterSpacing: 0.3 }}>-{discount}% OFF</Text>
+              <Text variant="small" style={{ color: '#fff' }}>-{discount}% OFF</Text>
             </View>
           )}
 
@@ -475,7 +475,7 @@ export default function ProductDetailScreen() {
                 pointerEvents="none"
                 style={{ position: 'absolute', right: 16, bottom: 36, backgroundColor: 'rgba(20,20,20,0.55)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}
               >
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{imageIndex + 1} / {images.length}</Text>
+                <Text variant="metaStrong" style={{ color: '#fff' }}>{imageIndex + 1} / {images.length}</Text>
               </View>
             </>
           )}
@@ -519,12 +519,12 @@ export default function ProductDetailScreen() {
 
           <View onLayout={(e) => { innerY.current = e.nativeEvent.layout.y; updateTitleThreshold(); }} style={{ paddingHorizontal: GUTTER }}>
             {/* Identity: brand, name, rating */}
-            <Text style={{ fontSize: 12, fontWeight: '700', color: color.inkBody, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>
+            <Text variant="metaStrong" tone="body" style={{ textTransform: 'uppercase', marginBottom: 4 }}>
               {product.brand}
             </Text>
-            <Text
+            <Text variant="title"
               onLayout={(e) => { nameY.current = e.nativeEvent.layout.y; updateTitleThreshold(); }}
-              style={{ fontSize: 20, fontFamily: font.display, color: color.ink, lineHeight: 29, marginBottom: 8 }}
+              style={{ marginBottom: 8 }}
             >
               {product.name}
             </Text>
@@ -535,23 +535,23 @@ export default function ProductDetailScreen() {
                     <Ionicons key={star} name="star" size={14} color={star <= Math.round(avgRating) ? color.star : color.surfaceSunken} />
                   ))}
                 </View>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: color.ink }}>{avgRating.toFixed(1)}</Text>
-                <Text style={{ fontSize: 13, color: color.inkBody }}>({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</Text>
+                <Text variant="small">{avgRating.toFixed(1)}</Text>
+                <Text variant="caption" tone="body">({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</Text>
               </View>
             )}
 
             {/* Price + availability, together */}
             <View style={{ backgroundColor: color.accentSoft, borderRadius: 14, padding: 14, marginBottom: 24 }}>
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
-                <Text style={{ fontSize: 28, fontFamily: font.displayHeavy, color: color.accent }}>
+                <Text variant="display" tone="accent">
                   {formatCurrency(displayPrice)}
                 </Text>
                 {hasDiscount && (
                   <View>
-                    <Text style={{ fontSize: 15, color: color.inkBody, textDecorationLine: 'line-through', lineHeight: 20 }}>
+                    <Text variant="bodyLg" tone="body" style={{ textDecorationLine: 'line-through' }}>
                       {formatCurrency(product.price!)}
                     </Text>
-                    <Text style={{ fontSize: 12, color: color.danger, fontWeight: '700' }}>
+                    <Text variant="metaStrong" tone="danger">
                       You save {formatCurrency(product.price! - displayPrice)}
                     </Text>
                   </View>
@@ -560,7 +560,7 @@ export default function ProductDetailScreen() {
               {(!inStock || lowStock) && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: !inStock ? color.danger : color.accent }} />
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: !inStock ? color.danger : color.accentPressed }}>
+                  <Text variant="small" style={{ color: !inStock ? color.danger : color.accentPressed }}>
                     {!inStock ? 'Out of stock' : `Only ${product.stock} left, order soon`}
                   </Text>
                 </View>
@@ -571,11 +571,11 @@ export default function ProductDetailScreen() {
             {product.sizes && product.sizes.length > 0 && (
               <View style={{ marginBottom: 24 }} onLayout={(e) => { sectionY.current.size = e.nativeEvent.layout.y; }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: color.ink }}>
+                  <Text variant="button">
                     Size{selectedSize ? <Text style={{ color: color.accent }}>  {selectedSize}</Text> : ''}
                   </Text>
                   {!selectedSize && (
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: missing === 'size' ? color.danger : color.accentPressed }}>
+                    <Text variant="metaStrong" style={{ color: missing === 'size' ? color.danger : color.accentPressed }}>
                       {missing === 'size' ? 'Select a size to continue' : 'Required'}
                     </Text>
                   )}
@@ -600,7 +600,7 @@ export default function ProductDetailScreen() {
                         borderColor: selectedSize === size ? color.ink : missing === 'size' ? color.danger : color.border,
                       }}
                     >
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: selectedSize === size ? color.onInk : color.ink }}>
+                      <Text variant="bodyStrong" style={{ color: selectedSize === size ? color.onInk : color.ink }}>
                         {size}
                       </Text>
                     </PressableScale>
@@ -613,11 +613,11 @@ export default function ProductDetailScreen() {
             {product.colors && product.colors.length > 0 && (
               <View style={{ marginBottom: 24 }} onLayout={(e) => { sectionY.current.color = e.nativeEvent.layout.y; }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: color.ink }}>
+                  <Text variant="button">
                     Color{selectedColor ? <Text style={{ color: color.accent }}>  {selectedColor}</Text> : ''}
                   </Text>
                   {!selectedColor && (
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: missing === 'color' ? color.danger : color.accentPressed }}>
+                    <Text variant="metaStrong" style={{ color: missing === 'color' ? color.danger : color.accentPressed }}>
                       {missing === 'color' ? 'Select a color to continue' : 'Required'}
                     </Text>
                   )}
@@ -641,7 +641,7 @@ export default function ProductDetailScreen() {
                         borderColor: selectedColor === colorName ? color.ink : missing === 'color' ? color.danger : color.border,
                       }}
                     >
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: selectedColor === colorName ? color.onInk : color.ink }}>
+                      <Text variant="bodyStrong" style={{ color: selectedColor === colorName ? color.onInk : color.ink }}>
                         {colorName}
                       </Text>
                     </PressableScale>
@@ -653,7 +653,7 @@ export default function ProductDetailScreen() {
             {/* Quantity */}
             {inStock && (
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: color.ink }}>Quantity</Text>
+                <Text variant="button">Quantity</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: color.border, borderRadius: radius.full }}>
                   <TouchableOpacity
                     onPress={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -685,16 +685,15 @@ export default function ProductDetailScreen() {
             {/* Description */}
             {!!product.description && (
               <View style={{ marginBottom: 24 }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: color.ink, marginBottom: 8 }}>Description</Text>
-                <Text
-                  style={{ fontSize: 15, color: color.inkBody, lineHeight: 23 }}
-                  numberOfLines={descExpanded ? undefined : 4}
-                >
+                <Text variant="button" style={{ marginBottom: 8 }}>Description</Text>
+                <Text variant="bodyLg" tone="body"
+                  
+                  numberOfLines={descExpanded ? undefined : 4}>
                   {product.description}
                 </Text>
                 {product.description.length > 140 && (
                   <TouchableOpacity onPress={() => setDescExpanded(!descExpanded)} style={{ marginTop: 8 }} hitSlop={8}>
-                    <Text style={{ fontSize: 14, color: color.accent, fontWeight: '700' }}>
+                    <Text variant="bodyStrong" tone="accent">
                       {descExpanded ? 'Show less' : 'Read more'}
                     </Text>
                   </TouchableOpacity>
@@ -721,7 +720,7 @@ export default function ProductDetailScreen() {
                   <Ionicons name={row.icon as any} size={22} color={color.ink} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 15, fontWeight: '600', color: color.ink }}>{row.title}</Text>
-                    <Text style={{ fontSize: 13, color: color.inkBody, marginTop: 1 }}>{row.sub}</Text>
+                    <Text variant="caption" tone="body" style={{ marginTop: 1 }}>{row.sub}</Text>
                   </View>
                 </View>
               ))}
@@ -735,20 +734,20 @@ export default function ProductDetailScreen() {
               </View>
             ) : reviewsError ? (
               <View style={{ marginBottom: 24, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={{ fontSize: 13, color: color.inkBody }}>Couldn't load reviews.</Text>
+                <Text variant="caption" tone="body">Couldn't load reviews.</Text>
                 <TouchableOpacity onPress={() => refetchReviews()} hitSlop={8}>
-                  <Text style={{ fontSize: 13, color: color.accent, fontWeight: '700' }}>Retry</Text>
+                  <Text variant="small" tone="accent">Retry</Text>
                 </TouchableOpacity>
               </View>
             ) : reviews && reviews.length > 0 && (
               <View style={{ marginBottom: 8, borderTopWidth: 1, borderTopColor: color.border, paddingTop: 20 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <Text style={{ fontSize: 16, fontFamily: font.display, color: color.ink }}>
+                  <Text variant="heading">
                     Reviews ({reviewCount})
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: color.star + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
                     <Ionicons name="star" size={13} color={color.star} />
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400e' }}>{avgRating.toFixed(1)}</Text>
+                    <Text variant="small" style={{ color: '#92400e' }}>{avgRating.toFixed(1)}</Text>
                   </View>
                 </View>
                 {reviews.slice(0, 5).map((review, i, arr) => (
@@ -763,13 +762,13 @@ export default function ProductDetailScreen() {
                             <Ionicons key={st} name="star" size={12} color={st <= review.rating ? color.star : color.surfaceSunken} />
                           ))}
                         </View>
-                        <Text style={{ fontSize: 12, color: color.inkBody, marginTop: 1 }}>
+                        <Text variant="meta" tone="body" style={{ marginTop: 1 }}>
                           {new Date(review.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
                         </Text>
                       </View>
                     </View>
                     {review.comment && (
-                      <Text style={{ fontSize: 14, color: color.inkBody, lineHeight: 21, marginLeft: 42 }}>
+                      <Text variant="body" tone="body" style={{ marginLeft: 42 }}>
                         {review.comment}
                       </Text>
                     )}
@@ -783,7 +782,7 @@ export default function ProductDetailScreen() {
           {(relatedLoading || (related && related.length > 0)) && (
             <View style={{ marginTop: 24, paddingTop: 24, borderTopWidth: 1, borderTopColor: color.border }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: GUTTER, marginBottom: 14 }}>
-                <Text style={{ fontSize: 17, fontFamily: font.display, color: color.ink }}>You may also like</Text>
+                <Text variant="heading">You may also like</Text>
                 <TouchableOpacity
                   onPress={() =>
                     router.push(product.category_slug ? `/category/${product.category_slug}` : '/(tabs)/shop')
@@ -792,7 +791,7 @@ export default function ProductDetailScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="See all similar products"
                 >
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: color.accent }}>See all</Text>
+                  <Text variant="bodyStrong" tone="accent">See all</Text>
                 </TouchableOpacity>
               </View>
               {relatedLoading ? (

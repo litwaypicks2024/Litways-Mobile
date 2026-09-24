@@ -36,15 +36,16 @@ const SCALE_CAP: Partial<Record<TypeVariant, number>> = {
 };
 
 interface Props extends TextProps {
+  /** Omit for plain RN text (only while a screen is mid-migration). */
   variant?: TypeVariant;
   tone?: TextTone;
 }
 
-export function Text({ variant = 'body', tone, style, maxFontSizeMultiplier, ...rest }: Props) {
+export function Text({ variant, tone, style, maxFontSizeMultiplier, ...rest }: Props) {
   return (
     <RNText
-      maxFontSizeMultiplier={maxFontSizeMultiplier ?? SCALE_CAP[variant]}
-      style={[type[variant], tone && { color: TONES[tone] }, style]}
+      maxFontSizeMultiplier={maxFontSizeMultiplier ?? (variant ? SCALE_CAP[variant] : undefined)}
+      style={[variant && type[variant], tone && { color: TONES[tone] }, style]}
       {...rest}
     />
   );
