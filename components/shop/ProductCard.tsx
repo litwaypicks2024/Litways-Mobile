@@ -16,6 +16,9 @@ import { formatCurrency, discountPercent } from '@/lib/currency';
 import type { Product } from '@/types';
 import { Text } from '@/components/ui/Text';
 
+/** A touch of extra space between characters for the brand and name: semibold text this small sits tight on a grey canvas. */
+const CARD_TEXT_TRACKING = 0.3;
+
 interface Props {
   product: Product;
   width?: number;
@@ -219,11 +222,11 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
 
       {/* Caption — sits directly on the grey canvas, no card box */}
       <View style={{ paddingTop: 8, paddingHorizontal: 2 }}>
-        <Text variant="metaStrong" tone="muted" numberOfLines={1}>
+        <Text variant="metaStrong" tone="muted" numberOfLines={1} style={{ letterSpacing: CARD_TEXT_TRACKING }}>
           {product.brand ?? '—'}
         </Text>
         {/* One line with an ellipsis, always: a long name must never make one card taller than its neighbours */}
-        <Text variant="bodyStrong" numberOfLines={1} ellipsizeMode="tail" style={{ marginTop: 2 }}>
+        <Text variant="bodyStrong" numberOfLines={1} ellipsizeMode="tail" style={{ marginTop: 2, letterSpacing: CARD_TEXT_TRACKING }}>
           {product.name}
         </Text>
         {rating > 0 && (

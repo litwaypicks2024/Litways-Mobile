@@ -30,7 +30,7 @@ Hard limits (enforced by `npm run check:type`):
 1. Sixteen roles, no other sizes (below), each with a fixed line height.
 2. No `fontWeight` anywhere (except splash artwork, which renders before fonts load). Use a variant, or `<Text weight>` on a nested span.
 3. No half-pixel sizes.
-4. Letter-spacing only on hero/display/title/heading/priceLg (slightly negative) and overline (+0.8).
+4. Letter-spacing only on hero/display/title/heading/priceLg (slightly negative), overline (+0.6), and the product card's brand and name (+0.3, for legibility of small semibold text).
 5. One styling system: `<Text variant>`. NativeWind `text-*` sizes on `<Text>` are rejected by the check script.
 6. Every `TextInput` sets `fontFamily: font.sans` (it does not inherit).
 7. Colour: `ink` headings/primary, `inkBody` paragraphs, `inkMuted` secondary, `inkFaint` placeholders/decoration only.
