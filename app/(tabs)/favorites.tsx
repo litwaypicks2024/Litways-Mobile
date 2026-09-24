@@ -74,9 +74,11 @@ export default function FavoritesScreen() {
 
   const header = (
     <View style={{ backgroundColor: color.surface, paddingTop: insets.top + 12, paddingBottom: 12, ...shadow.header }}>
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: gutter }}>
+      <View style={{ paddingHorizontal: gutter }}>
         <Text variant="display">Favorites</Text>
-        {items.length > 0 && <Text variant="bodyStrong" tone="muted">{items.length}</Text>}
+        <Text variant="body" tone="muted" style={{ marginTop: 2 }}>
+          {items.length === 0 ? 'Items you save will wait for you here' : `${items.length} saved ${items.length === 1 ? 'item' : 'items'}`}
+        </Text>
       </View>
       {categories.length > 1 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }} contentContainerStyle={{ paddingHorizontal: gutter, gap: 6 }}>
