@@ -18,7 +18,7 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { color, radius, font } from '@/theme/tokens';
+import { color, radius, inputText } from '@/theme/tokens';
 import { Button } from '@/components/ui/Button';
 import type { ProductFilters } from '@/types';
 import { Text } from '@/components/ui/Text';
@@ -185,7 +185,7 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
                     keyboardType="numeric"
                     placeholder="0"
                     placeholderTextColor={color.inkFaint}
-                    style={{ flex: 1, fontSize: 14, fontFamily: font.sans, color: color.ink }}
+                    style={[inputText, { flex: 1 }]}
                   />
                 </View>
               </View>
@@ -199,7 +199,7 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
                     keyboardType="numeric"
                     placeholder="999"
                     placeholderTextColor={color.inkFaint}
-                    style={{ flex: 1, fontSize: 14, fontFamily: font.sans, color: color.ink }}
+                    style={[inputText, { flex: 1 }]}
                   />
                 </View>
               </View>
