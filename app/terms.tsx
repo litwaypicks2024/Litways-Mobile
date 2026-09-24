@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text } from '@/components/ui/Text';
 
 const sections = [
   { title: 'Acceptance of Terms', body: 'By using Litway Picks, you agree to these terms. If you disagree, please do not use our service.' },
@@ -22,15 +23,15 @@ export default function TermsScreen() {
     <View className="flex-1 bg-gray-50">
       <View className="bg-white border-b border-gray-100 px-5 pb-4 flex-row items-center gap-3" style={{ paddingTop: insets.top + 12 }}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back"><Ionicons name="arrow-back" size={22} color={Colors.gray[800]} /></TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900">Terms & Conditions</Text>
+        <Text variant="heading">Terms & Conditions</Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <Text className="text-xs text-gray-400 mb-5">Last updated: May 2026</Text>
+        <Text variant="meta" tone="muted" style={{ marginBottom: 20 }}>Last updated: May 2026</Text>
         <View className="gap-4">
           {sections.map((s) => (
             <View key={s.title} className="bg-white rounded-2xl p-5 shadow-sm">
-              <Text className="text-base font-bold text-gray-900 mb-2">{s.title}</Text>
-              <Text className="text-sm text-gray-600 leading-6">{s.body}</Text>
+              <Text variant="heading" style={{ marginBottom: 8 }}>{s.title}</Text>
+              <Text variant="bodyLg" tone="body">{s.body}</Text>
             </View>
           ))}
         </View>

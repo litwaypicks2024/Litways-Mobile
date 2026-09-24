@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, Platform, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Platform, ActivityIndicator, RefreshControl } from 'react-native';
 import { FlashList } from '@/components/ui/List';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -11,10 +11,11 @@ import { ProductGridSkeleton } from '@/components/ui/SkeletonLoader';
 import type { Product } from '@/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/ui/IconButton';
-import { color, font } from '@/theme/tokens';
+import { color } from '@/theme/tokens';
 import { useTasteStore } from '@/store/taste';
 import { BrandLoader } from '@/components/motion/BrandLoader';
 import Animated, { FadeIn, ReduceMotion } from 'react-native-reanimated';
+import { Text } from '@/components/ui/Text';
 
 const PAGE_SIZE = 24;
 
@@ -69,7 +70,7 @@ export default function CategoryScreen() {
         style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}
       >
         <IconButton icon="arrow-back" onPress={() => router.back()} accessibilityLabel="Go back" />
-        <Text style={{ fontSize: 18, fontFamily: font.display, color: color.ink, flex: 1 }} numberOfLines={1}>
+        <Text variant="heading" style={{ flex: 1 }} numberOfLines={1}>
           {categoryName ?? 'Category'}
         </Text>
         {isFetching && !isLoading && <ActivityIndicator size="small" color={color.accent} />}

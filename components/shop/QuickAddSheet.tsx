@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Modal, Pressable, ScrollView, TouchableOpacity, type GestureResponderEvent } from 'react-native';
+import { View, Modal, Pressable, ScrollView, TouchableOpacity, type GestureResponderEvent } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -12,7 +12,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { color, font, radius } from '@/theme/tokens';
+import { color, radius } from '@/theme/tokens';
 import { useCartStore } from '@/store/cart';
 import { Button } from '@/components/ui/Button';
 import { PressableScale } from '@/components/ui/PressableScale';
@@ -20,6 +20,7 @@ import { flyToCart } from '@/components/motion/FlyToCart';
 import { showToast } from '@/components/ui/Toast';
 import { formatCurrency } from '@/lib/currency';
 import type { Product } from '@/types';
+import { Text } from '@/components/ui/Text';
 
 /**
  * Quick-add sheet for products that need a size and/or colour: opened from the
@@ -142,11 +143,11 @@ export function QuickAddSheetHost() {
     return (
       <View style={{ marginBottom: 20 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: color.ink }}>
-            {title}{selected ? <Text style={{ color: color.accent }}>  {selected}</Text> : ''}
+          <Text variant="button">
+            {title}{selected ? <Text tone="accent">  {selected}</Text> : ''}
           </Text>
           {!selected && (
-            <Text style={{ fontSize: 12, fontWeight: '700', color: isMissing ? color.danger : color.accentPressed }}>
+            <Text variant="metaStrong" style={{ color: isMissing ? color.danger : color.accentPressed }}>
               {isMissing ? `Select a ${title.toLowerCase()} to continue` : 'Required'}
             </Text>
           )}
@@ -161,7 +162,7 @@ export function QuickAddSheetHost() {
               accessibilityState={{ selected: selected === o }}
               style={chip(selected === o, isMissing)}
             >
-              <Text style={{ fontSize: 14, fontWeight: '700', color: selected === o ? color.onInk : color.ink }}>{o}</Text>
+              <Text variant="bodyStrong" style={{ color: selected === o ? color.onInk : color.ink }}>{o}</Text>
             </PressableScale>
           ))}
         </View>
@@ -191,11 +192,11 @@ export function QuickAddSheetHost() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: color.border }}>
           <Image source={{ uri: imageUrl ?? undefined }} style={{ width: 72, height: 72, borderRadius: 12, backgroundColor: color.surfaceSunken }} contentFit="cover" />
           <View style={{ flex: 1 }}>
-            <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '700', color: color.ink, lineHeight: 20 }}>{product.name}</Text>
-            <Text style={{ marginTop: 4, fontSize: 18, fontFamily: font.displayHeavy, color: color.accent }}>
+            <Text variant="button" numberOfLines={2}>{product.name}</Text>
+            <Text variant="heading" tone="accent" style={{ marginTop: 4 }}>
               {formatCurrency(price)}
               {hasDiscount && (
-                <Text style={{ fontSize: 13, fontWeight: '500', color: color.inkBody, textDecorationLine: 'line-through' }}>
+                <Text variant="caption" tone="body" style={{ textDecorationLine: 'line-through' }}>
                   {'  '}{formatCurrency(product.price!)}
                 </Text>
               )}
@@ -229,7 +230,7 @@ export function QuickAddSheetHost() {
             accessibilityRole="button"
             style={{ alignSelf: 'center', paddingVertical: 10 }}
           >
-            <Text style={{ fontSize: 14, fontWeight: '700', color: color.accent }}>View full details</Text>
+            <Text variant="bodyStrong" tone="accent">View full details</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
-  Text,
   ScrollView,
   TouchableOpacity,
   KeyboardAvoidingView,
@@ -22,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { LogoMark } from '@/components/brand/LogoMark';
 import { alertDialog } from '@/components/ui/Dialog';
+import { Text } from '@/components/ui/Text';
 
 type Mode = 'login' | 'signup';
 
@@ -202,11 +202,11 @@ export default function LoginScreen() {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 }}>
               <LogoMark size={44} variant="onLight" />
-              <Text style={{ ...t.display, fontSize: 28, lineHeight: 34 }}>
+              <Text variant="display">
                 {mode === 'login' ? 'Welcome back.' : 'Create account.'}
               </Text>
             </View>
-            <Text style={{ ...t.body, color: color.inkMuted, marginBottom: 20 }}>
+            <Text variant="body" tone="muted" style={{ marginBottom: 20 }}>
               {mode === 'login'
                 ? 'Sign in to continue shopping'
                 : 'Join thousands of happy shoppers'}
@@ -235,13 +235,7 @@ export default function LoginScreen() {
                     ...(mode === m ? shadow.header : {}),
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: mode === m ? '800' : '600',
-                      color: mode === m ? color.ink : color.inkMuted,
-                    }}
-                  >
+                  <Text variant="bodyStrong" tone={mode === m ? 'default' : 'muted'}>
                     {m === 'login' ? 'Sign In' : 'Sign Up'}
                   </Text>
                 </TouchableOpacity>
@@ -306,7 +300,7 @@ export default function LoginScreen() {
                 onPress={() => router.push('/(auth)/reset-password')}
                 style={{ alignSelf: 'flex-end', marginTop: -8, marginBottom: 20 }}
               >
-                <Text style={{ fontSize: 13, color: color.accent, fontWeight: '600' }}>
+                <Text variant="small" tone="accent">
                   Forgot password?
                 </Text>
               </TouchableOpacity>
@@ -323,13 +317,13 @@ export default function LoginScreen() {
             />
 
             {/* Legal note — belongs to the button ("by continuing"), not the screen edge */}
-            <Text style={{ fontSize: 11, color: color.inkFaint, textAlign: 'center', marginTop: 12, lineHeight: 16 }}>
+            <Text variant="label" tone="muted" style={{ textAlign: 'center', marginTop: 12 }}>
               By continuing, you agree to our{' '}
-              <Text style={{ color: color.inkMuted, fontWeight: '600' }} onPress={() => router.push('/terms')}>
+              <Text weight="semibold" tone="muted" onPress={() => router.push('/terms')}>
                 Terms of Service
               </Text>
               {' '}and{' '}
-              <Text style={{ color: color.inkMuted, fontWeight: '600' }} onPress={() => router.push('/privacy')}>
+              <Text weight="semibold" tone="muted" onPress={() => router.push('/privacy')}>
                 Privacy Policy
               </Text>
             </Text>
@@ -347,11 +341,11 @@ export default function LoginScreen() {
 
             {/* Switch mode */}
             <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 20 }}>
-              <Text style={{ fontSize: 14, color: color.inkMuted }}>
+              <Text variant="body" tone="muted">
                 {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
               </Text>
               <TouchableOpacity onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
-                <Text style={{ fontSize: 14, color: color.accent, fontWeight: '700' }}>
+                <Text variant="bodyStrong" tone="accent">
                   {mode === 'login' ? 'Sign Up' : 'Sign In'}
                 </Text>
               </TouchableOpacity>

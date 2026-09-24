@@ -1,32 +1,22 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
-  Text,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
   StatusBar,
 } from 'react-native';
-import { Image } from 'expo-image';
-import Animated, {
-  FadeInDown,
-  ReduceMotion,
-  useSharedValue,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  interpolate,
-  Extrapolation,
-} from 'react-native-reanimated';
+import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { FlashList } from '@/components/ui/List';
 import { supabase } from '@/lib/supabase';
-import { color, font, radius, spacing, gutter, shadow, type as t } from '@/theme/tokens';
+import { color, radius, spacing, gutter, shadow } from '@/theme/tokens';
 import { useAuthStore } from '@/store/auth';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { PressableScale } from '@/components/ui/PressableScale';
-import { ProductCardSkeleton, SkeletonBlock } from '@/components/ui/SkeletonLoader';
+import { ProductCardSkeleton } from '@/components/ui/SkeletonLoader';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { discountPercent } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,34 +25,14 @@ import { useTabBarClearance } from '@/components/navigation/TabBar';
 import { MotifOverlay } from '@/components/brand/Motif';
 import { LogoMark } from '@/components/brand/LogoMark';
 import { Marquee } from '@/components/brand/Marquee';
-import { RotatingBadge } from '@/components/brand/RotatingBadge';
 import { ProductRail } from '@/components/shop/ProductRail';
+import { CategoryGrid } from '@/components/home/CategoryGrid';
+import { QuickLinks } from '@/components/home/QuickLinks';
+import { ActiveOrderCard } from '@/components/home/ActiveOrderCard';
 import { useTasteStore, rankedCategories } from '@/store/taste';
-import { usePickedForYou, useCategoryRail } from '@/lib/personalization';
+import { usePickedForYou, useCategoryRail, likeSubtitle } from '@/lib/personalization';
 import type { Product, Category } from '@/types';
-
-/* Bundled brand campaign shot — subjects right, quiet left half for the copy. */
-const HERO_IMAGE = require('@/assets/images/home-hero.jpg');
-
-const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  clothing: 'shirt-outline',
-  shoes: 'footsteps-outline',
-  electronics: 'phone-portrait-outline',
-  beauty: 'sparkles-outline',
-  home: 'home-outline',
-  sports: 'football-outline',
-  bags: 'bag-handle-outline',
-  accessories: 'watch-outline',
-  food: 'fast-food-outline',
-  kids: 'happy-outline',
-};
-
-function getCategoryIcon(slug: string, name: string): keyof typeof Ionicons.glyphMap {
-  const key = Object.keys(CATEGORY_ICONS).find(
-    (k) => slug?.includes(k) || name?.toLowerCase().includes(k)
-  );
-  return key ? CATEGORY_ICONS[key] : 'pricetags-outline';
-}
+import { Text } from '@/components/ui/Text';
 
 /** "Good morning" / "Good afternoon" / "Good evening" by device clock. */
 function daypartGreeting(): string {
@@ -86,19 +56,6 @@ export default function HomeScreen() {
   const picked = usePickedForYou();
   const topCategory = picked.topCategories[0];
   const moreInTop = useCategoryRail(topCategory?.slug);
-
-  /* Scroll-driven parallax: the photo drifts inside its arch as you scroll. */
-  const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler((e) => {
-    scrollY.value = e.contentOffset.y;
-  });
-  const parallaxStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateY: interpolate(scrollY.value, [-120, 0, 360], [26, 0, -34], Extrapolation.CLAMP),
-      },
-    ],
-  }));
 
   const {
     data: featured,
@@ -179,6 +136,8 @@ export default function HomeScreen() {
     return [...categories].sort((a, b) => (rank.get(a.slug) ?? Infinity) - (rank.get(b.slug) ?? Infinity));
   }, [categories, tasteCategories]);
 
+  const forYouSlugs = useMemo(() => new Set(picked.topCategories.map((c) => c.slug)), [picked.topCategories]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refetchFeatured(), refetchCats(), refetchNewest(), refetchDeals()]);
@@ -218,10 +177,10 @@ export default function HomeScreen() {
           {/* Greeting fills the row the way Walmart / Instacart headers do; it
               shrinks and truncates on its own, so it can never clip the mark */}
           <View style={{ flex: 1 }}>
-            <Text numberOfLines={1} style={{ fontSize: 13, color: color.inkBody }}>
-              {firstName ? `Hi, ${firstName}` : 'Welcome'}
+            <Text variant="caption" tone="body" numberOfLines={1}>
+              {firstName ? `${daypartGreeting()}, ${firstName}` : daypartGreeting()}
             </Text>
-            <Text numberOfLines={1} style={{ fontSize: 17, fontFamily: font.display, color: color.ink, marginTop: 1 }}>
+            <Text variant="heading" numberOfLines={1} style={{ marginTop: 1 }}>
               What are you shopping for?
             </Text>
           </View>
@@ -246,18 +205,16 @@ export default function HomeScreen() {
           }}
         >
           <Ionicons name="search" size={19} color={color.inkMuted} />
-          <Text style={{ ...t.body, color: color.inkMuted, flex: 1 }}>Search for anything…</Text>
+          <Text variant="body" tone="muted" style={{ flex: 1 }}>Search for anything…</Text>
         </TouchableOpacity>
       </View>
 
-      <Animated.ScrollView
+      <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.accent} />
         }
         contentContainerStyle={{ paddingBottom: tabBarClearance }}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
       >
         {/* ─── Kinetic marquee — the brand's promises on a moving ink band ─── */}
         <Animated.View entering={FadeInDown.duration(300).delay(0 * 60).reduceMotion(ReduceMotion.System)}>
@@ -265,11 +222,8 @@ export default function HomeScreen() {
             {['New season drops', 'Pay with MTN MoMo', 'Delivering to all 15 counties', 'Monrovia & beyond'].map(
               (phrase) => (
                 <View key={phrase} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text
-                    style={{
-                      color: color.onInk, fontSize: 11, fontWeight: '800',
-                      letterSpacing: 1.2, textTransform: 'uppercase',
-                    }}
+                  <Text variant="label"
+                    style={{ color: color.onInk, textTransform: 'uppercase' }}
                   >
                     {phrase}
                   </Text>
@@ -286,72 +240,16 @@ export default function HomeScreen() {
           </Marquee>
         </Animated.View>
 
-        {/* ─── Hero — arch-framed campaign shot under editorial type.
-               Children stagger their own entrances. ─── */}
-        <View style={{ marginTop: spacing.lg, marginHorizontal: gutter }}>
-          {/* Overline with the logo's speed-lines DNA — greets by time of day */}
-          <Animated.View
-            entering={FadeInDown.duration(300).delay(1 * 60).reduceMotion(ReduceMotion.System)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}
-          >
-            <View style={{ alignItems: 'flex-end', gap: 3 }}>
-              <View style={{ width: 18, height: 3.5, borderRadius: 2, backgroundColor: color.accent }} />
-              <View style={{ width: 12, height: 3.5, borderRadius: 2, backgroundColor: color.ink, marginRight: 3 }} />
-            </View>
-            <Text style={{ ...t.overline, color: color.accent, fontSize: 11 }}>
-              {daypartGreeting()} · Monrovia
-            </Text>
-          </Animated.View>
+        {/* ─── In-flight order (signed-in shoppers only) ─── */}
+        <ActiveOrderCard />
 
-          {/* Headline lines land one after the other */}
-          <Animated.View entering={FadeInDown.duration(320).delay(2 * 60).reduceMotion(ReduceMotion.System)}>
-            <Text style={{ fontSize: 34, fontFamily: font.displayHeavy, lineHeight: 39, letterSpacing: -0.8, color: color.ink }}>
-              Everything you
-            </Text>
-          </Animated.View>
-          <Animated.View entering={FadeInDown.duration(320).delay(3 * 60).reduceMotion(ReduceMotion.System)}>
-            <Text style={{ fontSize: 34, fontFamily: font.displayHeavy, lineHeight: 39, letterSpacing: -0.8, color: color.ink }}>
-              need, <Text style={{ color: color.accent }}>delivered.</Text>
-            </Text>
-          </Animated.View>
-
-          {/* Arch-framed photo — a doorway into the shop; no text on the image */}
-          <Animated.View entering={FadeInDown.duration(340).delay(4 * 60).reduceMotion(ReduceMotion.System)}>
-          <PressableScale haptic onPress={() => router.push('/(tabs)/shop')} style={{ marginTop: spacing.lg }}>
-            <View
-              style={{
-                height: 250,
-                borderTopLeftRadius: 999,
-                borderTopRightRadius: 999,
-                borderBottomLeftRadius: radius.lg,
-                borderBottomRightRadius: radius.lg,
-                overflow: 'hidden',
-              }}
-            >
-              {/* Oversized so the parallax drift never exposes an edge */}
-              <Animated.View style={[{ height: 320, marginTop: -35 }, parallaxStyle]}>
-                <Image
-                  source={HERO_IMAGE}
-                  style={{ width: '100%', height: '100%' }}
-                  contentFit="cover"
-                  transition={300}
-                />
-              </Animated.View>
-            </View>
-            {/* Rotating editorial badge on the arch's quiet shoulder (faces stay clear) */}
-            <View style={{ position: 'absolute', top: 10, left: 10 }}>
-              <RotatingBadge />
-            </View>
-          </PressableScale>
-          </Animated.View>
-        </View>
-
-        {/* ─── Shop by category ─── */}
-        <Animated.View
-          entering={FadeInDown.duration(300).delay(2 * 60).reduceMotion(ReduceMotion.System)}
-          style={{ marginTop: spacing['2xl'] }}
-        >
-          <SectionHeader title="Shop by category" />
+        {/* ─── Categories: the main way in, straight under search ─── */}
+        <View style={{ marginTop: spacing.xl }}>
+          <SectionHeader
+            title="Shop by category"
+            subtitle={forYouSlugs.size > 0 ? 'Ringed ones are picked for you' : undefined}
+            onSeeAll={() => router.push('/(tabs)/shop')}
+          />
           {errorCats ? (
             <View style={{ paddingHorizontal: gutter }}>
               <ErrorState
@@ -361,49 +259,27 @@ export default function HomeScreen() {
               />
             </View>
           ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: gutter, gap: spacing.md }}
-          >
-            {loadingCats
-              ? Array.from({ length: 6 }).map((_, i) => (
-                  <View key={i} style={{ alignItems: 'center', gap: 6 }}>
-                    <SkeletonBlock width={68} height={68} borderRadius={radius.lg} />
-                    <SkeletonBlock width={52} height={10} borderRadius={5} />
-                  </View>
-                ))
-              : orderedCategories?.map((cat) => (
-                  <PressableScale
-                    key={cat.id}
-                    haptic
-                    onPress={() => router.push(`/category/${cat.slug}`)}
-                    style={{ alignItems: 'center', width: 72 }}
-                  >
-                    <View style={{
-                      width: 68, height: 68,
-                      backgroundColor: color.surface,
-                      borderRadius: radius.lg,
-                      borderWidth: 1, borderColor: color.border,
-                      overflow: 'hidden',
-                      marginBottom: spacing.sm,
-                    }}>
-                      {cat.image ? (
-                        <Image source={{ uri: cat.image }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
-                      ) : (
-                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: color.accentSoft }}>
-                          <Ionicons name={getCategoryIcon(cat.slug ?? '', cat.name ?? '')} size={26} color={color.accent} />
-                        </View>
-                      )}
-                    </View>
-                    <Text numberOfLines={2} style={{ fontSize: 12, fontWeight: '600', color: color.text, textAlign: 'center', lineHeight: 15 }}>
-                      {cat.name}
-                    </Text>
-                  </PressableScale>
-                ))}
-          </ScrollView>
+            <CategoryGrid
+              categories={orderedCategories}
+              loading={loadingCats}
+              forYou={forYouSlugs}
+              onOpenCategory={(slug) => router.push(`/category/${slug}`)}
+              onOpenAll={() => router.push('/(tabs)/shop')}
+            />
           )}
-        </Animated.View>
+        </View>
+
+        {/* ─── Shortcuts ─── */}
+        <View style={{ marginTop: spacing.xl }}>
+          <QuickLinks
+            links={[
+              { key: 'deals', label: 'Deals', icon: 'pricetag-outline', onPress: () => router.push({ pathname: '/(tabs)/shop', params: { sale: '1' } }) },
+              { key: 'new', label: 'New in', icon: 'time-outline', onPress: () => router.push({ pathname: '/(tabs)/shop', params: { sort: 'newest' } }) },
+              { key: 'saved', label: 'Favorites', icon: 'heart-outline', onPress: () => router.push('/(tabs)/favorites') },
+              { key: 'orders', label: 'My orders', icon: 'receipt-outline', onPress: () => router.push({ pathname: '/(tabs)/account', params: { tab: 'orders' } }) },
+            ]}
+          />
+        </View>
 
         {/* ─── Deals ─── */}
         <Animated.View
@@ -428,7 +304,7 @@ export default function HomeScreen() {
               {/* Bold statement — honest "up to X% off" from real discounts */}
               <PressableScale
                 haptic
-                onPress={() => router.push({ pathname: '/(tabs)/shop', params: { sort: 'price_asc' } })}
+                onPress={() => router.push({ pathname: '/(tabs)/shop', params: { sale: '1' } })}
                 style={{ marginHorizontal: gutter }}
               >
                 <View style={{ backgroundColor: color.ink, borderRadius: radius.lg, padding: spacing.lg, overflow: 'hidden' }}>
@@ -437,12 +313,12 @@ export default function HomeScreen() {
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                         <Ionicons name="pricetag" size={14} color={color.accent} />
-                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' }}>Deals on now</Text>
+                        <Text variant="metaStrong" style={{ color: '#fff', textTransform: 'uppercase' }}>Deals on now</Text>
                       </View>
-                      <Text style={{ color: '#fff', fontSize: 26, fontFamily: font.displayHeavy, letterSpacing: -0.5 }}>
+                      <Text variant="display" style={{ color: '#fff' }}>
                         {maxDiscount > 0 ? `Up to ${maxDiscount}% off` : 'Save on selected items'}
                       </Text>
-                      <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 3 }}>Selected items · while stocks last</Text>
+                      <Text variant="caption" style={{ color: 'rgba(255,255,255,0.65)', marginTop: 3 }}>Selected items · while stocks last</Text>
                     </View>
                     <View style={{ width: 44, height: 44, borderRadius: radius.full, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
                       <Ionicons name="arrow-forward" size={20} color={color.onAccent} />
@@ -476,7 +352,7 @@ export default function HomeScreen() {
         {picked.personalized && (
           <ProductRail
             title="Picked for you"
-            subtitle={`Because you like ${picked.topCategories.map((c) => c.name).slice(0, 2).join(' & ')}`}
+            subtitle={likeSubtitle(picked.topCategories)}
             products={picked.products}
             loading={picked.isLoading}
             actionLabel="Browse"
@@ -493,6 +369,11 @@ export default function HomeScreen() {
             onAction={() => router.push(`/category/${topCategory.slug}`)}
           />
         )}
+
+        {/* New shoppers have no taste profile yet: organise the page by category instead */}
+        {!topCategory && (orderedCategories ?? []).slice(0, 2).map((cat) => (
+          <CategoryShelf key={cat.id} category={cat} onSeeAll={() => router.push(`/category/${cat.slug}`)} />
+        ))}
 
         {/* ─── Popular right now ─── */}
         <Animated.View
@@ -562,27 +443,41 @@ export default function HomeScreen() {
                   flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
-                <Text style={{ color: color.text, fontWeight: '700', fontSize: 14 }}>See all products</Text>
+                <Text variant="bodyStrong">See all products</Text>
                 <Ionicons name="arrow-forward" size={15} color={color.text} />
               </TouchableOpacity>
             </View>
           )}
         </Animated.View>
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
+  );
+}
+
+function CategoryShelf({ category, onSeeAll }: { category: Category; onSeeAll: () => void }) {
+  const rail = useCategoryRail(category.slug, 8);
+  return (
+    <ProductRail
+      title={category.name}
+      subtitle="Top picks"
+      products={rail.products}
+      loading={rail.isLoading}
+      actionLabel="See all"
+      onAction={onSeeAll}
+    />
   );
 }
 
 function SectionHeader({ title, subtitle, onSeeAll }: { title: string; subtitle?: string; onSeeAll?: () => void }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: gutter, marginBottom: spacing.lg }}>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 20, fontFamily: font.display, color: color.text, letterSpacing: -0.4 }}>{title}</Text>
-        {subtitle && <Text style={{ fontSize: 12.5, color: color.textMuted, fontWeight: '500', marginTop: 3 }}>{subtitle}</Text>}
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: gutter, marginBottom: spacing.lg }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text variant="title" numberOfLines={1}>{title}</Text>
+        {subtitle && <Text variant="meta" tone="muted" numberOfLines={1} style={{ marginTop: 3 }}>{subtitle}</Text>}
       </View>
       {onSeeAll && (
-        <TouchableOpacity onPress={onSeeAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }} hitSlop={8}>
-          <Text style={{ fontSize: 13, color: color.accent, fontWeight: '700' }}>See all</Text>
+        <TouchableOpacity onPress={onSeeAll} style={{ flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 2 }} hitSlop={8}>
+          <Text variant="small" tone="accent">See all</Text>
           <Ionicons name="chevron-forward" size={14} color={color.accent} />
         </TouchableOpacity>
       )}

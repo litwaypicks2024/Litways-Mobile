@@ -5,7 +5,10 @@ import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useFonts, BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold } from '@expo-google-fonts/bricolage-grotesque';
+import { useFonts } from 'expo-font';
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { Merriweather_700Bold } from '@expo-google-fonts/merriweather';
+import { BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold } from '@expo-google-fonts/bricolage-grotesque';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -116,7 +119,16 @@ function AppContent() {
   // Branded splash stays up until the session + onboarding state resolve AND the
   // display font finishes loading, then fades.
   const [startupDone, setStartupDone] = useState(false);
-  const [fontsLoaded] = useFonts({ BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold });
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Merriweather_700Bold,
+    // Logo lockup only.
+    BricolageGrotesque_700Bold,
+    BricolageGrotesque_800ExtraBold,
+  });
   // Hold the splash long enough for its assembly choreography (~1.4s) to
   // land, even when fonts/session resolve instantly (dev, warm caches).
   const [splashMinHoldDone, setSplashMinHoldDone] = useState(false);

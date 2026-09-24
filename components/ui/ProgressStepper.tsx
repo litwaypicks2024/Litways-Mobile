@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { color } from '@/theme/tokens';
+import { Text } from '@/components/ui/Text';
 
 interface Step {
   label: string;
@@ -30,7 +31,7 @@ export function ProgressStepper({ steps, currentStep }: Props) {
                   borderRadius: 18,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: active ? color.accent : color.surfaceSunken,
+                  backgroundColor: active ? color.accentFill : color.surfaceSunken,
                 }}
               >
                 <Ionicons
@@ -39,7 +40,7 @@ export function ProgressStepper({ steps, currentStep }: Props) {
                   color={active ? color.onAccent : done ? color.ink : color.inkFaint}
                 />
               </View>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: active || done ? color.ink : color.inkFaint }}>
+              <Text variant="label" style={{ color: active || done ? color.ink : color.inkMuted }}>
                 {step.label}
               </Text>
             </View>

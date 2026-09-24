@@ -85,17 +85,16 @@ export const color = {
   /** Primary text (canonical name). */
   ink: '#141414',
   /** Secondary text (subtitles, meta). */
-  inkMuted: '#8a8a8a',
+  inkMuted: '#5f5f5f',
   /** Body copy (descriptions, paragraphs) — passes AA contrast on white,
-   *  which inkMuted (#8a8a8a) does not. */
+   *  which the old #8a8a8a muted grey did not. */
   inkBody: '#4a4a4a',
-  /** Tertiary text (placeholders, faint labels). Darkened from #b8b8b8 — still
-   *  decorative-tier contrast, not a substitute for inkMuted on real content. */
-  inkFaint: '#9a9a9a',
+  /** Placeholders and decorative icons only (4.5:1 on white, ~3.8:1 on the canvas). Never for readable content — use inkMuted. */
+  inkFaint: '#767676',
   /** Aliases kept so existing screens using the old names keep compiling. */
   text: '#141414',
-  textMuted: '#8a8a8a',
-  textFaint: '#9a9a9a',
+  textMuted: '#5f5f5f',
+  textFaint: '#767676',
   /** Text/icons drawn on the accent color. */
   onAccent: palette.neutral[0],
   /** Text/icons drawn on the ink-black tab bar / dark pill button. */
@@ -103,10 +102,14 @@ export const color = {
 
   /** The single brand accent — unchanged, the client asked to keep this. */
   accent: palette.primary[600],
+  /** The accent as TEXT (prices, links). #ea580c is 3.0:1 on the canvas; this is 4.8:1. Use accent for fills and icons. */
+  accentText: '#b93a08',
+  /** Accent as a FILL that carries white text (buttons, badges, active chips): 4.5:1 with white, where #ea580c is only 3.6:1. Same hue, a step deeper. */
+  accentFill: '#d2470b',
   accentPressed: palette.primary[700],
   accentSoft: palette.primary[50],
   /** Gradient fill for primary pill CTAs only. */
-  accentGradient: [palette.primary[500], palette.primary[600]] as const,
+  accentGradient: ['#d2470b', palette.primary[700]] as const,
 
   /** Soft accent-tinted card background (order-ID card, info callouts). */
   peachTint: '#fdecd8',
@@ -146,18 +149,21 @@ export const shadow = {
   },
 } as const;
 
-/* ── Typography ────────────────────────────────────────────────────────── */
-/**
- * Display face: Bricolage Grotesque, loaded in app/_layout.tsx. RN binds
- * weight into the custom family name, so each cut is its own family — NEVER
- * pair these with a fontWeight in the same style object (breaks Android).
- * Body text intentionally stays on the platform system font.
- */
+/* ── Font families ─────────────────────────────────────────────────────── */
 export const font = {
-  display: 'BricolageGrotesque_700Bold',
-  displayHeavy: 'BricolageGrotesque_800ExtraBold',
+  /** Primary: all UI text. Static files, so each weight is its own family (Android doesn't synthesise weights for custom fonts). */
+  sans: 'Inter_400Regular',
+  sansMedium: 'Inter_500Medium',
+  sansSemibold: 'Inter_600SemiBold',
+  sansBold: 'Inter_700Bold',
+  /** Secondary: editorial headings (hero, display, title). */
+  serif: 'Merriweather_700Bold',
+  /** Logo lockup only (components/brand/LogoMark.tsx) — the wordmark is artwork, not UI type. */
+  logo: 'BricolageGrotesque_700Bold',
+  logoHeavy: 'BricolageGrotesque_800ExtraBold',
 } as const;
 
+/** Reference weights for the system font; UI text picks weight via font family instead. */
 export const weight = {
   regular: '400',
   medium: '500',
@@ -165,18 +171,60 @@ export const weight = {
   bold: '700',
 } as const satisfies Record<string, TextStyle['fontWeight']>;
 
-/** Reusable text presets. Spread into a Text style. */
+/* ── Typography ────────────────────────────────────────────────────────── */
+/* Two families: Inter (primary) for all UI text, prices and buttons; Merriweather
+   (secondary) for editorial headings — hero, display, title. Both are static
+   font files, so a role picks its weight through fontFamily, NOT fontWeight
+   (Android ignores fontWeight on custom fonts). Use <Text weight="…"> to change
+   weight on a nested span.
+   Sixteen roles and no other sizes, each with its line height. Render text with
+   <Text variant="…"> (components/ui/Text.tsx) rather than raw fontSize.
+   `npm run check:type` flags sizes/weights outside this scale. */
+const tabular: Pick<TextStyle, 'fontVariant'> = { fontVariant: ['tabular-nums'] };
+
 export const type = {
-  display: { fontSize: 26, lineHeight: 34, fontFamily: font.display, letterSpacing: -0.2, color: color.text },
-  h1: { fontSize: 20, lineHeight: 26, fontFamily: font.display, letterSpacing: -0.1, color: color.text },
-  h2: { fontSize: 17, lineHeight: 22, fontFamily: font.display, letterSpacing: 0, color: color.text },
-  h3: { fontSize: 15, lineHeight: 20, fontWeight: weight.semibold, color: color.text },
-  body: { fontSize: 14, lineHeight: 20, fontWeight: weight.regular, color: color.text },
-  bodyStrong: { fontSize: 14, lineHeight: 20, fontWeight: weight.semibold, color: color.text },
-  meta: { fontSize: 12, lineHeight: 16, fontWeight: weight.regular, color: color.textMuted },
-  label: { fontSize: 11, lineHeight: 14, fontWeight: weight.semibold, letterSpacing: 0.3, color: color.textMuted },
-  overline: { fontSize: 10, lineHeight: 12, fontWeight: weight.bold, letterSpacing: 0.8, textTransform: 'uppercase', color: color.textFaint },
+  /** Brand moments only: home greeting, auth header. */
+  hero: { fontSize: 32, lineHeight: 42, fontFamily: font.serif, letterSpacing: -0.4, color: color.text },
+  /** Page titles. */
+  display: { fontSize: 26, lineHeight: 34, fontFamily: font.serif, letterSpacing: -0.3, color: color.text },
+  /** Section and screen headings, dialog and empty-state titles. */
+  title: { fontSize: 20, lineHeight: 28, fontFamily: font.serif, letterSpacing: -0.2, color: color.text },
+  /** Card, sheet and compact-rail titles. */
+  heading: { fontSize: 17, lineHeight: 22, fontFamily: font.sansBold, letterSpacing: -0.2, color: color.text },
+  /** Order totals. */
+  priceLg: { fontSize: 24, lineHeight: 30, fontFamily: font.sansBold, letterSpacing: -0.3, ...tabular, color: color.text },
+  /** Prices. */
+  price: { fontSize: 16, lineHeight: 20, fontFamily: font.sansBold, ...tabular, color: color.text },
+  /** Descriptions, dialog messages. */
+  bodyLg: { fontSize: 15, lineHeight: 22, fontFamily: font.sans, color: color.text },
+  /** Default UI text, inputs, list rows. */
+  body: { fontSize: 14, lineHeight: 20, fontFamily: font.sans, color: color.text },
+  bodyStrong: { fontSize: 14, lineHeight: 20, fontFamily: font.sansSemibold, color: color.text },
+  /** Product names, chips, secondary lines. */
+  small: { fontSize: 13, lineHeight: 18, fontFamily: font.sansSemibold, color: color.text },
+  /** Secondary lines and helper text that read as plain sentences. */
+  caption: { fontSize: 13, lineHeight: 18, fontFamily: font.sansMedium, color: color.text },
+  /** Chips, badges and emphasised counts. */
+  metaStrong: { fontSize: 12, lineHeight: 16, fontFamily: font.sansSemibold, color: color.text },
+  /** Counts, dates, helper and error text. */
+  meta: { fontSize: 12, lineHeight: 16, fontFamily: font.sansMedium, color: color.textMuted },
+  /** Field labels, tab labels, captions. */
+  label: { fontSize: 11, lineHeight: 14, fontFamily: font.sansSemibold, letterSpacing: 0.3, color: color.textMuted },
+  /** Badges and eyebrows. */
+  overline: { fontSize: 11, lineHeight: 14, fontFamily: font.sansBold, letterSpacing: 0.6, textTransform: 'uppercase', color: color.textFaint },
+  /** Button labels (sizes follow Button's sm / md / lg: 13 / 15 / 16). */
+  button: { fontSize: 15, lineHeight: 20, fontFamily: font.sansBold, color: color.text },
 } as const satisfies Record<string, TextStyle>;
+
+/** Style for every TextInput (they don't inherit from <Text>): same size, line height and family as `body`. */
+export const inputText = {
+  fontSize: 14,
+  lineHeight: 20,
+  fontFamily: font.sans,
+  color: color.ink,
+} as const satisfies TextStyle;
+
+export type TypeVariant = keyof typeof type;
 
 export const theme = { spacing, gutter, radius, palette, color, shadow, type, weight, font } as const;
 export default theme;

@@ -78,7 +78,6 @@ export function ProductGridSkeleton({ count = 6 }: { count?: number }) {
           <View style={{ paddingTop: 8, gap: 6 }}>
             <SkeletonBlock height={10} width="45%" borderRadius={5} />
             <SkeletonBlock height={13} borderRadius={6} />
-            <SkeletonBlock height={13} width="70%" borderRadius={6} />
             <SkeletonBlock height={16} width="35%" borderRadius={6} style={{ marginTop: 2 }} />
           </View>
         </View>

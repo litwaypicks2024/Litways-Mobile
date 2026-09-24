@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Text, TouchableOpacity, View } from 'react-native';
+import { AccessibilityInfo, TouchableOpacity, View } from 'react-native';
+import { Text } from '@/components/ui/Text';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeOutDown, ReduceMotion } from 'react-native-reanimated';
@@ -87,11 +88,11 @@ export function ToastHost() {
         </View>
       )}
       <View style={{ flex: 1 }}>
-        <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }} numberOfLines={1}>
+        <Text variant="bodyStrong" weight="bold" style={{ color: '#fff' }} numberOfLines={1}>
           {toast.title}
         </Text>
         {!!toast.detail && (
-          <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12.5, marginTop: 1 }} numberOfLines={1}>
+          <Text variant="meta" style={{ color: 'rgba(255,255,255,0.75)', marginTop: 1 }} numberOfLines={1}>
             {toast.detail}
           </Text>
         )}
@@ -105,7 +106,7 @@ export function ToastHost() {
           hitSlop={10}
           accessibilityRole="button"
         >
-          <Text style={{ color: palette.primary[300], fontSize: 14, fontWeight: '800' }}>{toast.action.label}</Text>
+          <Text variant="bodyStrong" weight="bold" style={{ color: palette.primary[300] }}>{toast.action.label}</Text>
         </TouchableOpacity>
       )}
     </Animated.View>

@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     elevation: 999,
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  wordmark: { color: '#fff', fontSize: 34, fontWeight: '800', letterSpacing: -0.8 },
+  wordmark: { color: '#fff', fontSize: 32, fontWeight: '700', letterSpacing: -0.8 },
   picks: { color: color.ink },
   tagline: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '600', letterSpacing: 0.2 },
   track: {

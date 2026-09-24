@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
-  Text,
   ScrollView,
   TouchableOpacity,
   Platform,
@@ -19,7 +18,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { ProgressStepper } from '@/components/ui/ProgressStepper';
-import { color, font, radius, shadow } from '@/theme/tokens';
+import { color, radius, shadow } from '@/theme/tokens';
 import { LIBERIAN_COUNTIES } from '@/constants/counties';
 import { momoAPI } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
@@ -30,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LoadingOverlay } from '@/components/motion/LoadingOverlay';
 import type { CheckoutForm } from '@/types';
 import { alertDialog } from '@/components/ui/Dialog';
+import { Text } from '@/components/ui/Text';
 
 type PaymentStatus = 'idle' | 'processing' | 'polling' | 'success' | 'failed';
 type Step = 1 | 2;
@@ -436,7 +436,7 @@ export default function CheckoutScreen() {
             disabled={isProcessing}
             accessibilityLabel={step === 1 ? 'Go back' : 'Back to delivery details'}
           />
-          <Text style={{ fontSize: 18, fontFamily: font.display, color: color.ink }}>Checkout</Text>
+          <Text variant="heading">Checkout</Text>
         </View>
 
         <ProgressStepper
@@ -473,17 +473,17 @@ export default function CheckoutScreen() {
                 size={18}
                 color={notice.tone === 'error' ? color.danger : color.accent}
               />
-              <Text style={{ flex: 1, fontSize: 14, fontWeight: '800', color: color.ink }}>{notice.title}</Text>
+              <Text variant="bodyStrong" style={{ flex: 1 }}>{notice.title}</Text>
               <TouchableOpacity onPress={() => setNotice(null)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Dismiss message">
                 <Ionicons name="close" size={16} color={color.inkBody} />
               </TouchableOpacity>
             </View>
             {notice.lines?.map((l, i) => (
-              <Text key={i} style={{ fontSize: 13, lineHeight: 19, color: color.inkBody, marginLeft: 26 }}>{l}</Text>
+              <Text variant="caption" tone="body" key={i} style={{ marginLeft: 26 }}>{l}</Text>
             ))}
             {notice.action && (
               <TouchableOpacity onPress={notice.action.onPress} style={{ marginLeft: 26, marginTop: 6, alignSelf: 'flex-start' }} accessibilityRole="button">
-                <Text style={{ fontSize: 13, fontWeight: '800', color: color.accent }}>{notice.action.label}</Text>
+                <Text variant="small" tone="accent">{notice.action.label}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -503,7 +503,7 @@ export default function CheckoutScreen() {
             borderRadius: radius.md,
           }}>
             <Ionicons name="information-circle" size={18} color={color.accent} />
-            <Text style={{ flex: 1, fontSize: 12.5, color: color.accentPressed, fontWeight: '600' }}>
+            <Text variant="metaStrong" style={{ flex: 1, color: color.accentPressed }}>
               We combined this cart with items saved to your account.
             </Text>
             <TouchableOpacity onPress={dismissMergeNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
@@ -515,8 +515,8 @@ export default function CheckoutScreen() {
         {items.length === 0 && paymentStatus !== 'success' && (
           <View style={{ alignItems: 'center', paddingVertical: 48, gap: 12 }}>
             <Ionicons name="bag-outline" size={40} color={color.inkFaint} />
-            <Text style={{ fontSize: 16, fontFamily: font.display, color: color.ink }}>Your cart is empty</Text>
-            <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center' }}>Add something to your cart to check out.</Text>
+            <Text variant="heading">Your cart is empty</Text>
+            <Text variant="caption" tone="muted" style={{ textAlign: 'center' }}>Add something to your cart to check out.</Text>
             <Button title="Keep shopping" variant="outline" onPress={() => router.back()} />
           </View>
         )}
@@ -536,19 +536,19 @@ export default function CheckoutScreen() {
                   <Ionicons name="person-circle-outline" size={24} color={color.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: color.ink }}>Sign in to place your order</Text>
-                  <Text style={{ fontSize: 12, color: signInNudge ? color.danger : color.inkBody, fontWeight: signInNudge ? '700' : '400', marginTop: 1 }}>
+                  <Text variant="small">Sign in to place your order</Text>
+                  <Text variant={signInNudge ? 'metaStrong' : 'meta'} tone={signInNudge ? 'danger' : 'body'} style={{ marginTop: 1 }}>
                     {signInNudge ? 'Sign in to continue to payment. Your details are saved.' : 'Takes seconds, and lets you track this order'}
                   </Text>
                 </View>
                 <TouchableOpacity onPress={() => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } })} style={{ backgroundColor: color.accent, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 9 }}>
-                  <Text style={{ color: color.onAccent, fontSize: 13, fontWeight: '800' }}>Sign in</Text>
+                  <Text variant="small" tone="onAccent">Sign in</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, marginLeft: 2 }}>
                 <Ionicons name="checkmark-circle" size={16} color={color.success} />
-                <Text style={{ fontSize: 12.5, color: color.inkMuted, fontWeight: '600' }}>Signed in as {user.email}</Text>
+                <Text variant="metaStrong" tone="muted">Signed in as {user.email}</Text>
               </View>
             )}
 
@@ -638,7 +638,7 @@ export default function CheckoutScreen() {
 
               {/* County picker */}
               <View style={{ marginBottom: 8 }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: color.inkMuted, marginBottom: 6 }}>County *</Text>
+                <Text variant="small" tone="muted" style={{ marginBottom: 6 }}>County *</Text>
                 <TouchableOpacity
                   onPress={() => setShowCountyPicker(!showCountyPicker)}
                   style={{
@@ -649,7 +649,7 @@ export default function CheckoutScreen() {
                   }}
                 >
                   <Ionicons name="map-outline" size={18} color={color.inkFaint} />
-                  <Text style={{ flex: 1, fontSize: 14, color: form.county ? color.ink : color.inkFaint }}>
+                  <Text variant="body" style={{ flex: 1, color: form.county ? color.ink : color.inkMuted }}>
                     {form.county || 'Select county...'}
                   </Text>
                   <Ionicons name={showCountyPicker ? 'chevron-up' : 'chevron-down'} size={16} color={color.inkFaint} />
@@ -663,7 +663,7 @@ export default function CheckoutScreen() {
                           onPress={() => { setField('county', county); setShowCountyPicker(false); }}
                           style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: color.border, backgroundColor: form.county === county ? color.accentSoft : color.surface }}
                         >
-                          <Text style={{ fontSize: 14, fontWeight: form.county === county ? '700' : '400', color: form.county === county ? color.accent : color.ink }}>
+                          <Text variant={form.county === county ? 'bodyStrong' : 'body'} tone={form.county === county ? 'accent' : 'default'}>
                             {county}
                           </Text>
                         </TouchableOpacity>
@@ -672,7 +672,7 @@ export default function CheckoutScreen() {
                   </View>
                 )}
                 {errors.county && (
-                  <Text style={{ fontSize: 12, color: color.danger, marginTop: 4, marginLeft: 4 }}>{errors.county}</Text>
+                  <Text variant="meta" tone="danger" style={{ marginTop: 4, marginLeft: 4 }}>{errors.county}</Text>
                 )}
               </View>
             </SectionCard>
@@ -680,7 +680,7 @@ export default function CheckoutScreen() {
             {/* Delivery note */}
             <View style={{ backgroundColor: '#f0fdf4', borderRadius: 14, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Ionicons name="car-outline" size={20} color="#16a34a" />
-              <Text style={{ flex: 1, fontSize: 13, color: '#15803d', fontWeight: '600' }}>
+              <Text variant="small" style={{ flex: 1, color: '#15803d' }}>
                 We deliver across all 15 Liberian counties
               </Text>
             </View>
@@ -699,26 +699,26 @@ export default function CheckoutScreen() {
                 <Ionicons name="location-outline" size={18} color={color.accent} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, color: color.inkFaint, fontWeight: '600', marginBottom: 2 }}>DELIVERING TO</Text>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: color.ink }}>
+                <Text variant="metaStrong" tone="muted" style={{ marginBottom: 2 }}>DELIVERING TO</Text>
+                <Text variant="small">
                   {form.firstName} {form.lastName}
                 </Text>
-                <Text style={{ fontSize: 12, color: color.inkMuted }} numberOfLines={1}>
+                <Text variant="meta" tone="muted" numberOfLines={1}>
                   {form.address}{form.city ? `, ${form.city}` : ''}, {form.county}
                 </Text>
               </View>
-              <Text style={{ fontSize: 12, color: color.accent, fontWeight: '700' }}>Edit</Text>
+              <Text variant="metaStrong" tone="accent">Edit</Text>
             </TouchableOpacity>
 
             {/* Payment method */}
             <SectionCard title="Payment Method" icon="card-outline">
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: color.accentSoft, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: color.accent }}>
                 <View style={{ width: 48, height: 48, backgroundColor: color.accent, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ color: color.onAccent, fontSize: 11, fontWeight: '900', letterSpacing: -0.5 }}>MoMo</Text>
+                  <Text variant="label" tone="onAccent">MoMo</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: color.ink }}>MTN Mobile Money</Text>
-                  <Text style={{ fontSize: 12, color: color.inkMuted, marginTop: 2 }}>
+                  <Text variant="bodyStrong">MTN Mobile Money</Text>
+                  <Text variant="meta" tone="muted" style={{ marginTop: 2 }}>
                     USSD prompt will be sent to {form.phone || 'your phone'}
                   </Text>
                 </View>
@@ -736,24 +736,24 @@ export default function CheckoutScreen() {
                     <Image source={{ uri: item.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: color.ink }} numberOfLines={1}>{item.name}</Text>
+                    <Text variant="small" numberOfLines={1}>{item.name}</Text>
                     {(item.size || item.color) && (
-                      <Text style={{ fontSize: 11, color: color.inkFaint }}>
+                      <Text variant="label" tone="muted">
                         {[item.size, item.color].filter(Boolean).join(' · ')}
                       </Text>
                     )}
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ fontSize: 13, fontWeight: '800', color: color.accent }}>
+                    <Text variant="small" tone="accent">
                       {formatCurrency(item.price * item.quantity)}
                     </Text>
-                    <Text style={{ fontSize: 11, color: color.inkFaint }}>×{item.quantity}</Text>
+                    <Text variant="label" tone="muted">×{item.quantity}</Text>
                   </View>
                 </View>
               ))}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: '800', color: color.ink }}>Subtotal</Text>
-                <Text style={{ fontSize: 15, fontFamily: font.displayHeavy, color: color.accent }}>{formatCurrency(total)}</Text>
+                <Text variant="button">Subtotal</Text>
+                <Text variant="price" tone="accent">{formatCurrency(total)}</Text>
               </View>
             </SectionCard>
 
@@ -761,11 +761,11 @@ export default function CheckoutScreen() {
                 prompt on the shopper's phone is the authoritative total.
                 (Backend handoff: a pre-payment quote endpoint would let us
                 show the true total here instead.) */}
-            <Text style={{ fontSize: 12, color: color.inkFaint, textAlign: 'center', marginTop: -4, marginBottom: 14, lineHeight: 17 }}>
+            <Text variant="meta" tone="muted" style={{ textAlign: 'center', marginTop: -4, marginBottom: 14 }}>
               Your final total, including any delivery fee, is shown in the MoMo prompt on your phone.
             </Text>
 
-            <Text style={{ fontSize: 11, color: color.inkFaint, textAlign: 'center', marginTop: 4, lineHeight: 16 }}>
+            <Text variant="label" tone="muted" style={{ textAlign: 'center', marginTop: 4 }}>
               By placing your order you agree to our Terms & Conditions.{'\n'}Payment is processed securely via MTN Mobile Money.
             </Text>
           </>
@@ -787,12 +787,12 @@ export default function CheckoutScreen() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
             <View>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: color.ink }}>Subtotal</Text>
-              <Text style={{ fontSize: 11.5, color: color.inkMuted, marginTop: 1 }}>
+              <Text variant="bodyStrong">Subtotal</Text>
+              <Text variant="label" tone="muted" style={{ marginTop: 1 }}>
                 {itemCount} item{itemCount === 1 ? '' : 's'} · delivery fee shown at payment
               </Text>
             </View>
-            <Text style={{ fontSize: 24, fontFamily: font.displayHeavy, color: color.ink }}>{formatCurrency(total)}</Text>
+            <Text variant="priceLg">{formatCurrency(total)}</Text>
           </View>
           {step === 1 ? (
             <Button
@@ -849,8 +849,8 @@ function KnownDetailsCard({ form, onEdit }: { form: CheckoutForm; onEdit: () => 
     <Card style={{ marginBottom: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
         <View style={{ flex: 1, paddingRight: 12 }}>
-          <Text style={{ fontSize: 14, fontWeight: '800', color: color.ink }}>Your details</Text>
-          <Text style={{ fontSize: 12, color: color.inkMuted, marginTop: 2, lineHeight: 16 }}>
+          <Text variant="bodyStrong">Your details</Text>
+          <Text variant="meta" tone="muted" style={{ marginTop: 2 }}>
             We'll deliver to the details on file — edit if anything changed.
           </Text>
         </View>
@@ -860,7 +860,7 @@ function KnownDetailsCard({ form, onEdit }: { form: CheckoutForm; onEdit: () => 
           accessibilityLabel="Edit your details"
           style={{ backgroundColor: color.accentSoft, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 7 }}
         >
-          <Text style={{ fontSize: 12.5, fontWeight: '800', color: color.accent }}>Edit</Text>
+          <Text variant="metaStrong" tone="accent">Edit</Text>
         </TouchableOpacity>
       </View>
       {rows.map((r, i) => (
@@ -868,7 +868,7 @@ function KnownDetailsCard({ form, onEdit }: { form: CheckoutForm; onEdit: () => 
           <View style={{ width: 28, height: 28, borderRadius: 9, backgroundColor: color.surfaceMuted, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name={r.icon} size={14} color={color.inkMuted} />
           </View>
-          <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: color.ink }} numberOfLines={1}>{r.text}</Text>
+          <Text variant="small" style={{ flex: 1 }} numberOfLines={1}>{r.text}</Text>
         </View>
       ))}
     </Card>
@@ -882,7 +882,7 @@ function SectionCard({ title, icon, children }: { title: string; icon: string; c
         <View style={{ width: 32, height: 32, backgroundColor: color.accentSoft, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name={icon as any} size={16} color={color.accent} />
         </View>
-        <Text style={{ fontSize: 14, fontWeight: '800', color: color.ink }}>{title}</Text>
+        <Text variant="bodyStrong">{title}</Text>
       </View>
       {children}
     </Card>

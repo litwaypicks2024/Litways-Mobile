@@ -464,7 +464,7 @@ queryFn: async () => {
 Six neighbourhoods:
 
 - **`ui/`** — the generic kit, and the one you'll reach for most: `Button`, `IconButton`, `Input`, `Card`, `Badge`, `List` (a FlashList/FlatList shim), `EmptyState`, `ErrorState`, `SkeletonLoader`, `QuantityStepper`, `ProgressStepper`, `PressableScale`, `ErrorBoundary`.
-- **`brand/`** — `LogoMark` (the bag, rebuilt as vector geometry), `Motif` (the country-cloth lozenge lattice), `Marquee` (the endlessly scrolling promise strip), `RotatingBadge` (the circular "shop the drop" seal).
+- **`brand/`** — `LogoMark` (the bag, rebuilt as vector geometry), `Motif` (the country-cloth lozenge lattice), `Marquee` (the endlessly scrolling promise strip).
 - **`motion/`** — `BrandLoader`, `LoadingOverlay`, `FlyToCart`, `DrawnCheckmark`, `IdleFloat`. See [§6](#6-the-animation-layer).
 - **`shop/`** — `ProductCard` and `FilterSheet`.
 - **`navigation/TabBar.tsx`** — the floating ink pill bar.
@@ -539,7 +539,7 @@ Every colour, spacing value, radius, shadow and text style. Screens ask for `col
 - `types/database.types.ts` is generated from Supabase; `types/index.ts` derives friendly names from it and adds app-only shapes (`CartItem`, `CheckoutForm`, `ProductFilters`).
 - `constants/counties.ts` is the 15 Liberian counties, `as const` so TypeScript knows the exact list.
 - `constants/Colors.ts` is the **old, pre-redesign** colour file. It's still imported by nine files: the six static info pages, `app/order/[id].tsx`, `app/+not-found.tsx`, and `ErrorBoundary`. Those screens were out of scope for the redesign. Finishing that migration is a small, safe cleanup job whenever you want it.
-- `assets/images/` holds the icons, the two campaign photos (`home-hero.jpg`, `auth-hero.jpg`), the clay delivery render, and the two logo PDFs everything else was generated from. `assets/fonts/` is empty — Bricolage Grotesque comes from the `@expo-google-fonts` package, not a bundled file.
+- `assets/images/` holds the icons, the auth campaign photo (`auth-hero.jpg`), the clay delivery render, and the two logo PDFs everything else was generated from. `assets/fonts/` is empty — Bricolage Grotesque comes from the `@expo-google-fonts` package, not a bundled file.
 
 ### One wrinkle: two styling systems
 
@@ -2470,7 +2470,6 @@ Motion is deliberately limited to a small set of named moments:
 - **`components/motion/DrawnCheckmark.tsx`** — a checkmark that draws itself via stroke-dash reveal, on the confirmation.
 - **`components/motion/IdleFloat.tsx`** — a slow ambient bob for illustrations and empty states.
 - **`components/brand/Marquee.tsx`** — the endlessly scrolling promise strip; renders content twice and translates one copy-width per loop so the wrap is seamless.
-- **`components/brand/RotatingBadge.tsx`** — circular text orbiting a centre arrow.
 - **`components/navigation/TabBar.tsx`** — the active tab's ink circle rising out of the bar with a slight overshoot, and the cart badge popping on count change.
 - Product-gallery parallax and Home's staggered entrance, in their respective screens.
 

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -11,11 +10,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { color, font } from '@/theme/tokens';
+import { color } from '@/theme/tokens';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { InkHeader } from '@/components/auth/InkHeader';
 import { alertDialog } from '@/components/ui/Dialog';
+import { Text } from '@/components/ui/Text';
 
 export default function ResetPasswordScreen() {
   const insets = useSafeAreaInsets();
@@ -79,12 +79,12 @@ export default function ResetPasswordScreen() {
                 >
                   <Ionicons name="mail-outline" size={38} color={color.accent} />
                 </View>
-                <Text style={{ fontSize: 22, fontFamily: font.display, color: color.ink, marginBottom: 8, textAlign: 'center' }}>
+                <Text variant="title" style={{ marginBottom: 8, textAlign: 'center' }}>
                   Check your inbox
                 </Text>
-                <Text style={{ fontSize: 14, color: color.inkMuted, textAlign: 'center', lineHeight: 21, marginBottom: 32 }}>
+                <Text variant="body" tone="muted" style={{ textAlign: 'center', marginBottom: 32 }}>
                   We sent a reset link to{'\n'}
-                  <Text style={{ fontWeight: '700', color: color.ink }}>{email}</Text>
+                  <Text weight="bold" tone="default">{email}</Text>
                 </Text>
                 <Button
                   title="Back to Sign In"
@@ -93,14 +93,14 @@ export default function ResetPasswordScreen() {
                   size="lg"
                   icon={<Ionicons name="arrow-back" size={18} color={color.onAccent} />}
                 />
-                <Text style={{ fontSize: 12, color: color.inkFaint, marginTop: 16, textAlign: 'center' }}>
+                <Text variant="meta" tone="muted" style={{ marginTop: 16, textAlign: 'center' }}>
                   Didn't get it? Check your spam folder or try again.
                 </Text>
               </View>
             ) : (
               /* ─── Form state ─── */
               <>
-                <Text style={{ fontSize: 14, color: color.inkMuted, lineHeight: 21, marginBottom: 24 }}>
+                <Text variant="body" tone="muted" style={{ marginBottom: 24 }}>
                   No worries — enter your email and we'll send you a link to get back in.
                 </Text>
 
@@ -129,7 +129,7 @@ export default function ResetPasswordScreen() {
                   onPress={() => router.back()}
                   style={{ marginTop: 16, alignItems: 'center', paddingVertical: 10 }}
                 >
-                  <Text style={{ fontSize: 14, color: color.inkMuted, fontWeight: '500' }}>
+                  <Text variant="body" tone="muted">
                     ← Back to Sign In
                   </Text>
                 </TouchableOpacity>

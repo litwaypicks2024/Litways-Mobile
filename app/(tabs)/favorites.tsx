@@ -1,10 +1,16 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@/components/ui/List';
-import { color, font, gutter, radius, shadow } from '@/theme/tokens';
+import { color, gutter, radius, shadow } from '@/theme/tokens';
 import { useWishlistStore } from '@/store/wishlist';
+import { Ionicons } from '@expo/vector-icons';
+import { Button } from '@/components/ui/Button';
+import { alertDialog } from '@/components/ui/Dialog';
+import { showToast } from '@/components/ui/Toast';
+import { formatCurrency } from '@/lib/currency';
+import { moveFavoritesToCart } from '@/lib/moveToCart';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { ProductRail } from '@/components/shop/ProductRail';
@@ -12,6 +18,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { HeartIllustration } from '@/components/illustrations';
 import { useCategoryRail, usePickedForYou } from '@/lib/personalization';
 import type { Product } from '@/types';
+import { Text } from '@/components/ui/Text';
 
 /**
  * Saved items. Signed-out shoppers can save too (the list lives on-device and
@@ -28,6 +35,7 @@ export default function FavoritesScreen() {
   const clearance = useTabBarClearance();
   const items = useWishlistStore((s) => s.items);
   const [category, setCategory] = useState<string | null>(null);
+  const [moving, setMoving] = useState(false);
 
   // Saved-from categories, most-saved first.
   const categories = useMemo(() => {
@@ -71,12 +79,72 @@ export default function FavoritesScreen() {
   const more = useCategoryRail(topSaved?.slug);
   const picked = usePickedForYou();
 
+  // What the saved items are worth at today's saved prices (sale-aware).
+  const totalValue = useMemo(() => items.reduce((sum, i) => sum + (i.salePrice ?? i.price), 0), [items]);
+
+  async function handleMoveAll() {
+    if (moving) return;
+    setMoving(true);
+    try {
+      const r = await moveFavoritesToCart(items);
+      const skipped = r.needsChoice.length + r.unavailable.length + r.atLimit.length;
+      const lines: string[] = [];
+      if (r.needsChoice.length) lines.push(`Choose a size or colour: ${r.needsChoice.map((i) => i.name).join(', ')}.`);
+      if (r.unavailable.length) lines.push(`Sold out: ${r.unavailable.map((i) => i.name).join(', ')}.`);
+      if (r.atLimit.length) lines.push(`Already in your cart at the most available: ${r.atLimit.map((i) => i.name).join(', ')}.`);
+
+      if (r.moved.length && !skipped) {
+        showToast({
+          title: r.moved.length === 1 ? 'Moved 1 item to your cart' : `Moved ${r.moved.length} items to your cart`,
+          tone: 'success',
+          action: { label: 'View cart', href: '/(tabs)/cart' },
+        });
+      } else if (r.moved.length) {
+        alertDialog(
+          `Moved ${r.moved.length} of ${items.length} to your cart`,
+          `The rest stayed in Favorites. ${lines.join(' ')}`,
+          [
+            { text: 'View cart', onPress: () => router.push('/(tabs)/cart') },
+            { text: 'Stay here', style: 'cancel' },
+          ],
+          'success'
+        );
+      } else {
+        alertDialog("Couldn't add anything", lines.join(' ') || 'Nothing here is available right now.', [{ text: 'OK' }], 'warning');
+      }
+    } catch {
+      alertDialog("Couldn't move your favorites", 'Check your connection and try again.', [{ text: 'OK' }], 'warning');
+    } finally {
+      setMoving(false);
+    }
+  }
+
   const header = (
-    <View style={{ backgroundColor: color.surface, paddingTop: insets.top + 12, paddingBottom: 12, ...shadow.header }}>
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: gutter }}>
-        <Text style={{ fontSize: 26, fontFamily: font.displayHeavy, color: color.ink, letterSpacing: -0.5 }}>Favorites</Text>
-        {items.length > 0 && <Text style={{ fontSize: 14, color: color.inkMuted, fontWeight: '600' }}>{items.length}</Text>}
+    <View style={{ backgroundColor: color.surface, paddingTop: insets.top + 12, paddingBottom: 14, ...shadow.header }}>
+      <View style={{ paddingHorizontal: gutter, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text variant="display" numberOfLines={1}>Favorites</Text>
+          <Text variant="body" tone="muted" numberOfLines={1} style={{ marginTop: 2 }}>
+            {items.length === 0
+              ? 'Items you save will wait for you here'
+              : `${items.length} saved ${items.length === 1 ? 'item' : 'items'} · ${formatCurrency(totalValue)}`}
+          </Text>
+        </View>
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="heart" size={22} color={color.accent} />
+        </View>
       </View>
+      {items.length > 0 && (
+        <View style={{ paddingHorizontal: gutter, marginTop: 14 }}>
+          <Button
+            title={items.length === 1 ? 'Add to cart' : 'Add all to cart'}
+            onPress={handleMoveAll}
+            loading={moving}
+            fullWidth
+            icon={<Ionicons name="bag-add-outline" size={19} color={color.onAccent} />}
+          />
+        </View>
+      )}
       {categories.length > 1 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }} contentContainerStyle={{ paddingHorizontal: gutter, gap: 6 }}>
           <Chip label="All" active={!activeCategory} onPress={() => setCategory(null)} />
@@ -96,10 +164,10 @@ export default function FavoritesScreen() {
         <ScrollView contentContainerStyle={{ paddingBottom: clearance }} showsVerticalScrollIndicator={false}>
           <View style={{ paddingHorizontal: 32, paddingTop: 40, alignItems: 'center' }}>
             <HeartIllustration />
-            <Text style={{ fontSize: 19, fontFamily: font.display, color: color.ink, textAlign: 'center', marginTop: 16, marginBottom: 6 }}>
+            <Text variant="title" style={{ textAlign: 'center', marginTop: 16, marginBottom: 6 }}>
               Nothing saved yet
             </Text>
-            <Text style={{ fontSize: 14, color: color.inkMuted, textAlign: 'center', lineHeight: 20 }}>
+            <Text variant="body" tone="muted" style={{ textAlign: 'center' }}>
               Tap the heart on anything you like and it'll wait for you here.
             </Text>
           </View>
@@ -160,12 +228,12 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
         paddingHorizontal: 14,
         paddingVertical: 7,
         borderRadius: radius.full,
-        backgroundColor: active ? color.accent : color.surface,
+        backgroundColor: active ? color.accentFill : color.surface,
         borderWidth: 1,
-        borderColor: active ? color.accent : color.fieldBorder,
+        borderColor: active ? color.accentFill : color.fieldBorder,
       }}
     >
-      <Text style={{ fontSize: 12.5, fontWeight: '700', color: active ? color.onAccent : color.inkBody }}>{label}</Text>
+      <Text variant="metaStrong" style={{ color: active ? color.onAccent : color.inkBody }}>{label}</Text>
     </TouchableOpacity>
   );
 }

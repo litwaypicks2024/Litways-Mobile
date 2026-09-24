@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, StatusBar } from 'react-native';
+import { View, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { color, font, radius } from '@/theme/tokens';
+import { color, radius } from '@/theme/tokens';
 import { IconButton } from '@/components/ui/IconButton';
 import { MotifOverlay } from '@/components/brand/Motif';
 import { LogoMark } from '@/components/brand/LogoMark';
+import { Text } from '@/components/ui/Text';
 
 interface Props {
   /** Top-left action — 'close' on modally-presented screens, 'arrow-back' on pushed ones. */
@@ -47,24 +48,17 @@ export function InkHeader({ icon, onIconPress, iconAccessibilityLabel, title, su
       />
       <View style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <LogoMark size={30} variant="onInk" />
-        <Text style={{ color: color.onInk, fontSize: 13, fontWeight: '800', letterSpacing: 2 }}>
-          LITWAY <Text style={{ color: color.accent }}>PICKS</Text>
+        <Text variant="small" style={{ color: color.onInk }}>
+          LITWAY <Text tone="accent">PICKS</Text>
         </Text>
       </View>
-      <Text
-        style={{
-          color: color.onInk,
-          fontSize: 34,
-          fontFamily: font.displayHeavy,
-          lineHeight: 42,
-          letterSpacing: -0.5,
-          marginTop: 10,
-        }}
+      <Text variant="hero"
+        style={{ color: color.onInk, marginTop: 10 }}
       >
         {title}
       </Text>
       {subtitle ? (
-        <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, lineHeight: 20, marginTop: 8 }}>
+        <Text variant="body" style={{ color: 'rgba(255,255,255,0.6)', marginTop: 8 }}>
           {subtitle}
         </Text>
       ) : null}

@@ -1,11 +1,11 @@
 import React, { memo, useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, type GestureResponderEvent } from 'react-native';
+import { View, TouchableOpacity, type GestureResponderEvent } from 'react-native';
 import { Image } from 'expo-image';
 import Animated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { color, font, radius, type } from '@/theme/tokens';
+import { color, radius, type } from '@/theme/tokens';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useWishlistStore } from '@/store/wishlist';
 import { useCartStore } from '@/store/cart';
@@ -14,6 +14,10 @@ import { showToast } from '@/components/ui/Toast';
 import { openQuickAdd } from '@/components/shop/QuickAddSheet';
 import { formatCurrency, discountPercent } from '@/lib/currency';
 import type { Product } from '@/types';
+import { Text } from '@/components/ui/Text';
+
+/** A touch of extra space between characters for the brand and name: semibold text this small sits tight on a grey canvas. */
+const CARD_TEXT_TRACKING = 0.3;
 
 interface Props {
   product: Product;
@@ -141,13 +145,13 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
               position: 'absolute',
               top: 8,
               left: 8,
-              backgroundColor: color.accent,
+              backgroundColor: color.accentFill,
               paddingHorizontal: 7,
               paddingVertical: 3,
               borderRadius: radius.sm,
             }}
           >
-            <Text style={{ color: color.onAccent, fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }}>
+            <Text variant="label" tone="onAccent">
               -{discount}%
             </Text>
           </View>
@@ -162,7 +166,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
             }}
           >
             <View style={{ backgroundColor: '#000', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
-              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 }}>SOLD OUT</Text>
+              <Text variant="label" style={{ color: '#fff' }}>SOLD OUT</Text>
             </View>
           </View>
         )}
@@ -198,7 +202,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
               position: 'absolute', bottom: 8, right: 8,
               minWidth: 36, height: 36, borderRadius: 18,
               paddingHorizontal: 6,
-              backgroundColor: justAdded ? color.success : inCart > 0 ? color.accent : 'rgba(255,255,255,0.97)',
+              backgroundColor: justAdded ? color.success : inCart > 0 ? color.accentFill : 'rgba(255,255,255,0.97)',
               alignItems: 'center', justifyContent: 'center',
               shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
               elevation: 3,
@@ -208,7 +212,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
             {justAdded ? (
               <Ionicons name="checkmark" size={20} color="#fff" />
             ) : inCart > 0 ? (
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>{inCart}</Text>
+              <Text variant="bodyStrong" style={{ color: '#fff' }}>{inCart}</Text>
             ) : (
               <Ionicons name="add" size={22} color={color.ink} />
             )}
@@ -218,25 +222,24 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
 
       {/* Caption — sits directly on the grey canvas, no card box */}
       <View style={{ paddingTop: 8, paddingHorizontal: 2 }}>
-        <Text numberOfLines={1} style={{ ...type.overline, color: color.inkMuted, marginBottom: 3 }}>
+        <Text variant="metaStrong" tone="muted" numberOfLines={1} style={{ letterSpacing: CARD_TEXT_TRACKING }}>
           {product.brand ?? '—'}
         </Text>
-        <Text numberOfLines={2} style={{ fontSize: 13, fontWeight: '600', color: color.ink, lineHeight: 18, marginBottom: 4 }}>
+        {/* One line with an ellipsis, always: a long name must never make one card taller than its neighbours */}
+        <Text variant="bodyStrong" numberOfLines={1} ellipsizeMode="tail" style={{ marginTop: 2, letterSpacing: CARD_TEXT_TRACKING }}>
           {product.name}
         </Text>
         {rating > 0 && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-            <Ionicons name="star" size={12} color={color.star} />
-            <Text style={{ fontSize: 11, color: color.inkMuted, fontWeight: '600', marginLeft: 4 }}>
-              {rating.toFixed(1)}
-              {reviewCount > 0 ? ` · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}` : ''}
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <Ionicons name="star" size={13} color={color.star} />
+            <Text variant="metaStrong" tone="body" style={{ marginLeft: 4 }}>{rating.toFixed(1)}</Text>
+            {reviewCount > 0 && <Text variant="meta" tone="muted" style={{ marginLeft: 4 }}>({reviewCount})</Text>}
           </View>
         )}
-        <Text style={{ fontSize: 16, fontFamily: font.displayHeavy, color: color.accent, letterSpacing: -0.2 }}>
+        <Text variant="price" tone="accent" style={{ marginTop: 6 }}>
           {formatCurrency(displayPrice)}
           {hasDiscount && (
-            <Text style={{ fontSize: 12, fontWeight: '500', color: color.inkFaint, textDecorationLine: 'line-through' }}>
+            <Text variant="meta" tone="muted" style={{ textDecorationLine: 'line-through' }}>
               {'  '}{formatCurrency(product.price!)}
             </Text>
           )}

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
-  Text,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -10,13 +9,14 @@ import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { color, font } from '@/theme/tokens';
+import { color } from '@/theme/tokens';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { InkHeader } from '@/components/auth/InkHeader';
 import { BrokenLinkIllustration } from '@/components/illustrations';
 import { BrandLoader } from '@/components/motion/BrandLoader';
 import { alertDialog } from '@/components/ui/Dialog';
+import { Text } from '@/components/ui/Text';
 
 // Extract key=value pairs from BOTH the query string and the hash fragment of a
 // deep link. Implicit-flow recovery links (our default) put tokens after '#',
@@ -214,10 +214,10 @@ export default function NewPasswordScreen() {
             {phase === 'invalid' && (
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 8 }}>
                 <BrokenLinkIllustration />
-                <Text style={{ fontSize: 18, fontFamily: font.display, color: color.ink, textAlign: 'center' }}>
+                <Text variant="heading" style={{ textAlign: 'center' }}>
                   Reset link invalid or expired
                 </Text>
-                <Text style={{ fontSize: 14, color: color.inkMuted, textAlign: 'center', lineHeight: 20 }}>
+                <Text variant="body" tone="muted" style={{ textAlign: 'center' }}>
                   Please request a new password reset email and open the link from this device.
                 </Text>
                 <Button
