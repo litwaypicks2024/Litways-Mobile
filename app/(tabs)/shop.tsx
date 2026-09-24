@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { recentSearches as searchStorage } from '@/lib/storage';
-import { color, radius, shadow } from '@/theme/tokens';
+import { color, font, radius, shadow } from '@/theme/tokens';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { FilterSheet } from '@/components/shop/FilterSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -288,7 +288,7 @@ export default function ShopScreen() {
               returnKeyType="search"
               placeholder="Search products, brands..."
               placeholderTextColor={color.inkFaint}
-              style={{ flex: 1, fontSize: 14, color: color.ink }}
+              style={{ flex: 1, fontSize: 14, fontFamily: font.sans, color: color.ink }}
             />
             {inputValue.length > 0 && (
               <TouchableOpacity onPress={handleClear} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
@@ -476,9 +476,9 @@ export default function ShopScreen() {
         <View style={{ backgroundColor: color.surface, paddingHorizontal: 14, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: color.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text variant="meta" tone="muted">
             {query ? (
-              <Text><Text style={{ fontWeight: '700', color: color.ink }}>{products.length}</Text> results for "<Text style={{ fontWeight: '700', color: color.accent }}>{query}</Text>"</Text>
+              <Text><Text weight="bold" tone="default">{products.length}</Text> results for "<Text weight="bold" tone="accent">{query}</Text>"</Text>
             ) : (
-              <Text><Text style={{ fontWeight: '700', color: color.ink }}>{products.length}</Text> products</Text>
+              <Text><Text weight="bold" tone="default">{products.length}</Text> products</Text>
             )}
           </Text>
           {isFetching && !isFetchingNextPage && <ActivityIndicator size="small" color={color.accent} />}

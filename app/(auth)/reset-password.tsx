@@ -84,7 +84,7 @@ export default function ResetPasswordScreen() {
                 </Text>
                 <Text variant="body" tone="muted" style={{ textAlign: 'center', marginBottom: 32 }}>
                   We sent a reset link to{'\n'}
-                  <Text style={{ fontWeight: '700', color: color.ink }}>{email}</Text>
+                  <Text weight="bold" tone="default">{email}</Text>
                 </Text>
                 <Button
                   title="Back to Sign In"

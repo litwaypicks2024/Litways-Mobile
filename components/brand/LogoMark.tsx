@@ -89,7 +89,7 @@ export function LogoLockup({ variant = 'onLight', markSize = 34, textColor }: Lo
         <Text
           numberOfLines={1}
           style={{
-            fontFamily: font.displayHeavy,
+            fontFamily: font.logoHeavy,
             fontSize: nameSize,
             lineHeight: nameSize * 1.15,
             color: resolvedText,
@@ -101,7 +101,7 @@ export function LogoLockup({ variant = 'onLight', markSize = 34, textColor }: Lo
         </Text>
         <Text
           style={{
-            fontFamily: font.display,
+            fontFamily: font.logo,
             fontSize: picksSize,
             letterSpacing: picksSize * 0.42,
             /* PICKS is white on orange surfaces (logo-1) and accent elsewhere (logo-2). */

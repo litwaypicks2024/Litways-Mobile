@@ -88,7 +88,7 @@ export function ToastHost() {
         </View>
       )}
       <View style={{ flex: 1 }}>
-        <Text variant="bodyStrong" style={{ color: '#fff', fontWeight: '700' }} numberOfLines={1}>
+        <Text variant="bodyStrong" weight="bold" style={{ color: '#fff' }} numberOfLines={1}>
           {toast.title}
         </Text>
         {!!toast.detail && (
@@ -106,7 +106,7 @@ export function ToastHost() {
           hitSlop={10}
           accessibilityRole="button"
         >
-          <Text variant="bodyStrong" style={{ color: palette.primary[300], fontWeight: '700' }}>{toast.action.label}</Text>
+          <Text variant="bodyStrong" weight="bold" style={{ color: palette.primary[300] }}>{toast.action.label}</Text>
         </TouchableOpacity>
       )}
     </Animated.View>

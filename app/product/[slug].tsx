@@ -719,7 +719,7 @@ export default function ProductDetailScreen() {
                 >
                   <Ionicons name={row.icon as any} size={22} color={color.ink} />
                   <View style={{ flex: 1 }}>
-                    <Text variant="bodyLg" style={{ fontWeight: '600' }}>{row.title}</Text>
+                    <Text variant="bodyLg" weight="semibold">{row.title}</Text>
                     <Text variant="caption" tone="body" style={{ marginTop: 1 }}>{row.sub}</Text>
                   </View>
                 </View>

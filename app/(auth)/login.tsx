@@ -319,11 +319,11 @@ export default function LoginScreen() {
             {/* Legal note — belongs to the button ("by continuing"), not the screen edge */}
             <Text variant="label" tone="faint" style={{ textAlign: 'center', marginTop: 12 }}>
               By continuing, you agree to our{' '}
-              <Text style={{ color: color.inkMuted, fontWeight: '600' }} onPress={() => router.push('/terms')}>
+              <Text weight="semibold" tone="muted" onPress={() => router.push('/terms')}>
                 Terms of Service
               </Text>
               {' '}and{' '}
-              <Text style={{ color: color.inkMuted, fontWeight: '600' }} onPress={() => router.push('/privacy')}>
+              <Text weight="semibold" tone="muted" onPress={() => router.push('/privacy')}>
                 Privacy Policy
               </Text>
             </Text>
