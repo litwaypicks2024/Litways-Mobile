@@ -4,7 +4,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  runOnJS,
   ReduceMotion,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -31,20 +30,20 @@ export function PressableScale({
     transform: [{ scale: withSpring(pressed.value ? scale : 1, { damping: 15, stiffness: 200, reduceMotion: ReduceMotion.System }) }],
   }));
 
-  function handleHaptic() {
-    if (haptic) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }
-
   return (
     <AnimatedPressable
       onPressIn={() => {
         pressed.value = true;
-        if (haptic) runOnJS(handleHaptic)();
       }}
       onPressOut={() => {
         pressed.value = false;
       }}
-      onPress={onPress}
+      onPress={(e) => {
+        // Fire on a completed tap, not on touch-down: onPressIn also fires
+        // when a finger lands to scroll, which buzzed on every touch.
+        if (haptic) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress?.(e);
+      }}
       style={[animatedStyle, style as any]}
       {...rest}
     >
