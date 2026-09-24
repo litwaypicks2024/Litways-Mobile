@@ -15,14 +15,15 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
-import { onboarding, pendingPayment } from '@/lib/storage';
+import { onboarding } from '@/lib/storage';
+import { resolvePendingPayment } from '@/lib/paymentRecovery';
 import { restoreQueryCache, persistQueryCache } from '@/lib/queryPersist';
 import { prefetchHome } from '@/lib/homeFeed';
 import { registerForPushNotifications, savePushToken, syncPushTokenForUser, useNotificationListener, getLastNotificationResponse } from '@/lib/notifications';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { BrandSplash } from '@/components/BrandSplash';
 import { FlyToCartOverlay } from '@/components/motion/FlyToCart';
-import { ToastHost } from '@/components/ui/Toast';
+import { ToastHost, showToast } from '@/components/ui/Toast';
 import { QuickAddSheetHost } from '@/components/shop/QuickAddSheet';
 import { LoadingOverlay } from '@/components/motion/LoadingOverlay';
 import { alertDialog, DialogHost } from '@/components/ui/Dialog';
@@ -75,40 +76,54 @@ function isAllowedNotificationScreen(screen: string): boolean {
   return NOTIFICATION_SCREEN_ALLOWLIST.some((prefix) => screen.startsWith(prefix));
 }
 
-const PENDING_PAYMENT_MAX_AGE_MS = 30 * 60 * 1000;
-
 // Cold start recovery for a payment that was initiated but never reached a
-// terminal state locally (e.g. the app was killed mid-poll — see
-// lib/storage.ts pendingPayment and checkout.tsx's beforeRemove guard). Skip
-// entirely if we're already navigating to confirmation for this launch, or
-// if the record is stale enough that checking is unlikely to be useful.
+// terminal state locally (app killed mid-wait, phone died: see
+// lib/storage.ts pendingPayment). It resolves on its own where it can, so the
+// shopper isn't asked to do anything for a payment that already finished:
+// paid → cart cleared + "went through"; failed → "nothing was charged"; only
+// a genuinely unresolved one asks, and says what's happening. Skipped if this
+// launch is already routing to the confirmation screen, which does the same job.
 async function checkPendingPaymentOnStartup(
   router: ReturnType<typeof useRouter>,
   alreadyGoingToConfirmation: boolean
 ) {
   if (alreadyGoingToConfirmation) return;
-  const record = await pendingPayment.get();
-  if (!record) return;
-  if (Date.now() - record.createdAt > PENDING_PAYMENT_MAX_AGE_MS) {
-    await pendingPayment.clear();
-    return;
-  }
-  alertDialog(
-    'Payment in progress',
-    "You have a payment in progress — check its status?",
-    [
-      // Not a decline — the record stays. TTL (PENDING_PAYMENT_MAX_AGE_MS,
-      // checked above) is what eventually stops re-prompting, not this tap;
-      // clearing it here would drop the one payment still worth recovering.
-      { text: 'Not now', style: 'cancel' },
-      {
-        text: 'Check status',
-        onPress: () => {
-          router.push({ pathname: '/confirmation', params: { referenceId: record.referenceId } } as any);
+  const outcome = await resolvePendingPayment();
+
+  if (outcome.kind === 'success') {
+    showToast({
+      title: 'Your order went through',
+      detail: 'We received your payment. Track it in Orders.',
+      tone: 'success',
+      action: { label: 'View orders', href: '/orders' },
+    });
+  } else if (outcome.kind === 'failed') {
+    alertDialog(
+      "That payment didn't go through",
+      "Nothing was charged for it. Your cart is still here if you'd like to try again.",
+      [{ text: 'OK' }],
+      'info'
+    );
+  } else if (outcome.kind === 'pending' || outcome.kind === 'unknown') {
+    const { referenceId } = outcome;
+    alertDialog(
+      'Confirming your payment',
+      outcome.kind === 'pending'
+        ? "We're still waiting to hear back on your payment. There's nothing you need to do. It will show in your orders as soon as it's confirmed."
+        : "We couldn't reach our servers just now, so we can't say where your payment stands. Your reference is saved, and it will show in your orders once you're back online.",
+      [
+        // Not a decline: the record stays and is re-checked on the next launch.
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: 'Check status',
+          onPress: () => {
+            router.push({ pathname: '/confirmation', params: { referenceId } } as any);
+          },
         },
-      },
-    ]
-  );
+      ],
+      'info'
+    );
+  }
 }
 
 function AppContent() {

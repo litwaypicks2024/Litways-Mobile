@@ -6,11 +6,13 @@ import { BrandLoader } from '@/components/motion/BrandLoader';
 import { Text } from '@/components/ui/Text';
 import { color, radius, spacing } from '@/theme/tokens';
 
-type Phase = 'processing' | 'polling';
+type Phase = 'processing' | 'checking' | 'polling';
 
 interface Props {
   phase: Phase | null;
   phone: string;
+  /** Status checks are failing: say so, and that the payment itself is unaffected. */
+  offline?: boolean;
 }
 
 const STEPS = ['Order created', 'Approve on your phone', 'Payment confirmed'] as const;
@@ -21,10 +23,11 @@ const STEPS = ['Order created', 'Approve on your phone', 'Payment confirmed'] as
  * approval happens in a USSD prompt outside the app, so "look at your phone"
  * is the instruction that matters.
  */
-export function PaymentProgress({ phase, phone }: Props) {
+export function PaymentProgress({ phase, phone, offline }: Props) {
   if (!phase) return null;
-  // 0 = creating the order, 1 = waiting for approval.
-  const active = phase === 'processing' ? 0 : 1;
+  // 0 = creating the order (or, when 'checking', confirming it reached us), 1 = waiting for approval.
+  const active = phase === 'polling' ? 1 : 0;
+  const checking = phase === 'checking';
 
   return (
     <Animated.View
@@ -36,13 +39,27 @@ export function PaymentProgress({ phase, phone }: Props) {
     >
       <BrandLoader size={76} />
       <Text variant="title" style={{ textAlign: 'center', marginTop: spacing.lg }}>
-        {active === 0 ? 'Placing your order…' : 'Approve the payment'}
+        {checking ? 'Confirming your request…' : active === 0 ? 'Placing your order…' : 'Approve the payment'}
       </Text>
       <Text variant="bodyLg" tone="body" style={{ textAlign: 'center', marginTop: spacing.sm, maxWidth: 300 }}>
-        {active === 0
+        {checking
+          ? "Your connection dropped. We're checking that your request reached us. Please keep the app open and don't tap Pay again."
+          : active === 0
           ? 'This only takes a moment.'
           : `We sent a MoMo prompt to ${phone || 'your phone'}. Enter your PIN to finish — we'll confirm automatically.`}
       </Text>
+
+      {offline && phase !== 'checking' && (
+        <View
+          accessibilityRole="alert"
+          style={{ alignSelf: 'stretch', maxWidth: 340, marginTop: spacing.lg, flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start', backgroundColor: color.accentSoft, borderRadius: radius.md, padding: spacing.md }}
+        >
+          <Ionicons name="cloud-offline-outline" size={20} color={color.accent} />
+          <Text variant="caption" tone="body" style={{ flex: 1 }}>
+            You're offline. Your payment is safe: approving the prompt on your phone still works, and we'll confirm as soon as you're back online.
+          </Text>
+        </View>
+      )}
 
       <View style={{ alignSelf: 'stretch', maxWidth: 340, marginTop: spacing['2xl'], backgroundColor: color.surface, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md }}>
         {STEPS.map((label, i) => {
