@@ -41,7 +41,7 @@ function isAllowedNext(next: string | undefined): next is string {
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { next } = useLocalSearchParams<{ next?: string }>();
+  const { next, mode: modeParam } = useLocalSearchParams<{ next?: string; mode?: string }>();
 
   function navigateAfterAuth() {
     if (next === '/checkout') {
@@ -58,7 +58,7 @@ export default function LoginScreen() {
     }
   }
 
-  const [mode, setMode] = useState<Mode>('login');
+  const [mode, setMode] = useState<Mode>(modeParam === 'signup' ? 'signup' : 'login');
   const [loading, setLoading] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
 
