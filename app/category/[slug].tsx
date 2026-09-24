@@ -3,12 +3,12 @@ import { View, Platform, ActivityIndicator, RefreshControl } from 'react-native'
 import { FlashList } from '@/components/ui/List';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { fetchCategoryPage, PAGE_SIZE } from '@/lib/shopQuery';
+import { dedupeById, type CardProduct } from '@/lib/catalog';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { ProductGridSkeleton } from '@/components/ui/SkeletonLoader';
-import type { Product } from '@/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/ui/IconButton';
 import { color } from '@/theme/tokens';
@@ -17,7 +17,13 @@ import { BrandLoader } from '@/components/motion/BrandLoader';
 import Animated, { FadeIn, ReduceMotion } from 'react-native-reanimated';
 import { Text } from '@/components/ui/Text';
 
-const PAGE_SIZE = 24;
+// Module-level so the grid keeps stable references and skips re-renders.
+const gridKey = (item: CardProduct) => item.id ?? '';
+const renderGridItem = ({ item }: { item: CardProduct }) => (
+  <View style={{ flex: 1, margin: 4 }}>
+    <ProductCard product={item} />
+  </View>
+);
 
 export default function CategoryScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -36,21 +42,14 @@ export default function CategoryScreen() {
   } = useInfiniteQuery({
     queryKey: ['category-products', slug],
     initialPageParam: 0,
-    queryFn: async ({ pageParam }) => {
-      const { data, error } = await supabase.rpc('get_products_by_category', {
-        category_slug_param: slug,
-        page_limit: PAGE_SIZE,
-        page_offset: pageParam * PAGE_SIZE,
-      });
-      if (error) throw error;
-      return (data ?? []) as Product[];
-    },
+    queryFn: ({ pageParam }) => fetchCategoryPage(slug, pageParam),
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length === PAGE_SIZE ? allPages.length : undefined,
     enabled: !!slug,
+    staleTime: 60_000,
   });
 
-  const products = useMemo(() => data?.pages.flatMap((p) => p) ?? [], [data]);
+  const products = useMemo(() => dedupeById(data?.pages.flat() ?? []), [data]);
   const categoryName = products[0]?.category_name ?? slug;
 
   // Opening a category is a deliberate interest signal — count it once the
@@ -103,7 +102,7 @@ export default function CategoryScreen() {
           data={products}
           numColumns={2}
           estimatedItemSize={290}
-          keyExtractor={(item) => item.id ?? ''}
+          keyExtractor={gridKey}
           contentContainerStyle={{ padding: 12 }}
           refreshControl={
             <RefreshControl
@@ -112,11 +111,7 @@ export default function CategoryScreen() {
               tintColor={color.accent}
             />
           }
-          renderItem={({ item }) => (
-            <View style={{ flex: 1, margin: 4 }}>
-              <ProductCard product={item} />
-            </View>
-          )}
+          renderItem={renderGridItem}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) fetchNextPage();
           }}

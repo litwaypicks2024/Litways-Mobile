@@ -656,6 +656,32 @@ export type Database = {
             }
           }
       is_admin: { Args: never; Returns: boolean }
+      search_products_page: {
+        Args: {
+          search_term: string
+          category_slug_param?: string | null
+          sale_only?: boolean
+          min_price?: number | null
+          max_price?: number | null
+          brands_param?: string[] | null
+          sizes_param?: string[] | null
+          sort_key?: string
+          page_limit?: number
+          page_offset?: number
+        }
+        Returns: Database['public']['Views']['products_with_categories']['Row'][]
+      }
+      search_category_counts: {
+        Args: {
+          search_term: string
+          sale_only?: boolean
+          min_price?: number | null
+          max_price?: number | null
+          brands_param?: string[] | null
+          sizes_param?: string[] | null
+        }
+        Returns: { slug: string; name: string; n: number }[]
+      }
       search_products:
         | {
             Args: { search_term: string }
