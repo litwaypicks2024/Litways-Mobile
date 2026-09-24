@@ -102,3 +102,9 @@ export function useCategoryRail(slug: string | undefined, limit = 10) {
   );
   return { products, isLoading: query.isLoading };
 }
+
+/** "Because you like Beauty" / "Because you like Beauty and more" — one name so it fits a rail header on a single line. */
+export function likeSubtitle(topCategories: { name: string }[]): string {
+  if (!topCategories.length) return '';
+  return `Because you like ${topCategories[0].name}${topCategories.length > 1 ? ' and more' : ''}`;
+}

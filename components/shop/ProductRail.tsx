@@ -24,13 +24,14 @@ export function ProductRail({ title, subtitle, products, loading, actionLabel, o
   if (!loading && products.length === 0) return null;
   return (
     <View style={{ marginTop: compact ? spacing.xl : spacing['2xl'] }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: gutter, marginBottom: spacing.md }}>
-        <View style={{ flex: 1 }}>
-          <Text variant={compact ? 'heading' : 'title'}>{title}</Text>
-          {!!subtitle && <Text variant="meta" tone="muted" style={{ marginTop: 2 }}>{subtitle}</Text>}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: gutter, marginBottom: spacing.md }}>
+        {/* minWidth 0 lets the text side shrink and ellipsise; the action below never shrinks */}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text variant={compact ? 'heading' : 'title'} numberOfLines={1}>{title}</Text>
+          {!!subtitle && <Text variant="meta" tone="muted" numberOfLines={1} style={{ marginTop: 2 }}>{subtitle}</Text>}
         </View>
         {!!actionLabel && !!onAction && (
-          <TouchableOpacity onPress={onAction} hitSlop={8} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+          <TouchableOpacity onPress={onAction} hitSlop={8} accessibilityRole="button" style={{ flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
             <Text variant="small" tone="accent">{actionLabel}</Text>
             <Ionicons name="chevron-forward" size={14} color={color.accent} />
           </TouchableOpacity>
