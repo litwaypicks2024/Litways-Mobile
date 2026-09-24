@@ -219,25 +219,24 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
 
       {/* Caption — sits directly on the grey canvas, no card box */}
       <View style={{ paddingTop: 8, paddingHorizontal: 2 }}>
-        <Text variant="overline" tone="muted" numberOfLines={1} style={{ marginBottom: 3 }}>
+        <Text variant="metaStrong" tone="muted" numberOfLines={1}>
           {product.brand ?? '—'}
         </Text>
-        <Text variant="small" numberOfLines={1} style={{ marginBottom: 4 }}>
+        {/* Two lines so names read in full; the fixed height keeps grid rows aligned */}
+        <Text variant="bodyStrong" numberOfLines={2} style={{ marginTop: 2, minHeight: 40 }}>
           {product.name}
         </Text>
         {rating > 0 && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-            <Ionicons name="star" size={12} color={color.star} />
-            <Text variant="label" tone="muted" style={{ marginLeft: 4 }}>
-              {rating.toFixed(1)}
-              {reviewCount > 0 ? ` · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}` : ''}
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <Ionicons name="star" size={13} color={color.star} />
+            <Text variant="metaStrong" tone="body" style={{ marginLeft: 4 }}>{rating.toFixed(1)}</Text>
+            {reviewCount > 0 && <Text variant="meta" tone="muted" style={{ marginLeft: 4 }}>({reviewCount})</Text>}
           </View>
         )}
-        <Text variant="price" tone="accent">
+        <Text variant="price" tone="accent" style={{ marginTop: 6 }}>
           {formatCurrency(displayPrice)}
           {hasDiscount && (
-            <Text variant="meta" tone="faint" style={{ textDecorationLine: 'line-through' }}>
+            <Text variant="meta" tone="muted" style={{ textDecorationLine: 'line-through' }}>
               {'  '}{formatCurrency(product.price!)}
             </Text>
           )}

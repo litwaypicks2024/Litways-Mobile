@@ -85,17 +85,16 @@ export const color = {
   /** Primary text (canonical name). */
   ink: '#141414',
   /** Secondary text (subtitles, meta). */
-  inkMuted: '#8a8a8a',
+  inkMuted: '#5f5f5f',
   /** Body copy (descriptions, paragraphs) — passes AA contrast on white,
-   *  which inkMuted (#8a8a8a) does not. */
+   *  which the old #8a8a8a muted grey did not. */
   inkBody: '#4a4a4a',
-  /** Tertiary text (placeholders, faint labels). Darkened from #b8b8b8 — still
-   *  decorative-tier contrast, not a substitute for inkMuted on real content. */
-  inkFaint: '#9a9a9a',
+  /** Placeholders and decorative icons only (4.5:1 on white, ~3.8:1 on the canvas). Never for readable content — use inkMuted. */
+  inkFaint: '#767676',
   /** Aliases kept so existing screens using the old names keep compiling. */
   text: '#141414',
-  textMuted: '#8a8a8a',
-  textFaint: '#9a9a9a',
+  textMuted: '#5f5f5f',
+  textFaint: '#767676',
   /** Text/icons drawn on the accent color. */
   onAccent: palette.neutral[0],
   /** Text/icons drawn on the ink-black tab bar / dark pill button. */
@@ -103,6 +102,8 @@ export const color = {
 
   /** The single brand accent — unchanged, the client asked to keep this. */
   accent: palette.primary[600],
+  /** The accent as TEXT (prices, links). #ea580c is 3.0:1 on the canvas; this is 4.8:1. Use accent for fills and icons. */
+  accentText: '#b93a08',
   accentPressed: palette.primary[700],
   accentSoft: palette.primary[50],
   /** Gradient fill for primary pill CTAs only. */
@@ -150,6 +151,7 @@ export const shadow = {
 export const font = {
   /** Primary: all UI text. Static files, so each weight is its own family (Android doesn't synthesise weights for custom fonts). */
   sans: 'Inter_400Regular',
+  sansMedium: 'Inter_500Medium',
   sansSemibold: 'Inter_600SemiBold',
   sansBold: 'Inter_700Bold',
   /** Secondary: editorial headings (hero, display, title). */
@@ -199,15 +201,15 @@ export const type = {
   /** Product names, chips, secondary lines. */
   small: { fontSize: 13, lineHeight: 18, fontFamily: font.sansSemibold, color: color.text },
   /** Secondary lines and helper text that read as plain sentences. */
-  caption: { fontSize: 13, lineHeight: 18, fontFamily: font.sans, color: color.text },
+  caption: { fontSize: 13, lineHeight: 18, fontFamily: font.sansMedium, color: color.text },
   /** Chips, badges and emphasised counts. */
   metaStrong: { fontSize: 12, lineHeight: 16, fontFamily: font.sansSemibold, color: color.text },
   /** Counts, dates, helper and error text. */
-  meta: { fontSize: 12, lineHeight: 16, fontFamily: font.sans, color: color.textMuted },
+  meta: { fontSize: 12, lineHeight: 16, fontFamily: font.sansMedium, color: color.textMuted },
   /** Field labels, tab labels, captions. */
   label: { fontSize: 11, lineHeight: 14, fontFamily: font.sansSemibold, letterSpacing: 0.3, color: color.textMuted },
   /** Badges and eyebrows. */
-  overline: { fontSize: 10, lineHeight: 12, fontFamily: font.sansBold, letterSpacing: 0.8, textTransform: 'uppercase', color: color.textFaint },
+  overline: { fontSize: 11, lineHeight: 14, fontFamily: font.sansBold, letterSpacing: 0.6, textTransform: 'uppercase', color: color.textFaint },
   /** Button labels (sizes follow Button's sm / md / lg: 13 / 15 / 16). */
   button: { fontSize: 15, lineHeight: 20, fontFamily: font.sansBold, color: color.text },
 } as const satisfies Record<string, TextStyle>;

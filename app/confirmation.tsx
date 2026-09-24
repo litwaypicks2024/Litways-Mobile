@@ -382,7 +382,7 @@ export default function ConfirmationScreen() {
 
             <Animated.View entering={FadeInDown.duration(280).delay(120 + 2 * 70).reduceMotion(ReduceMotion.System)}>
               <Card style={{ marginBottom: 12 }}>
-                <Text variant="label" tone="faint" style={{ textTransform: 'uppercase', marginBottom: 12 }}>
+                <Text variant="label" tone="muted" style={{ textTransform: 'uppercase', marginBottom: 12 }}>
                   Order Details
                 </Text>
                 <View style={{ gap: 10 }}>
@@ -398,7 +398,7 @@ export default function ConfirmationScreen() {
 
             <Animated.View entering={FadeInDown.duration(280).delay(120 + 3 * 70).reduceMotion(ReduceMotion.System)}>
               <Card style={{ marginBottom: 12 }}>
-                <Text variant="label" tone="faint" style={{ textTransform: 'uppercase', marginBottom: 12 }}>
+                <Text variant="label" tone="muted" style={{ textTransform: 'uppercase', marginBottom: 12 }}>
                   Delivery
                 </Text>
                 <View style={{ gap: 10 }}>
@@ -412,7 +412,7 @@ export default function ConfirmationScreen() {
 
             <Animated.View entering={FadeInDown.duration(280).delay(120 + 4 * 70).reduceMotion(ReduceMotion.System)}>
               <Card style={{ marginBottom: 24 }}>
-                <Text variant="label" tone="faint" style={{ textTransform: 'uppercase', marginBottom: 12 }}>
+                <Text variant="label" tone="muted" style={{ textTransform: 'uppercase', marginBottom: 12 }}>
                   Items
                 </Text>
                 {(order.items as any[])?.map((item: any, i: number) => (

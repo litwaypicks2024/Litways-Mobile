@@ -649,7 +649,7 @@ export default function CheckoutScreen() {
                   }}
                 >
                   <Ionicons name="map-outline" size={18} color={color.inkFaint} />
-                  <Text variant="body" style={{ flex: 1, color: form.county ? color.ink : color.inkFaint }}>
+                  <Text variant="body" style={{ flex: 1, color: form.county ? color.ink : color.inkMuted }}>
                     {form.county || 'Select county...'}
                   </Text>
                   <Ionicons name={showCountyPicker ? 'chevron-up' : 'chevron-down'} size={16} color={color.inkFaint} />
@@ -699,7 +699,7 @@ export default function CheckoutScreen() {
                 <Ionicons name="location-outline" size={18} color={color.accent} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text variant="metaStrong" tone="faint" style={{ marginBottom: 2 }}>DELIVERING TO</Text>
+                <Text variant="metaStrong" tone="muted" style={{ marginBottom: 2 }}>DELIVERING TO</Text>
                 <Text variant="small">
                   {form.firstName} {form.lastName}
                 </Text>
@@ -738,7 +738,7 @@ export default function CheckoutScreen() {
                   <View style={{ flex: 1 }}>
                     <Text variant="small" numberOfLines={1}>{item.name}</Text>
                     {(item.size || item.color) && (
-                      <Text variant="label" tone="faint">
+                      <Text variant="label" tone="muted">
                         {[item.size, item.color].filter(Boolean).join(' · ')}
                       </Text>
                     )}
@@ -747,7 +747,7 @@ export default function CheckoutScreen() {
                     <Text variant="small" tone="accent">
                       {formatCurrency(item.price * item.quantity)}
                     </Text>
-                    <Text variant="label" tone="faint">×{item.quantity}</Text>
+                    <Text variant="label" tone="muted">×{item.quantity}</Text>
                   </View>
                 </View>
               ))}
@@ -761,11 +761,11 @@ export default function CheckoutScreen() {
                 prompt on the shopper's phone is the authoritative total.
                 (Backend handoff: a pre-payment quote endpoint would let us
                 show the true total here instead.) */}
-            <Text variant="meta" tone="faint" style={{ textAlign: 'center', marginTop: -4, marginBottom: 14 }}>
+            <Text variant="meta" tone="muted" style={{ textAlign: 'center', marginTop: -4, marginBottom: 14 }}>
               Your final total, including any delivery fee, is shown in the MoMo prompt on your phone.
             </Text>
 
-            <Text variant="label" tone="faint" style={{ textAlign: 'center', marginTop: 4 }}>
+            <Text variant="label" tone="muted" style={{ textAlign: 'center', marginTop: 4 }}>
               By placing your order you agree to our Terms & Conditions.{'\n'}Payment is processed securely via MTN Mobile Money.
             </Text>
           </>

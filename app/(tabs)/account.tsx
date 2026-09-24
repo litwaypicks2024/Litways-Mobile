@@ -398,8 +398,8 @@ function OrdersTab({ userId }: { userId: string }) {
             >
               <View className="flex-row items-center justify-between mb-3">
                 <View>
-                  <Text variant="metaStrong" tone="faint">{order.external_id}</Text>
-                  <Text variant="meta" tone="faint" style={{ marginTop: 2 }}>
+                  <Text variant="metaStrong" tone="muted">{order.external_id}</Text>
+                  <Text variant="meta" tone="muted" style={{ marginTop: 2 }}>
                     {new Date(order.created_at!).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </Text>
                 </View>
@@ -425,7 +425,7 @@ function OrdersTab({ userId }: { userId: string }) {
               {/* Write review for completed orders */}
               {isCompleted && items.length > 0 && (
                 <View className="mt-3 pt-3 border-t border-gray-50">
-                  <Text variant="metaStrong" tone="faint" style={{ marginBottom: 8 }}>Leave a review:</Text>
+                  <Text variant="metaStrong" tone="muted" style={{ marginBottom: 8 }}>Leave a review:</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                     {items.map((item: any) => {
                       const reviewed = isReviewed(order.id, item.id);
@@ -439,7 +439,7 @@ function OrdersTab({ userId }: { userId: string }) {
                           {!reviewed && <Ionicons name="star-outline" size={13} color={color.accent} />}
                           <Text
                             variant="metaStrong"
-                            tone={reviewed ? 'faint' : 'accent'}
+                            tone={reviewed ? 'muted' : 'accent'}
                             numberOfLines={1}
                             style={{ maxWidth: 120 }}
                           >
@@ -496,7 +496,7 @@ function SettingsTab({ onSignOut }: { onSignOut: () => void }) {
     <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: tabBarClearance }}>
       <Card padded={false} style={{ overflow: 'hidden', marginBottom: 16 }}>
         <View className="px-4 py-3 border-b border-gray-50">
-          <Text variant="overline" tone="faint">Account</Text>
+          <Text variant="overline" tone="muted">Account</Text>
         </View>
         <View className="px-4 py-3 border-b border-gray-50">
           <Text variant="meta" tone="muted">Email</Text>
