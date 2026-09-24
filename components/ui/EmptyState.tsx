@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/Text';
 import { Ionicons } from '@expo/vector-icons';
-import { color, font } from '@/theme/tokens';
+import { color } from '@/theme/tokens';
 import { Button } from './Button';
 import { IdleFloat } from '@/components/motion/IdleFloat';
 
@@ -32,7 +32,7 @@ export function EmptyState({ icon = 'cube-outline', illustration, title, descrip
       )}
       <Text variant="title" style={{ textAlign: 'center', marginBottom: 8 }}>{title}</Text>
       {description && (
-        <Text tone="muted" style={{ textAlign: 'center', marginBottom: 24 }}>{description}</Text>
+        <Text variant="body" tone="muted" style={{ textAlign: 'center', marginBottom: 24 }}>{description}</Text>
       )}
       {actionLabel && onAction && <Button title={actionLabel} onPress={onAction} size="md" loading={actionLoading} />}
     </View>

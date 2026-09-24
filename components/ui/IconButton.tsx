@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, type ViewStyle, type AccessibilityState } from 'react-native';
+import { View, type ViewStyle, type AccessibilityState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { color, shadow } from '@/theme/tokens';
 import { PressableScale } from './PressableScale';
+import { Text } from '@/components/ui/Text';
 
 interface Props {
   icon: keyof typeof Ionicons.glyphMap;
@@ -66,7 +67,7 @@ export function IconButton({ icon, onPress, size = 42, iconSize = 19, variant = 
             borderColor: color.bg,
           }}
         >
-          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{badge > 99 ? '99+' : badge}</Text>
+          <Text variant="overline" style={{ color: '#fff' }}>{badge > 99 ? '99+' : badge}</Text>
         </View>
       )}
     </PressableScale>

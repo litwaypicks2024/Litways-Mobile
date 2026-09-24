@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StatusBar } from 'react-native';
+import { View, TouchableOpacity, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { color, radius, spacing, type as t } from '@/theme/tokens';
+import { color, radius, spacing } from '@/theme/tokens';
 import { Button } from '@/components/ui/Button';
 import { LogoMark } from '@/components/brand/LogoMark';
 import { onboarding } from '@/lib/storage';
+import { Text } from '@/components/ui/Text';
 
 type Slide = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -52,7 +53,7 @@ export default function OnboardingScreen() {
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: spacing.xl, paddingTop: spacing.sm }}>
         {!isLast && (
           <TouchableOpacity onPress={finish} hitSlop={10}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: color.textMuted }}>Skip</Text>
+            <Text variant="button" tone="muted">Skip</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -74,10 +75,10 @@ export default function OnboardingScreen() {
 
       {/* Copy */}
       <View style={{ paddingHorizontal: spacing.xl, alignItems: 'center' }}>
-        <Text style={{ ...t.display, textAlign: 'center' }}>
+        <Text variant="display" style={{ textAlign: 'center' }}>
           {slide.title}
         </Text>
-        <Text style={{ fontSize: 15, color: color.inkMuted, textAlign: 'center', lineHeight: 22, marginTop: spacing.md }}>
+        <Text variant="bodyLg" tone="muted" style={{ textAlign: 'center', marginTop: spacing.md }}>
           {slide.body}
         </Text>
       </View>

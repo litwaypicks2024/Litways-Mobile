@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   View,
-  Text,
   StatusBar,
   Platform,
   TouchableOpacity,
@@ -13,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCartStore } from '@/store/cart';
 import { useAuthStore } from '@/store/auth';
-import { color, font, radius } from '@/theme/tokens';
+import { color, radius } from '@/theme/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { EmptyBagIllustration } from '@/components/illustrations';
 import { PressableScale } from '@/components/ui/PressableScale';
@@ -25,6 +24,7 @@ import { formatCurrency } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CartItem } from '@/types';
 import { alertDialog } from '@/components/ui/Dialog';
+import { Text } from '@/components/ui/Text';
 
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
@@ -81,7 +81,7 @@ export default function CartScreen() {
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
-          <Text style={{ fontSize: 20, fontFamily: font.display, color: color.ink }}>My Cart</Text>
+          <Text variant="title">My Cart</Text>
           {/* An empty local cart is the MOST important sync case — items added
               on the web are waiting on the server — so the control must exist
               here too, not only in the non-empty header. */}
@@ -104,7 +104,7 @@ export default function CartScreen() {
               ) : (
                 <Ionicons name="sync-outline" size={16} color={color.ink} />
               )}
-              <Text style={{ fontSize: 13, fontWeight: '700', color: color.ink }}>
+              <Text variant="small">
                 {syncing ? 'Syncing…' : 'Sync'}
               </Text>
             </TouchableOpacity>
@@ -117,7 +117,7 @@ export default function CartScreen() {
             flexDirection: 'row', alignItems: 'center', gap: 8,
           }}>
             <Ionicons name="information-circle" size={18} color={color.accent} />
-            <Text style={{ flex: 1, fontSize: 13, color: color.ink }}>{syncNotice}</Text>
+            <Text variant="caption" style={{ flex: 1 }}>{syncNotice}</Text>
             <TouchableOpacity onPress={dismissSyncNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
               <Ionicons name="close" size={16} color={color.accentPressed} />
             </TouchableOpacity>
@@ -151,8 +151,8 @@ export default function CartScreen() {
         justifyContent: 'space-between',
       }}>
         <View>
-          <Text style={{ fontSize: 20, fontFamily: font.display, color: color.ink }}>My Cart</Text>
-          <Text style={{ fontSize: 13, color: color.inkMuted, marginTop: 1 }}>
+          <Text variant="title">My Cart</Text>
+          <Text variant="caption" tone="muted" style={{ marginTop: 1 }}>
             {/* Total quantity, not line-item count — matches the Order Summary's basis below. */}
             {itemQuantity} {itemQuantity === 1 ? 'item' : 'items'}
           </Text>
@@ -177,13 +177,13 @@ export default function CartScreen() {
               ) : (
                 <Ionicons name="sync-outline" size={16} color={color.ink} />
               )}
-              <Text style={{ fontSize: 13, fontWeight: '700', color: color.ink }}>
+              <Text variant="small">
                 {syncing ? 'Syncing…' : 'Sync'}
               </Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={handleClearAll} hitSlop={8}>
-            <Text style={{ fontSize: 13, color: color.danger, fontWeight: '600' }}>Clear all</Text>
+            <Text variant="small" tone="danger">Clear all</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -202,7 +202,7 @@ export default function CartScreen() {
           borderRadius: radius.md,
         }}>
           <Ionicons name="information-circle" size={18} color={color.accent} />
-          <Text style={{ flex: 1, fontSize: 12, color: color.accentPressed, fontWeight: '600' }}>
+          <Text variant="metaStrong" style={{ flex: 1, color: color.accentPressed }}>
             {syncNotice}
           </Text>
           <TouchableOpacity onPress={dismissSyncNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
@@ -221,7 +221,7 @@ export default function CartScreen() {
           borderRadius: radius.md,
         }}>
           <Ionicons name="information-circle" size={18} color={color.accent} />
-          <Text style={{ flex: 1, fontSize: 12, color: color.accentPressed, fontWeight: '600' }}>
+          <Text variant="metaStrong" style={{ flex: 1, color: color.accentPressed }}>
             We combined this cart with items saved to your account.
           </Text>
           <TouchableOpacity onPress={dismissMergeNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
@@ -246,11 +246,11 @@ export default function CartScreen() {
           borderColor: color.border,
         }}>
           <Ionicons name="cloud-offline-outline" size={18} color={color.inkMuted} />
-          <Text style={{ flex: 1, fontSize: 12, color: color.inkMuted, fontWeight: '600' }}>
+          <Text variant="metaStrong" tone="muted" style={{ flex: 1 }}>
             Cart changes are saved on this phone but not to your account yet.
           </Text>
           <TouchableOpacity onPress={handleRetrySync} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retry sync">
-            <Text style={{ fontSize: 12, color: color.accent, fontWeight: '700' }}>Retry</Text>
+            <Text variant="metaStrong" tone="accent">Retry</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -265,19 +265,19 @@ export default function CartScreen() {
         )}
         ListFooterComponent={
           <Card style={{ marginTop: 4 }}>
-            <Text style={{ fontSize: 15, fontFamily: font.display, color: color.ink, marginBottom: 14 }}>Order Summary</Text>
+            <Text variant="heading" style={{ marginBottom: 14 }}>Order Summary</Text>
 
             <View style={{ gap: 10 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 14, color: color.inkMuted }}>
+                <Text variant="body" tone="muted">
                   Subtotal ({itemQuantity} items)
                 </Text>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: color.ink }}>{formatCurrency(total)}</Text>
+                <Text variant="bodyStrong">{formatCurrency(total)}</Text>
               </View>
               <View style={{ height: 1, backgroundColor: color.border, marginVertical: 4 }} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: color.ink }}>Total</Text>
-                <Text style={{ fontSize: 16, fontFamily: font.displayHeavy, color: color.accent }}>{formatCurrency(total)}</Text>
+                <Text variant="price" tone="accent">{formatCurrency(total)}</Text>
               </View>
             </View>
 
@@ -291,7 +291,7 @@ export default function CartScreen() {
                   <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#f0fdf4', alignItems: 'center', justifyContent: 'center' }}>
                     <Ionicons name={tItem.icon as any} size={18} color="#16a34a" />
                   </View>
-                  <Text style={{ fontSize: 10, color: color.inkMuted, fontWeight: '600', textAlign: 'center' }}>{tItem.label}</Text>
+                  <Text variant="overline" tone="muted" style={{ textAlign: 'center' }}>{tItem.label}</Text>
                 </View>
               ))}
             </View>
@@ -306,7 +306,7 @@ export default function CartScreen() {
               style={{ marginTop: 20 }}
             />
             <TouchableOpacity onPress={() => router.push('/shop')} style={{ marginTop: 12, alignItems: 'center', paddingVertical: 6 }}>
-              <Text style={{ fontSize: 14, color: color.inkMuted }}>Continue Shopping</Text>
+              <Text variant="body" tone="muted">Continue Shopping</Text>
             </TouchableOpacity>
           </Card>
         }
@@ -338,10 +338,10 @@ const CartItemRow = React.memo(function CartItemRow({
       </PressableScale>
 
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 11, fontWeight: '700', color: color.inkFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>
+        <Text variant="label" tone="faint" style={{ textTransform: 'uppercase', marginBottom: 2 }}>
           {item.brand}
         </Text>
-        <Text style={{ fontSize: 13, fontWeight: '700', color: color.ink, lineHeight: 18, marginBottom: 5 }} numberOfLines={2}>
+        <Text variant="small" style={{ marginBottom: 5 }} numberOfLines={2}>
           {item.name}
         </Text>
 
@@ -349,12 +349,12 @@ const CartItemRow = React.memo(function CartItemRow({
           <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
             {item.size && (
               <View style={{ backgroundColor: color.surfaceSunken, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.full }}>
-                <Text style={{ fontSize: 11, color: color.inkMuted, fontWeight: '600' }}>Size {item.size}</Text>
+                <Text variant="label" tone="muted">Size {item.size}</Text>
               </View>
             )}
             {item.color && (
               <View style={{ backgroundColor: color.surfaceSunken, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.full }}>
-                <Text style={{ fontSize: 11, color: color.inkMuted, fontWeight: '600' }}>{item.color}</Text>
+                <Text variant="label" tone="muted">{item.color}</Text>
               </View>
             )}
           </View>
@@ -362,11 +362,11 @@ const CartItemRow = React.memo(function CartItemRow({
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-            <Text style={{ fontSize: 15, fontFamily: font.displayHeavy, color: color.accent }}>
+            <Text variant="price" tone="accent">
               {formatCurrency(item.price * item.quantity)}
             </Text>
             {item.listPrice != null && item.listPrice > item.price && (
-              <Text style={{ fontSize: 12, color: color.inkFaint, textDecorationLine: 'line-through' }}>
+              <Text variant="meta" tone="faint" style={{ textDecorationLine: 'line-through' }}>
                 {formatCurrency(item.listPrice * item.quantity)}
               </Text>
             )}

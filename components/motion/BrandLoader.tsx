@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import Svg, { Path, Ellipse } from 'react-native-svg';
 import Animated, {
   useSharedValue,
@@ -13,6 +13,7 @@ import Animated, {
   ReduceMotion,
 } from 'react-native-reanimated';
 import { color } from '@/theme/tokens';
+import { Text } from '@/components/ui/Text';
 
 /**
  * The brand's loading state: the logo's bag holds steady (with a gentle bob)
@@ -128,7 +129,7 @@ export function BrandLoader({ size = 56, label }: { size?: number; label?: strin
         </Animated.View>
       </View>
       {label ? (
-        <Text style={{ fontSize: 13, color: color.inkMuted, fontWeight: '600' }}>{label}</Text>
+        <Text variant="small" tone="muted">{label}</Text>
       ) : null}
     </View>
   );

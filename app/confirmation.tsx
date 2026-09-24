@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Platform } from 'react-native';
+import { View, ScrollView, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { BrandLoader } from '@/components/motion/BrandLoader';
 import { DrawnCheckmark } from '@/components/motion/DrawnCheckmark';
@@ -21,9 +21,10 @@ import { momoAPI, ApiError } from '@/lib/api';
 import { pendingPayment } from '@/lib/storage';
 import { formatCurrency } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { color, font, shadow } from '@/theme/tokens';
+import { color, shadow } from '@/theme/tokens';
 import { Card } from '@/components/ui/Card';
 import { MotifBand } from '@/components/brand/Motif';
+import { Text } from '@/components/ui/Text';
 
 // Same terminal-status predicate checkout.tsx's finalize() uses to decide the
 // payment succeeded — reused here so this screen never calls a payment
@@ -248,9 +249,9 @@ export default function ConfirmationScreen() {
                   </View>
                 </Animated.View>
               </View>
-              <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink }}>Thank you!</Text>
-              <Text style={{ fontSize: 17, fontFamily: font.display, color: color.accent, marginTop: 2 }}>Your order is confirmed</Text>
-              <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+              <Text variant="title">Thank you!</Text>
+              <Text variant="heading" tone="accent" style={{ marginTop: 2 }}>Your order is confirmed</Text>
+              <Text variant="caption" tone="muted" style={{ textAlign: 'center', marginTop: 6 }}>
                 We received your order and it's now being processed.
               </Text>
             </>
@@ -263,10 +264,10 @@ export default function ConfirmationScreen() {
               }}>
                 <Ionicons name="alert-circle" size={44} color={color.danger} />
               </View>
-              <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink, textAlign: 'center' }}>
+              <Text variant="title" style={{ textAlign: 'center' }}>
                 This payment didn't go through
               </Text>
-              <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+              <Text variant="caption" tone="muted" style={{ textAlign: 'center', marginTop: 6 }}>
                 Your payment wasn't completed, so nothing was charged for this order. If you think you were charged, contact support with the reference below.
               </Text>
             </>
@@ -275,10 +276,10 @@ export default function ConfirmationScreen() {
               <View style={{ marginBottom: 20 }}>
                 <BrandLoader size={80} />
               </View>
-              <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink, textAlign: 'center' }}>
+              <Text variant="title" style={{ textAlign: 'center' }}>
                 We're still confirming this payment
               </Text>
-              <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+              <Text variant="caption" tone="muted" style={{ textAlign: 'center', marginTop: 6 }}>
                 This can take a moment. We'll keep checking automatically — you can also check again now.
               </Text>
               <Button
@@ -297,10 +298,10 @@ export default function ConfirmationScreen() {
               }}>
                 <Ionicons name="lock-closed-outline" size={40} color={color.accent} />
               </View>
-              <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink, textAlign: 'center' }}>
+              <Text variant="title" style={{ textAlign: 'center' }}>
                 Sign in to see this order
               </Text>
-              <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+              <Text variant="caption" tone="muted" style={{ textAlign: 'center', marginTop: 6 }}>
                 Sign in with the account that placed this order and we'll pull up its status.
               </Text>
               <Button
@@ -323,10 +324,10 @@ export default function ConfirmationScreen() {
               }}>
                 <Ionicons name="cloud-offline-outline" size={40} color={color.inkFaint} />
               </View>
-              <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink, textAlign: 'center' }}>
+              <Text variant="title" style={{ textAlign: 'center' }}>
                 We couldn't check your order
               </Text>
-              <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+              <Text variant="caption" tone="muted" style={{ textAlign: 'center', marginTop: 6 }}>
                 We couldn't reach the server to check this order.
               </Text>
             </>
@@ -335,10 +336,10 @@ export default function ConfirmationScreen() {
               <View style={{ marginBottom: 20 }}>
                 <BrandLoader size={80} />
               </View>
-              <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink, textAlign: 'center' }}>
+              <Text variant="title" style={{ textAlign: 'center' }}>
                 Checking your order…
               </Text>
-              <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+              <Text variant="caption" tone="muted" style={{ textAlign: 'center', marginTop: 6 }}>
                 Hold on while we verify your payment.
               </Text>
             </>
@@ -361,8 +362,8 @@ export default function ConfirmationScreen() {
               <View style={{ backgroundColor: color.peachTint, borderRadius: 20, padding: 16, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <Ionicons name="document-text-outline" size={22} color={color.accentPressed} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 11, color: color.accentPressed, fontWeight: '700', marginBottom: 2 }}>ORDER ID</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: color.ink }}>{order.external_id}</Text>
+                  <Text variant="label" style={{ color: color.accentPressed, marginBottom: 2 }}>ORDER ID</Text>
+                  <Text variant="bodyStrong">{order.external_id}</Text>
                 </View>
               </View>
               {/* Clay-render rider; container matches the artwork's own bg (#e9e8e7)
@@ -381,7 +382,7 @@ export default function ConfirmationScreen() {
 
             <Animated.View entering={FadeInDown.duration(280).delay(120 + 2 * 70).reduceMotion(ReduceMotion.System)}>
               <Card style={{ marginBottom: 12 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: color.inkFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
+                <Text variant="label" tone="faint" style={{ textTransform: 'uppercase', marginBottom: 12 }}>
                   Order Details
                 </Text>
                 <View style={{ gap: 10 }}>
@@ -397,7 +398,7 @@ export default function ConfirmationScreen() {
 
             <Animated.View entering={FadeInDown.duration(280).delay(120 + 3 * 70).reduceMotion(ReduceMotion.System)}>
               <Card style={{ marginBottom: 12 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: color.inkFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
+                <Text variant="label" tone="faint" style={{ textTransform: 'uppercase', marginBottom: 12 }}>
                   Delivery
                 </Text>
                 <View style={{ gap: 10 }}>
@@ -411,15 +412,15 @@ export default function ConfirmationScreen() {
 
             <Animated.View entering={FadeInDown.duration(280).delay(120 + 4 * 70).reduceMotion(ReduceMotion.System)}>
               <Card style={{ marginBottom: 24 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: color.inkFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
+                <Text variant="label" tone="faint" style={{ textTransform: 'uppercase', marginBottom: 12 }}>
                   Items
                 </Text>
                 {(order.items as any[])?.map((item: any, i: number) => (
                   <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: color.border }}>
-                    <Text style={{ fontSize: 13, color: color.ink, flex: 1 }} numberOfLines={1}>
+                    <Text variant="caption" style={{ flex: 1 }} numberOfLines={1}>
                       {item.name} {item.size ? `(${item.size})` : ''} × {item.quantity}
                     </Text>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: color.accent, marginLeft: 8 }}>
+                    <Text variant="small" tone="accent" style={{ marginLeft: 8 }}>
                       {formatCurrency(item.price * item.quantity)}
                     </Text>
                   </View>
@@ -432,7 +433,7 @@ export default function ConfirmationScreen() {
           <View style={{ backgroundColor: color.peachTint, borderRadius: 20, padding: 16, marginBottom: 24, alignItems: 'center' }}>
             {referenceId ? (
               <>
-                <Text style={{ fontSize: 13, color: color.accentPressed, textAlign: 'center', fontWeight: '600', marginBottom: 14 }}>
+                <Text variant="small" style={{ color: color.accentPressed, textAlign: 'center', marginBottom: 14 }}>
                   Your reference:{'\n'}{referenceId}
                 </Text>
                 <Button
@@ -443,7 +444,7 @@ export default function ConfirmationScreen() {
                 />
               </>
             ) : (
-              <Text style={{ fontSize: 13, color: color.accentPressed, textAlign: 'center', fontWeight: '600' }}>
+              <Text variant="small" style={{ color: color.accentPressed, textAlign: 'center' }}>
                 No order reference was provided, so there's nothing to check here.
               </Text>
             )}
@@ -462,7 +463,7 @@ export default function ConfirmationScreen() {
           ) : (
             <>
               <Button title="Done" onPress={() => router.replace('/(tabs)')} variant="primary" fullWidth size="lg" />
-              <Text style={{ fontSize: 12, color: color.inkMuted, textAlign: 'center', marginTop: 10, lineHeight: 17 }}>
+              <Text variant="meta" tone="muted" style={{ textAlign: 'center', marginTop: 10 }}>
                 Track this order anytime with the link in your confirmation email.
               </Text>
             </>
@@ -479,8 +480,8 @@ export default function ConfirmationScreen() {
 function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-      <Text style={{ fontSize: 13, color: color.inkMuted }}>{label}</Text>
-      <Text style={{ fontSize: 13, fontWeight: '700', color: highlight ? color.accent : color.ink }}>{value}</Text>
+      <Text variant="caption" tone="muted">{label}</Text>
+      <Text variant="small" style={{ color: highlight ? color.accent : color.ink }}>{value}</Text>
     </View>
   );
 }

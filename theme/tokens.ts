@@ -170,7 +170,7 @@ export const weight = {
 /* Two fonts: Bricolage Grotesque for headings, prices and totals (its weight is
    baked into the font file, so never add fontWeight to it); the system font for
    everything else, using only weights 400 / 600 / 700.
-   Fourteen roles and no other sizes, each with its line height. Render text with
+   Sixteen roles and no other sizes, each with its line height. Render text with
    <Text variant="…"> (components/ui/Text.tsx) rather than raw fontSize.
    `npm run check:type` flags sizes/weights outside this scale. */
 export const type = {
@@ -193,6 +193,10 @@ export const type = {
   bodyStrong: { fontSize: 14, lineHeight: 20, fontWeight: weight.semibold, color: color.text },
   /** Product names, chips, secondary lines. */
   small: { fontSize: 13, lineHeight: 18, fontWeight: weight.semibold, color: color.text },
+  /** Secondary lines and helper text that read as plain sentences. */
+  caption: { fontSize: 13, lineHeight: 18, fontWeight: weight.regular, color: color.text },
+  /** Chips, badges and emphasised counts. */
+  metaStrong: { fontSize: 12, lineHeight: 16, fontWeight: weight.semibold, color: color.text },
   /** Counts, dates, helper and error text. */
   meta: { fontSize: 12, lineHeight: 16, fontWeight: weight.regular, color: color.textMuted },
   /** Field labels, tab labels, captions. */
