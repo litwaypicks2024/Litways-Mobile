@@ -86,9 +86,15 @@ export default function EditProfileScreen() {
     if (!user || !canSave) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from('users').update(trimmed).eq('id', user.id);
+      // .select() so we can tell when nothing was written: an UPDATE that matches
+      // no row (RLS filtered it, or the profile row is missing) returns no error.
+      const { data, error } = await supabase.from('users').update(trimmed).eq('id', user.id).select('id');
       if (error) {
         alertDialog("Couldn't save changes", error.message);
+        return;
+      }
+      if (!data?.length) {
+        alertDialog("Couldn't save changes", "We couldn't find your profile to update. Please sign out and back in, then try again.");
         return;
       }
       await fetchProfile(user.id);
@@ -135,7 +141,7 @@ export default function EditProfileScreen() {
             </View>
           </Section>
 
-          <Section title="Contact">
+          <Section title="Contact" note="Your email is your sign-in and can't be changed here.">
             <Input
               label="Phone"
               leftIcon="call-outline"
@@ -154,12 +160,9 @@ export default function EditProfileScreen() {
               editable={false}
               containerStyle={{ backgroundColor: color.surfaceSunken }}
             />
-            <Text variant="meta" tone="muted" style={{ marginTop: -8 }}>
-              Your email is your sign-in and can't be changed here.
-            </Text>
           </Section>
 
-          <Section title="Delivery address">
+          <Section title="Delivery address" note="We'll prefill these at checkout so ordering takes seconds.">
             <Input
               label="Address"
               leftIcon="location-outline"
@@ -178,9 +181,6 @@ export default function EditProfileScreen() {
               autoCapitalize="words"
               returnKeyType="done"
             />
-            <Text variant="meta" tone="muted" style={{ marginTop: -8 }}>
-              We'll prefill these at checkout so ordering takes seconds.
-            </Text>
           </Section>
         </ScrollView>
 
@@ -202,11 +202,17 @@ export default function EditProfileScreen() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/**
+ * Owns the vertical rhythm: title, 12 → fields, note 8 below, 24 → next section.
+ * Every Input carries a 16px bottom margin, so the field group cancels the last
+ * one; otherwise it stacks with the section gap and the spacing drifts.
+ */
+function Section({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
     <View style={{ marginBottom: spacing.xl }}>
       <Text variant="heading" style={{ marginBottom: spacing.md }}>{title}</Text>
-      {children}
+      <View style={{ marginBottom: -16 }}>{children}</View>
+      {!!note && <Text variant="meta" tone="muted" style={{ marginTop: spacing.sm }}>{note}</Text>}
     </View>
   );
 }
