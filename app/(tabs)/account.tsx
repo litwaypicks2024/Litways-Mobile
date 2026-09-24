@@ -122,7 +122,7 @@ export default function AccountScreen() {
             style={{ marginHorizontal: gutter, marginTop: spacing.lg }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: color.accentSoft, borderRadius: radius.lg, padding: spacing.lg }}>
-              <Ionicons name="flash-outline" size={22} color={color.accent} />
+              <Ionicons name="person-circle-outline" size={26} color={color.accent} />
               <View style={{ flex: 1 }}>
                 <Text variant="bodyStrong">Finish your profile</Text>
                 <Text variant="meta" tone="body">Add your phone and delivery address to check out faster.</Text>
