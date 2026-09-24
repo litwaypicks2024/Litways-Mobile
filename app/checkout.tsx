@@ -23,15 +23,17 @@ import { PaymentProgress } from '@/components/checkout/PaymentProgress';
 import { AvailabilityBanner } from '@/components/cart/AvailabilityBanner';
 import { useCartAvailability } from '@/lib/cartAvailability';
 import { color, gutter, radius, spacing } from '@/theme/tokens';
-import { momoAPI } from '@/lib/api';
+import { momoAPI, PaymentUncertainError } from '@/lib/api';
+import { findEarlierPendingOrder } from '@/lib/paymentRecovery';
 import { supabase } from '@/lib/supabase';
 import { normalizeLiberianPhone, isValidLiberianMobile, isMtnMobile } from '@/lib/phone';
-import { pendingPayment } from '@/lib/storage';
+import { paymentAttempt, pendingPayment } from '@/lib/storage';
 import type { CheckoutForm } from '@/types';
 import { alertDialog } from '@/components/ui/Dialog';
 import { Text } from '@/components/ui/Text';
 
-type PaymentStatus = 'idle' | 'processing' | 'polling' | 'success' | 'failed';
+// 'checking' = the pay request's reply was lost and we're looking for the order it may have created.
+type PaymentStatus = 'idle' | 'processing' | 'checking' | 'polling' | 'success' | 'failed';
 
 /** Inline status message — replaces modal alerts for payment/cart/sign-in outcomes. */
 type Notice = {
@@ -42,6 +44,11 @@ type Notice = {
 };
 
 const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
+// A saved unresolved payment / lost-reply attempt younger than this blocks a fresh Pay tap.
+const OPEN_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
+const ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const looksOffline = (m?: string) => /network|offline|internet|timed? ?out|failed to fetch|connection/i.test(m ?? '');
 
 export default function CheckoutScreen() {
   const router = useRouter();
@@ -115,7 +122,9 @@ export default function CheckoutScreen() {
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
   }
 
-  const isProcessing = paymentStatus === 'processing' || paymentStatus === 'polling';
+  const isProcessing = paymentStatus === 'processing' || paymentStatus === 'checking' || paymentStatus === 'polling';
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   // Header back button (above) is already disabled while processing, but that
   // only covers a tap on our own IconButton. Android hardware back and iOS
@@ -328,8 +337,82 @@ export default function CheckoutScreen() {
       scrollToTop();
       return;
     }
+    // A payment from earlier is still unresolved: don't start a second one on top of it.
+    const open = await pendingPayment.get();
+    if (open && Date.now() - open.createdAt < OPEN_PAYMENT_WINDOW_MS) {
+      alertDialog(
+        'You already have a payment in progress',
+        "Paying again could charge you twice. Check where the earlier one stands first. If it didn't go through, you can pay again.",
+        [
+          { text: 'Check status', onPress: () => router.push({ pathname: '/confirmation', params: { referenceId: open.referenceId } }) },
+          { text: 'Pay again anyway', style: 'destructive', onPress: () => { void pendingPayment.clear().then(startPayment); } },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+    await startPayment();
+  }
+
+  /** Continue tracking an order the server already created for us. */
+  async function adoptOrder(ref: string) {
+    await pendingPayment.save({ referenceId: ref, createdAt: Date.now() });
+    await paymentAttempt.clear();
+    if (!mountedRef.current) return;
+    setReferenceId(ref);
+    setPaymentStatus('polling');
+  }
+
+  /**
+   * The pay request's reply was lost, so the server may have created the order
+   * and sent the MoMo prompt without us knowing. Look for it before letting
+   * anyone tap Pay again. Returns true if it found and adopted an order.
+   */
+  async function recoverLostRequest(startedAt: number, attempts: number): Promise<'adopted' | 'none' | 'unreachable'> {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return 'unreachable';
+    let last: 'none' | 'unreachable' = 'unreachable';
+    for (let i = 0; i < attempts; i++) {
+      if (i > 0) await sleep(3000);
+      if (!mountedRef.current) return 'unreachable';
+      const r = await findEarlierPendingOrder(userId, startedAt);
+      if (r.kind === 'found') {
+        await adoptOrder(r.referenceId);
+        return 'adopted';
+      }
+      last = r.kind;
+    }
+    return last;
+  }
+
+  async function startPayment() {
     setNotice(null);
+
+    // An earlier request's reply was lost and never resolved: settle that first.
+    const earlier = await paymentAttempt.get();
+    if (earlier && Date.now() - earlier.startedAt < ATTEMPT_WINDOW_MS) {
+      setPaymentStatus('checking');
+      const found = await recoverLostRequest(earlier.startedAt, 2);
+      if (found === 'adopted') return;
+      if (found === 'unreachable') {
+        setPaymentStatus('idle');
+        setNotice({
+          tone: 'warning',
+          title: "We can't reach our servers yet",
+          lines: [
+            'Your earlier payment request may have gone through, so we need to check before you pay again. This protects you from being charged twice.',
+            'Reconnect and tap Pay again. Nothing has been taken from you by this screen.',
+          ],
+          action: { label: 'Check my orders', onPress: () => router.push('/orders') },
+        });
+        scrollToTop();
+        return;
+      }
+      await paymentAttempt.clear(); // reachable and no order exists: that request never landed
+    }
+
     setPaymentStatus('processing');
+    const startedAt = Date.now();
     try {
       // Re-validate price & stock against the live catalog before charging —
       // the cart persists locally and may hold stale prices or sold-out items.
@@ -405,24 +488,59 @@ export default function CheckoutScreen() {
         },
       };
 
+      // Recorded BEFORE the request leaves: if the reply is lost we can still find the order.
+      await paymentAttempt.save(startedAt);
       const { referenceId: ref } = await momoAPI.initiatePayment(payload);
       // Persist the moment we have a referenceId — see lib/storage.ts
       // pendingPayment for why (recoverable if the app is killed mid-poll).
-      void pendingPayment.save({ referenceId: ref, createdAt: Date.now() });
+      await pendingPayment.save({ referenceId: ref, createdAt: Date.now() });
+      await paymentAttempt.clear();
       setReferenceId(ref);
       setPaymentStatus('polling');
     } catch (err: any) {
+      if (err instanceof PaymentUncertainError || err?.name === 'PaymentUncertainError') {
+        // The request may have landed. Never say "failed" and never invite a blind retry.
+        setPaymentStatus('checking');
+        const found = await recoverLostRequest(startedAt, 6);
+        if (found === 'adopted' || !mountedRef.current) return;
+        setPaymentStatus('failed');
+        if (found === 'none') {
+          await paymentAttempt.clear();
+          setNotice({
+            tone: 'error',
+            title: "The payment didn't start",
+            lines: ["The connection dropped before your request reached us. Nothing was charged. Please try again."],
+          });
+        } else {
+          setNotice({
+            tone: 'warning',
+            title: "We couldn't confirm your payment request",
+            lines: [
+              "You're offline, so we can't tell yet whether it went through. Nothing is lost: if a MoMo prompt arrives on your phone, approve it once and it will show in your orders.",
+              "Please don't tap Pay again until you're back online. We'll check for you first.",
+            ],
+            action: { label: 'Check my orders', onPress: () => router.push('/orders') },
+          });
+        }
+        scrollToTop();
+        return;
+      }
+      await paymentAttempt.clear(); // a definite rejection: nothing was created
       setPaymentStatus('failed');
       setNotice({
         tone: 'error',
-        title: 'Couldn\'t start the payment',
-        lines: [err.message ?? 'Something went wrong. Please try again.'],
+        title: "Couldn't start the payment",
+        lines: [
+          looksOffline(err?.message)
+            ? "You appear to be offline. Nothing was charged. Reconnect and try again."
+            : `${err?.message ?? 'Something went wrong.'} Nothing was charged.`,
+        ],
       });
       scrollToTop();
     }
   }
 
-  const payLabel = paymentStatus === 'processing' ? 'Placing your order…' : paymentStatus === 'polling' ? 'Almost there…' : 'Pay with MoMo';
+  const payLabel = paymentStatus === 'processing' || paymentStatus === 'checking' ? 'Placing your order…' : paymentStatus === 'polling' ? 'Almost there…' : 'Pay with MoMo';
   const deliveryReady = !!(form.firstName && form.email && form.phone && form.address && form.county);
 
   return (
@@ -645,7 +763,7 @@ export default function CheckoutScreen() {
       )}
     </KeyboardAvoidingView>
 
-    <PaymentProgress phase={paymentStatus === 'processing' || paymentStatus === 'polling' ? paymentStatus : null} phone={form.phone} />
+    <PaymentProgress phase={paymentStatus === 'processing' || paymentStatus === 'checking' || paymentStatus === 'polling' ? paymentStatus : null} phone={form.phone} />
     </>
   );
 }

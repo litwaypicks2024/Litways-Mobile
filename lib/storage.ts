@@ -95,3 +95,33 @@ export const recentSearches = {
     } catch {}
   },
 };
+
+const PAYMENT_ATTEMPT_KEY = 'litways-payment-attempt';
+
+/**
+ * Written BEFORE the pay request leaves the phone and cleared once we know the
+ * outcome. If the connection drops after the request was sent but before the
+ * reply arrived, the server may have created the order and sent the MoMo prompt
+ * while the app never learned the reference. This record is what lets the next
+ * Pay tap look for that order first instead of creating a second one.
+ */
+export const paymentAttempt = {
+  save: async (startedAt: number): Promise<void> => {
+    try {
+      await AsyncStorage.setItem(PAYMENT_ATTEMPT_KEY, JSON.stringify({ startedAt }));
+    } catch {}
+  },
+  get: async (): Promise<{ startedAt: number } | null> => {
+    try {
+      const raw = await AsyncStorage.getItem(PAYMENT_ATTEMPT_KEY);
+      return raw ? (JSON.parse(raw) as { startedAt: number }) : null;
+    } catch {
+      return null;
+    }
+  },
+  clear: async (): Promise<void> => {
+    try {
+      await AsyncStorage.removeItem(PAYMENT_ATTEMPT_KEY);
+    } catch {}
+  },
+};

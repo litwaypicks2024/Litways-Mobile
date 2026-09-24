@@ -29,18 +29,52 @@ async function authHeaders(): Promise<Record<string, string>> {
   };
 }
 
+/**
+ * The pay request may or may not have reached the server: the connection
+ * dropped or timed out, or the server answered 5xx after possibly having created
+ * the order. Distinct from a 4xx rejection, which is definitive (nothing was
+ * created). Callers must NOT tell the shopper "it failed" or let them blindly
+ * retry on this: check for an order first.
+ */
+export class PaymentUncertainError extends Error {
+  constructor(message = 'Could not confirm the payment request') {
+    super(message);
+    this.name = 'PaymentUncertainError';
+  }
+}
+
+// Long enough for a slow mobile link, short enough that a dead one doesn't spin forever.
+const PAY_TIMEOUT_MS = 30_000;
+
 export const momoAPI = {
   async initiatePayment(payload: object) {
-    const res = await fetch(`${BASE_URL}/api/momo/pay`, {
-      method: 'POST',
-      headers: await authHeaders(),
-      body: JSON.stringify(payload),
-    });
+    const headers = await authHeaders();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), PAY_TIMEOUT_MS);
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_URL}/api/momo/pay`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch {
+      // Offline, dropped mid-request, or timed out: the request may still have landed.
+      throw new PaymentUncertainError();
+    } finally {
+      clearTimeout(timer);
+    }
     if (!res.ok) {
+      if (res.status >= 500) throw new PaymentUncertainError();
       const err = await res.json().catch(() => ({}));
       throw new Error((err as any).error ?? (err as any).message ?? 'Payment initiation failed');
     }
-    return res.json() as Promise<{ success: boolean; referenceId: string; orderId: string; amount: number }>;
+    try {
+      return (await res.json()) as { success: boolean; referenceId: string; orderId: string; amount: number };
+    } catch {
+      throw new PaymentUncertainError();
+    }
   },
 
   async checkStatus(referenceId: string) {

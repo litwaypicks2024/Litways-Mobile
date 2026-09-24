@@ -6,7 +6,7 @@ import { BrandLoader } from '@/components/motion/BrandLoader';
 import { Text } from '@/components/ui/Text';
 import { color, radius, spacing } from '@/theme/tokens';
 
-type Phase = 'processing' | 'polling';
+type Phase = 'processing' | 'checking' | 'polling';
 
 interface Props {
   phase: Phase | null;
@@ -23,8 +23,9 @@ const STEPS = ['Order created', 'Approve on your phone', 'Payment confirmed'] as
  */
 export function PaymentProgress({ phase, phone }: Props) {
   if (!phase) return null;
-  // 0 = creating the order, 1 = waiting for approval.
-  const active = phase === 'processing' ? 0 : 1;
+  // 0 = creating the order (or, when 'checking', confirming it reached us), 1 = waiting for approval.
+  const active = phase === 'polling' ? 1 : 0;
+  const checking = phase === 'checking';
 
   return (
     <Animated.View
@@ -36,10 +37,12 @@ export function PaymentProgress({ phase, phone }: Props) {
     >
       <BrandLoader size={76} />
       <Text variant="title" style={{ textAlign: 'center', marginTop: spacing.lg }}>
-        {active === 0 ? 'Placing your order…' : 'Approve the payment'}
+        {checking ? 'Confirming your request…' : active === 0 ? 'Placing your order…' : 'Approve the payment'}
       </Text>
       <Text variant="bodyLg" tone="body" style={{ textAlign: 'center', marginTop: spacing.sm, maxWidth: 300 }}>
-        {active === 0
+        {checking
+          ? "Your connection dropped. We're checking that your request reached us. Please keep the app open and don't tap Pay again."
+          : active === 0
           ? 'This only takes a moment.'
           : `We sent a MoMo prompt to ${phone || 'your phone'}. Enter your PIN to finish — we'll confirm automatically.`}
       </Text>
