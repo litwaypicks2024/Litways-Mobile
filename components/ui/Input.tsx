@@ -23,16 +23,12 @@ interface Props extends TextInputProps {
    * around a square-cornered tinted text area.
    */
   containerStyle?: ViewStyle;
-  /**
-   * Gives the pill a visible resting border so an editable field reads as
-   * editable even before it's focused. Default (false) keeps the border
-   * transparent at rest, matching every existing screen's look.
-   */
+  /** @deprecated Every field now has a visible resting border; kept so callers still compile. */
   outlined?: boolean;
 }
 
 export const Input = forwardRef<TextInput, Props>(function Input(
-  { label, error, leftIcon, rightIcon, onRightIconPress, isPassword, style, containerStyle, outlined, ...rest },
+  { label, error, leftIcon, rightIcon, onRightIconPress, isPassword, style, containerStyle, outlined: _outlined, ...rest },
   ref
 ) {
   const [focused, setFocused] = useState(false);
@@ -42,9 +38,9 @@ export const Input = forwardRef<TextInput, Props>(function Input(
     ? color.danger
     : focused
     ? color.accent
-    : outlined
+    : rest.editable === false
     ? color.border
-    : 'transparent';
+    : color.fieldBorder;
 
   return (
     <View style={{ marginBottom: 16 }}>
@@ -57,8 +53,8 @@ export const Input = forwardRef<TextInput, Props>(function Input(
             flexDirection: 'row',
             alignItems: 'center',
             backgroundColor: color.surface,
-            borderRadius: radius.full,
-            borderWidth: outlined ? 1 : 1.5,
+            borderRadius: rest.multiline ? radius.lg : radius.full,
+            borderWidth: 1.5,
             paddingHorizontal: 16,
             minHeight: 50,
           },

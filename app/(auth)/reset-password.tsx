@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import { color, font } from '@/theme/tokens';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { InkHeader } from '@/components/auth/InkHeader';
+import { alertDialog } from '@/components/ui/Dialog';
 
 export default function ResetPasswordScreen() {
   const insets = useSafeAreaInsets();
@@ -25,13 +25,13 @@ export default function ResetPasswordScreen() {
   const [sent, setSent] = useState(false);
 
   async function handleReset() {
-    if (!email) { Alert.alert('Enter your email address'); return; }
+    if (!email) { alertDialog('Enter your email address'); return; }
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: 'litwaypicks://new-password',
     });
     setLoading(false);
-    if (error) { Alert.alert('Error', error.message); return; }
+    if (error) { alertDialog('Error', error.message); return; }
     setSent(true);
   }
 

@@ -17,10 +17,19 @@ import { useCartStore } from '@/store/cart';
 
 export const TAB_BAR_HEIGHT = 64;
 export const TAB_BAR_FAB_SIZE = 56;
+/** Gap between the pill and the bottom safe-area edge. Kept small so the bar
+ *  sits low and doesn't compete with page content. */
+export const TAB_BAR_BOTTOM_GAP = 6;
+
+const INACTIVE = '#767676';
+
+/** Space kept clear above the bar: the active tab's circle rises past the
+ *  pill's top edge, and the last row of content needs air beyond that. */
+export const TAB_BAR_CONTENT_GAP = 28;
 
 export function useTabBarClearance(): number {
   const insets = useSafeAreaInsets();
-  return insets.bottom + 12 + TAB_BAR_HEIGHT;
+  return insets.bottom + TAB_BAR_BOTTOM_GAP + TAB_BAR_HEIGHT + TAB_BAR_CONTENT_GAP;
 }
 
 interface TabButtonProps extends TabTriggerSlotProps {
@@ -42,7 +51,7 @@ const CIRCLE_RISE = new Keyframe({
   .duration(300)
   .reduceMotion(ReduceMotion.System);
 
-function IconBadge({ count, ringColor }: { count: number; ringColor: string }) {
+function IconBadge({ count, ringColor, onAccent = false }: { count: number; ringColor: string; onAccent?: boolean }) {
   const scale = useSharedValue(1);
   const hasMounted = useRef(false);
 
@@ -68,7 +77,7 @@ function IconBadge({ count, ringColor }: { count: number; ringColor: string }) {
           minWidth: 16,
           height: 16,
           borderRadius: 8,
-          backgroundColor: color.accent,
+          backgroundColor: onAccent ? color.surface : color.accent,
           alignItems: 'center',
           justifyContent: 'center',
           paddingHorizontal: 3,
@@ -78,13 +87,13 @@ function IconBadge({ count, ringColor }: { count: number; ringColor: string }) {
         animatedStyle,
       ]}
     >
-      <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>{count > 99 ? '99+' : count}</Text>
+      <Text style={{ color: onAccent ? color.accent : '#fff', fontSize: 9, fontWeight: '700' }}>{count > 99 ? '99+' : count}</Text>
     </Animated.View>
   );
 }
 
 /* The raised circle is the ACTIVE-tab indicator: whichever tab is focused pops
-   up as the ink circle; the rest render flat. Because the circle only ever
+   up as the accent circle; the rest render flat. Because the circle only ever
    marks the already-active tab, taps on it are a no-op, so its slight overhang
    above the bar's touch bounds (Android drops touches outside a parent's
    layout box) can't cost a navigation — every navigable target is a flat,
@@ -106,10 +115,10 @@ export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabBu
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, height: TAB_BAR_HEIGHT }}
       >
         <View>
-          <Ionicons name={iconOff} size={22} color="rgba(255,255,255,0.45)" />
-          <IconBadge count={badge} ringColor={color.ink} />
+          <Ionicons name={iconOff} size={22} color={INACTIVE} />
+          <IconBadge count={badge} ringColor={color.surface} />
         </View>
-        <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.45)' }}>{label}</Text>
+        <Text style={{ fontSize: 10, fontWeight: '600', color: INACTIVE }}>{label}</Text>
       </Pressable>
     );
   }
@@ -131,17 +140,17 @@ export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabBu
           width: TAB_BAR_FAB_SIZE,
           height: TAB_BAR_FAB_SIZE,
           borderRadius: TAB_BAR_FAB_SIZE / 2,
-          backgroundColor: color.ink,
+          backgroundColor: color.accent,
           borderWidth: 4,
-          borderColor: color.bg,
+          borderColor: color.surface,
           alignItems: 'center',
           justifyContent: 'center',
           ...shadow.card,
         }}
       >
         <View>
-          <Ionicons name={iconOn} size={22} color={color.onInk} />
-          <IconBadge count={badge} ringColor={color.bg} />
+          <Ionicons name={iconOn} size={22} color={color.onAccent} />
+          <IconBadge count={badge} ringColor={color.accent} onAccent />
         </View>
       </Animated.View>
       <Text style={{ position: 'absolute', bottom: 6, fontSize: 10, fontWeight: '700', color: color.accent }}>

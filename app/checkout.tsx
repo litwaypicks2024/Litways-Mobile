@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
-  Alert,
   KeyboardAvoidingView,
   AppState,
   TextInput,
@@ -30,9 +29,18 @@ import { pendingPayment } from '@/lib/storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LoadingOverlay } from '@/components/motion/LoadingOverlay';
 import type { CheckoutForm } from '@/types';
+import { alertDialog } from '@/components/ui/Dialog';
 
 type PaymentStatus = 'idle' | 'processing' | 'polling' | 'success' | 'failed';
 type Step = 1 | 2;
+
+/** Inline status message — replaces modal alerts for payment/cart/sign-in outcomes. */
+type Notice = {
+  tone: 'error' | 'warning';
+  title: string;
+  lines?: string[];
+  action?: { label: string; onPress: () => void };
+};
 
 const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -44,6 +52,7 @@ export default function CheckoutScreen() {
   const clearCart = useCartStore((s) => s.clearCart);
   const reconcile = useCartStore((s) => s.reconcile);
   const total = useCartStore((s) => s.subtotal());
+  const itemCount = useCartStore((s) => s.itemCount());
   const mergeNotice = useCartStore((s) => s.mergeNotice);
   const dismissMergeNotice = useCartStore((s) => s.dismissMergeNotice);
   const user = useAuthStore((s) => s.user);
@@ -69,6 +78,14 @@ export default function CheckoutScreen() {
     () => !(form.firstName && form.email && form.phone && form.address)
   );
   const detailsExpandedByUserRef = useRef(false);
+  // Inline validation errors, keyed by field — replaces modal alerts so the
+  // shopper sees exactly which field to fix.
+  const [errors, setErrors] = useState<Partial<Record<keyof CheckoutForm, string>>>({});
+  const [notice, setNotice] = useState<Notice | null>(null);
+  // Set when the shopper tries to continue signed-out: the sign-in card turns
+  // into an error state instead of a modal interrupting them.
+  const [signInNudge, setSignInNudge] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
   const [showCountyPicker, setShowCountyPicker] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
   const [referenceId, setReferenceId] = useState<string | null>(null);
@@ -80,6 +97,19 @@ export default function CheckoutScreen() {
   const phoneRef = useRef<TextInput>(null);
   const addressRef = useRef<TextInput>(null);
   const cityRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (user) setSignInNudge(false);
+  }, [user]);
+
+  function scrollToTop() {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }
+
+  function setField(key: keyof CheckoutForm, value: string) {
+    setForm((s) => ({ ...s, [key]: value }));
+    if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
+  }
 
   const isProcessing = paymentStatus === 'processing' || paymentStatus === 'polling';
 
@@ -93,7 +123,7 @@ export default function CheckoutScreen() {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       if (!isProcessing) return;
       e.preventDefault();
-      Alert.alert(
+      alertDialog(
         'Payment in progress',
         'Leaving now can abandon it. Are you sure you want to leave?',
         [
@@ -157,18 +187,17 @@ export default function CheckoutScreen() {
     // an order history to point at. The "Check status" action goes straight
     // to confirmation.tsx, which knows how to poll/refresh a still-pending
     // order (see its "Check again" affordance).
-    function showPaymentAlert(title: string, base: string) {
-      Alert.alert(
+    function showPaymentNotice(title: string, base: string) {
+      setNotice({
+        tone: 'error',
         title,
-        `${base} Check your order history for the latest status.`,
-        [
-          { text: 'OK', style: 'cancel' },
-          {
-            text: 'Check status',
-            onPress: () => router.push({ pathname: '/confirmation', params: { referenceId } }),
-          },
-        ]
-      );
+        lines: [`${base} If you approved the prompt, check the order status before paying again.`],
+        action: {
+          label: 'Check order status',
+          onPress: () => router.push({ pathname: '/confirmation', params: { referenceId } }),
+        },
+      });
+      scrollToTop();
     }
 
     // Single settle path shared by the realtime subscription, the polling
@@ -188,7 +217,7 @@ export default function CheckoutScreen() {
         cleanup();
         void pendingPayment.clear();
         setPaymentStatus('failed');
-        showPaymentAlert('Payment failed', 'Your payment was declined.');
+        showPaymentNotice('Payment failed', 'Your payment was declined.');
       }
     }
 
@@ -244,7 +273,7 @@ export default function CheckoutScreen() {
       if (resolved) return;
       cleanup();
       setPaymentStatus('failed');
-      showPaymentAlert('Payment timeout', 'Payment confirmation timed out.');
+      showPaymentNotice('Payment timed out', 'We didn\'t get a confirmation from MoMo in time.');
     }, PAYMENT_TIMEOUT_MS);
 
     return () => cleanup();
@@ -255,57 +284,46 @@ export default function CheckoutScreen() {
     // signed-out user reach the payment step and fail there. Everything
     // they've typed survives the round-trip (next=/checkout returns here).
     if (!user) {
-      Alert.alert(
-        'Sign in to continue',
-        'Create your account or sign in to place this order — it takes seconds, and your details here are saved.',
-        [
-          { text: 'Not now', style: 'cancel' },
-          {
-            text: 'Sign in',
-            onPress: () => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } }),
-          },
-        ]
-      );
+      setSignInNudge(true);
+      scrollToTop();
       return false;
     }
-    if (!form.firstName || !form.email || !form.phone || !form.address || !form.county) {
-      Alert.alert('Missing fields', 'Please fill in all required delivery information.');
-      return false;
-    }
-    if (!/\S+@\S+\.\S+/.test(form.email)) {
-      Alert.alert('Invalid email', 'Please enter a valid email address.');
-      return false;
-    }
-    if (!isValidLiberianMobile(form.phone)) {
-      Alert.alert('Invalid phone number', 'Enter a valid Liberian mobile number, e.g. 0888 640 502.');
-      return false;
-    }
+    const next: Partial<Record<keyof CheckoutForm, string>> = {};
+    if (!form.firstName.trim()) next.firstName = 'Enter your first name';
+    if (!form.email.trim()) next.email = 'Enter your email';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) next.email = 'Enter a valid email address';
+    if (!form.phone.trim()) next.phone = 'Enter your phone number';
+    else if (!isValidLiberianMobile(form.phone)) next.phone = 'Enter a valid Liberian mobile number, e.g. 0888 640 502';
     // MoMo collection requests only reach MTN (Lonestar) numbers — the server
     // rejects other operators, so say so here instead of after the overlay.
-    if (!isMtnMobile(form.phone)) {
-      Alert.alert('MTN number needed', 'MoMo payments need an MTN Mobile Money number (starting 055 or 088).');
+    else if (!isMtnMobile(form.phone)) next.phone = 'MoMo needs an MTN number (starting 055 or 088)';
+    if (!form.address.trim()) next.address = 'Enter your street address';
+    if (!form.county) next.county = 'Select your county';
+    setErrors(next);
+    if (Object.keys(next).length > 0) {
+      // A bad value can live in the collapsed "Your details" card — open it
+      // so the field with the error is actually on screen.
+      if (next.firstName || next.email || next.phone || next.address) {
+        detailsExpandedByUserRef.current = true;
+        setDetailsExpanded(true);
+      }
       return false;
     }
     return true;
   }
 
   async function handlePlaceOrder() {
-    if (items.length === 0) {
-      Alert.alert('Empty cart', 'Your cart is empty.');
-      return;
-    }
+    if (items.length === 0) return;
     // Session may have expired since step 1 — the API would 401. Re-check
     // fresh state (not the render-time snapshot) before charging anyone.
     if (!useAuthStore.getState().user) {
-      Alert.alert('Signed out', 'Your session ended. Please sign in again to place the order.', [
-        { text: 'Cancel', style: 'cancel', onPress: () => setStep(1) },
-        {
-          text: 'Sign in',
-          onPress: () => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } }),
-        },
-      ]);
+      setStep(1);
+      setSignInNudge(true);
+      setNotice({ tone: 'warning', title: 'Your session ended', lines: ['Sign in again to place this order. Your details are saved.'] });
+      scrollToTop();
       return;
     }
+    setNotice(null);
     setPaymentStatus('processing');
     try {
       // Re-validate price & stock against the live catalog before charging —
@@ -344,10 +362,16 @@ export default function CheckoutScreen() {
         if (priceChanges.length) parts.push('Prices were updated for:\n• ' + priceChanges.join('\n• '));
         setPaymentStatus('idle');
         setStep(1);
-        Alert.alert(
-          'Please review your cart',
-          parts.join('\n\n') + '\n\nYour cart has been updated to current prices and stock. Please review, then try again.'
-        );
+        setNotice({
+          tone: 'warning',
+          title: 'We updated your cart',
+          lines: [
+            ...(stockIssues.length ? ['Availability changed:', ...stockIssues.map((x) => `• ${x}`)] : []),
+            ...(priceChanges.length ? ['Prices were updated for:', ...priceChanges.map((x) => `• ${x}`)] : []),
+            'Review the totals below, then continue.',
+          ],
+        });
+        scrollToTop();
         return;
       }
 
@@ -385,7 +409,12 @@ export default function CheckoutScreen() {
       setPaymentStatus('polling');
     } catch (err: any) {
       setPaymentStatus('failed');
-      Alert.alert('Error', err.message ?? 'Failed to initiate payment. Please try again.');
+      setNotice({
+        tone: 'error',
+        title: 'Couldn\'t start the payment',
+        lines: [err.message ?? 'Something went wrong. Please try again.'],
+      });
+      scrollToTop();
     }
   }
 
@@ -420,10 +449,46 @@ export default function CheckoutScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
       >
+        {notice && (
+          <View
+            accessibilityRole="alert"
+            style={{
+              backgroundColor: notice.tone === 'error' ? '#fff1f2' : color.accentSoft,
+              borderRadius: radius.md,
+              padding: 14,
+              marginBottom: 12,
+              gap: 4,
+              borderWidth: 1,
+              borderColor: notice.tone === 'error' ? '#fecdd3' : color.peachTint,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons
+                name={notice.tone === 'error' ? 'close-circle' : 'alert-circle'}
+                size={18}
+                color={notice.tone === 'error' ? color.danger : color.accent}
+              />
+              <Text style={{ flex: 1, fontSize: 14, fontWeight: '800', color: color.ink }}>{notice.title}</Text>
+              <TouchableOpacity onPress={() => setNotice(null)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Dismiss message">
+                <Ionicons name="close" size={16} color={color.inkBody} />
+              </TouchableOpacity>
+            </View>
+            {notice.lines?.map((l, i) => (
+              <Text key={i} style={{ fontSize: 13, lineHeight: 19, color: color.inkBody, marginLeft: 26 }}>{l}</Text>
+            ))}
+            {notice.action && (
+              <TouchableOpacity onPress={notice.action.onPress} style={{ marginLeft: 26, marginTop: 6, alignSelf: 'flex-start' }} accessibilityRole="button">
+                <Text style={{ fontSize: 13, fontWeight: '800', color: color.accent }}>{notice.action.label}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* A cart merge (e.g. signing in mid-checkout) can land while the
             shopper is on either step — show it regardless, not just once
             they reach Payment. */}
@@ -447,8 +512,17 @@ export default function CheckoutScreen() {
           </View>
         )}
 
+        {items.length === 0 && paymentStatus !== 'success' && (
+          <View style={{ alignItems: 'center', paddingVertical: 48, gap: 12 }}>
+            <Ionicons name="bag-outline" size={40} color={color.inkFaint} />
+            <Text style={{ fontSize: 16, fontFamily: font.display, color: color.ink }}>Your cart is empty</Text>
+            <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center' }}>Add something to your cart to check out.</Text>
+            <Button title="Keep shopping" variant="outline" onPress={() => router.back()} />
+          </View>
+        )}
+
         {/* ─── STEP 1: Delivery ─── */}
-        {step === 1 && (
+        {items.length > 0 && step === 1 && (
           <>
             {/* The payment API requires the authenticated order owner, so an
                 account is required to place an order. Framed as what it buys
@@ -457,13 +531,15 @@ export default function CheckoutScreen() {
                 fields stay editable signed-out so nothing typed is lost;
                 only the step-2 transition is gated (see validateDelivery). */}
             {!user ? (
-              <View style={{ backgroundColor: color.surface, borderRadius: 16, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: color.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ backgroundColor: color.surface, borderRadius: 16, padding: 14, marginBottom: 14, borderWidth: signInNudge ? 1.5 : 1, borderColor: signInNudge ? color.danger : color.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
                   <Ionicons name="person-circle-outline" size={24} color={color.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 13, fontWeight: '800', color: color.ink }}>Sign in to place your order</Text>
-                  <Text style={{ fontSize: 12, color: color.inkMuted, marginTop: 1 }}>Takes seconds — and lets you track this order</Text>
+                  <Text style={{ fontSize: 12, color: signInNudge ? color.danger : color.inkBody, fontWeight: signInNudge ? '700' : '400', marginTop: 1 }}>
+                    {signInNudge ? 'Sign in to continue to payment. Your details are saved.' : 'Takes seconds, and lets you track this order'}
+                  </Text>
                 </View>
                 <TouchableOpacity onPress={() => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } })} style={{ backgroundColor: color.accent, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 9 }}>
                   <Text style={{ color: color.onAccent, fontSize: 13, fontWeight: '800' }}>Sign in</Text>
@@ -484,7 +560,8 @@ export default function CheckoutScreen() {
                       label="First Name *"
                       leftIcon="person-outline"
                       value={form.firstName}
-                      onChangeText={(v) => setForm((s) => ({ ...s, firstName: v }))}
+                      error={errors.firstName}
+                      onChangeText={(v) => setField('firstName', v)}
                       returnKeyType="next"
                       onSubmitEditing={() => lastNameRef.current?.focus()}
                     />
@@ -495,7 +572,7 @@ export default function CheckoutScreen() {
                       label="Last Name"
                       leftIcon="person-outline"
                       value={form.lastName}
-                      onChangeText={(v) => setForm((s) => ({ ...s, lastName: v }))}
+                      onChangeText={(v) => setField('lastName', v)}
                       returnKeyType="next"
                       onSubmitEditing={() => emailRef.current?.focus()}
                     />
@@ -506,7 +583,8 @@ export default function CheckoutScreen() {
                   label="Email *"
                   leftIcon="mail-outline"
                   value={form.email}
-                  onChangeText={(v) => setForm((s) => ({ ...s, email: v }))}
+                  error={errors.email}
+                  onChangeText={(v) => setField('email', v)}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   returnKeyType="next"
@@ -514,10 +592,11 @@ export default function CheckoutScreen() {
                 />
                 <Input
                   ref={phoneRef}
-                  label="Phone *"
+                  label="Phone (MTN number for MoMo) *"
                   leftIcon="call-outline"
                   value={form.phone}
-                  onChangeText={(v) => setForm((s) => ({ ...s, phone: v }))}
+                  error={errors.phone}
+                  onChangeText={(v) => setField('phone', v)}
                   keyboardType="phone-pad"
                   returnKeyType="next"
                   onSubmitEditing={() => addressRef.current?.focus()}
@@ -541,7 +620,8 @@ export default function CheckoutScreen() {
                     label="Street Address *"
                     leftIcon="home-outline"
                     value={form.address}
-                    onChangeText={(v) => setForm((s) => ({ ...s, address: v }))}
+                    error={errors.address}
+                    onChangeText={(v) => setField('address', v)}
                     returnKeyType="next"
                     onSubmitEditing={() => cityRef.current?.focus()}
                   />
@@ -550,7 +630,7 @@ export default function CheckoutScreen() {
                     label="City / Town"
                     leftIcon="business-outline"
                     value={form.city}
-                    onChangeText={(v) => setForm((s) => ({ ...s, city: v }))}
+                    onChangeText={(v) => setField('city', v)}
                     returnKeyType="done"
                   />
                 </>
@@ -564,7 +644,7 @@ export default function CheckoutScreen() {
                   style={{
                     flexDirection: 'row', alignItems: 'center',
                     backgroundColor: color.surface, borderRadius: radius.full, borderWidth: 1.5,
-                    borderColor: showCountyPicker ? color.accent : 'transparent',
+                    borderColor: errors.county ? color.danger : showCountyPicker ? color.accent : 'transparent',
                     paddingHorizontal: 16, height: 50, gap: 8,
                   }}
                 >
@@ -580,7 +660,7 @@ export default function CheckoutScreen() {
                       {LIBERIAN_COUNTIES.map((county) => (
                         <TouchableOpacity
                           key={county}
-                          onPress={() => { setForm((s) => ({ ...s, county })); setShowCountyPicker(false); }}
+                          onPress={() => { setField('county', county); setShowCountyPicker(false); }}
                           style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: color.border, backgroundColor: form.county === county ? color.accentSoft : color.surface }}
                         >
                           <Text style={{ fontSize: 14, fontWeight: form.county === county ? '700' : '400', color: form.county === county ? color.accent : color.ink }}>
@@ -590,6 +670,9 @@ export default function CheckoutScreen() {
                       ))}
                     </ScrollView>
                   </View>
+                )}
+                {errors.county && (
+                  <Text style={{ fontSize: 12, color: color.danger, marginTop: 4, marginLeft: 4 }}>{errors.county}</Text>
                 )}
               </View>
             </SectionCard>
@@ -601,21 +684,11 @@ export default function CheckoutScreen() {
                 We deliver across all 15 Liberian counties
               </Text>
             </View>
-
-            {/* Continue button */}
-            <Button
-              title="Continue to Payment"
-              onPress={() => { if (validateDelivery()) setStep(2); }}
-              variant="primary"
-              fullWidth
-              size="lg"
-              icon={<Ionicons name="arrow-forward" size={18} color={color.onAccent} />}
-            />
           </>
         )}
 
         {/* ─── STEP 2: Payment ─── */}
-        {step === 2 && (
+        {items.length > 0 && step === 2 && (
           <>
             {/* Delivery summary (read-only) */}
             <TouchableOpacity
@@ -692,46 +765,73 @@ export default function CheckoutScreen() {
               Your final total, including any delivery fee, is shown in the MoMo prompt on your phone.
             </Text>
 
-            {paymentStatus === 'failed' && (
-              <View style={{ backgroundColor: '#fff1f2', borderRadius: 14, padding: 14, marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Ionicons name="close-circle-outline" size={20} color="#ef4444" />
-                <Text style={{ fontSize: 13, color: '#dc2626', fontWeight: '600', flex: 1 }}>Payment failed. Please try again.</Text>
-              </View>
-            )}
+            <Text style={{ fontSize: 11, color: color.inkFaint, textAlign: 'center', marginTop: 4, lineHeight: 16 }}>
+              By placing your order you agree to our Terms & Conditions.{'\n'}Payment is processed securely via MTN Mobile Money.
+            </Text>
+          </>
+        )}
+      </ScrollView>
 
-            {/* Pay button */}
+      {/* ─── Sticky footer: total + primary action, always reachable ─── */}
+      {items.length > 0 && (
+        <View
+          style={{
+            backgroundColor: color.surface,
+            borderTopWidth: 1,
+            borderTopColor: color.border,
+            paddingHorizontal: 16,
+            paddingTop: 12,
+            paddingBottom: Math.max(insets.bottom, 12),
+            gap: 12,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: color.ink }}>Subtotal</Text>
+              <Text style={{ fontSize: 11.5, color: color.inkMuted, marginTop: 1 }}>
+                {itemCount} item{itemCount === 1 ? '' : 's'} · delivery fee shown at payment
+              </Text>
+            </View>
+            <Text style={{ fontSize: 24, fontFamily: font.displayHeavy, color: color.ink }}>{formatCurrency(total)}</Text>
+          </View>
+          {step === 1 ? (
+            <Button
+              title="Continue to payment"
+              onPress={() => { if (validateDelivery()) setStep(2); }}
+              variant="primary"
+              size="lg"
+              fullWidth
+              icon={<Ionicons name="arrow-forward" size={18} color={color.onAccent} />}
+            />
+          ) : (
             <Button
               title={
-                paymentStatus === 'processing' ? 'Initiating...'
-                : paymentStatus === 'polling' ? 'Awaiting MoMo...'
+                paymentStatus === 'processing' ? 'Placing your order…'
+                : paymentStatus === 'polling' ? 'Almost there…'
                 : 'Pay with MoMo'
               }
               onPress={handlePlaceOrder}
               disabled={isProcessing}
               loading={isProcessing}
               variant="primary"
-              fullWidth
               size="lg"
+              fullWidth
               icon={!isProcessing ? <Ionicons name="lock-closed" size={18} color={color.onAccent} /> : undefined}
             />
-
-            <Text style={{ fontSize: 11, color: color.inkFaint, textAlign: 'center', marginTop: 12, lineHeight: 16 }}>
-              By placing your order you agree to our Terms & Conditions.{'\n'}Payment is processed securely via MTN Mobile Money.
-            </Text>
-          </>
-        )}
-      </ScrollView>
+          )}
+        </View>
+      )}
     </KeyboardAvoidingView>
 
     <LoadingOverlay
       visible={paymentStatus === 'processing'}
-      title="Contacting MTN MoMo…"
-      subtitle="Setting up your payment — this takes a moment."
+      title="Placing your order…"
+      subtitle="This only takes a moment."
     />
     <LoadingOverlay
       visible={paymentStatus === 'polling'}
-      title="Check your phone"
-      subtitle={`Approve the MoMo prompt sent to ${form.phone || 'your phone'}. We'll confirm automatically.`}
+      title="Almost there"
+      subtitle="Approve the request on your phone to finish. We'll confirm automatically."
     />
     </>
   );

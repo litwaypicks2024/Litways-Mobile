@@ -12,8 +12,8 @@ import {
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
+  Easing,
   runOnJS,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,6 +30,9 @@ interface Props {
   onClose: () => void;
 }
 
+/* Plain slide from the bottom — no spring, no overshoot. */
+const SLIDE = { duration: 260, easing: Easing.out(Easing.cubic) } as const;
+
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11', '12'];
 
 /* Price fields match the pill treatment used by `Input` elsewhere: filled,
@@ -37,6 +40,8 @@ const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11',
 const priceFieldStyle = {
   backgroundColor: color.surfaceSunken,
   borderRadius: radius.full,
+  borderWidth: 1.5,
+  borderColor: color.fieldBorder,
   paddingHorizontal: 16,
 } as const;
 
@@ -49,10 +54,10 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
     if (visible) {
       setLocal(filters);
       opacity.value = withTiming(1, { duration: 200 });
-      translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
+      translateY.value = withTiming(0, SLIDE);
     } else {
       opacity.value = withTiming(0, { duration: 150 });
-      translateY.value = withSpring(600, { damping: 20, stiffness: 200 });
+      translateY.value = withTiming(600, SLIDE);
     }
   }, [visible]);
 

@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
-  Alert,
   ActivityIndicator,
   Modal,
   Pressable,
@@ -35,6 +34,7 @@ import { useTabBarClearance } from '@/components/navigation/TabBar';
 import { formatCurrency } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Order } from '@/types';
+import { alertDialog } from '@/components/ui/Dialog';
 
 type Tab = 'profile' | 'orders' | 'wishlist' | 'settings';
 
@@ -164,7 +164,7 @@ function ProfileTab() {
     try {
       const { error } = await supabase.from('users').update(form).eq('id', user.id);
       if (error) {
-        Alert.alert("Couldn't save changes", error.message);
+        alertDialog("Couldn't save changes", error.message);
         return;
       }
       await fetchProfile(user.id);
@@ -231,11 +231,14 @@ function ReviewModal({ state, onClose }: { state: ReviewState | null; onClose: (
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Shown inline: the app dialog is an overlay and can't sit above this Modal.
+  const [error, setError] = useState<string | null>(null);
 
   if (!state) return null;
 
   async function handleSubmit() {
     if (!rating) return;
+    setError(null);
     setSubmitting(true);
     const { error } = await supabase.from('reviews').insert({
       product_id: state!.item.id,
@@ -246,11 +249,11 @@ function ReviewModal({ state, onClose }: { state: ReviewState | null; onClose: (
     });
     setSubmitting(false);
     if (error) {
-      Alert.alert('Error', 'Could not submit review. You may have already reviewed this product.');
+      setError('Could not submit review. You may have already reviewed this product.');
     } else {
       markReviewed(state!.order.id, state!.item.id);
       queryClient.invalidateQueries({ queryKey: ['reviews', state!.item.id] });
-      Alert.alert('Review submitted', 'Thank you for your feedback!');
+      alertDialog('Review submitted', 'Thank you for your feedback!');
       setRating(5);
       setComment('');
       onClose();
@@ -307,6 +310,10 @@ function ReviewModal({ state, onClose }: { state: ReviewState | null; onClose: (
               numberOfLines={4}
               style={{ minHeight: 90, textAlignVertical: 'top' }}
             />
+
+            {!!error && (
+              <Text accessibilityLiveRegion="polite" className="text-sm mt-3" style={{ color: color.danger }}>{error}</Text>
+            )}
 
             <View className="flex-row gap-3">
               <Button title="Cancel" variant="outline" onPress={onClose} style={{ flex: 1 }} />
@@ -513,12 +520,12 @@ function SettingsTab({ onSignOut }: { onSignOut: () => void }) {
   const [saving, setSaving] = useState(false);
 
   async function handleChangePassword() {
-    if (pw.length < 8) { Alert.alert('Weak password', 'Password must be at least 8 characters.'); return; }
+    if (pw.length < 8) { alertDialog('Weak password', 'Password must be at least 8 characters.'); return; }
     setSaving(true);
     const { error } = await supabase.auth.updateUser({ password: pw });
     setSaving(false);
-    if (error) { Alert.alert('Error', error.message); return; }
-    Alert.alert('Success', 'Password updated successfully');
+    if (error) { alertDialog('Error', error.message); return; }
+    alertDialog('Success', 'Password updated successfully');
     setChangingPw(false);
     setPw('');
   }
@@ -530,7 +537,7 @@ function SettingsTab({ onSignOut }: { onSignOut: () => void }) {
     const message = syncFailed
       ? "Some cart changes haven't synced yet and may be lost. Are you sure you want to sign out?"
       : 'Are you sure you want to sign out?';
-    Alert.alert('Sign Out', message, [
+    alertDialog('Sign Out', message, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: onSignOut },
     ]);

@@ -79,11 +79,16 @@ export const color = {
   surfaceSunken: '#e2e2e2',
   /** Hairline separators & card outlines — used sparingly now that most separation is elevation. */
   border: '#e6e6e6',
+  /** Resting outline of a text field — must read against both white cards and the grey canvas. */
+  fieldBorder: '#c4c4c4',
 
   /** Primary text (canonical name). */
   ink: '#141414',
   /** Secondary text (subtitles, meta). */
   inkMuted: '#8a8a8a',
+  /** Body copy (descriptions, paragraphs) — passes AA contrast on white,
+   *  which inkMuted (#8a8a8a) does not. */
+  inkBody: '#4a4a4a',
   /** Tertiary text (placeholders, faint labels). Darkened from #b8b8b8 — still
    *  decorative-tier contrast, not a substitute for inkMuted on real content. */
   inkFaint: '#9a9a9a',
