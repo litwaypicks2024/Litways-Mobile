@@ -36,9 +36,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Order } from '@/types';
 import { alertDialog } from '@/components/ui/Dialog';
 
-type Tab = 'profile' | 'orders' | 'wishlist' | 'settings';
+type Tab = 'profile' | 'orders' | 'settings';
 
-const VALID_TABS: Tab[] = ['profile', 'orders', 'wishlist', 'settings'];
+const VALID_TABS: Tab[] = ['profile', 'orders', 'settings'];
 
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
@@ -73,7 +73,7 @@ export default function AccountScreen() {
         <EmptyState
           icon="person-circle-outline"
           title="Sign in to your account"
-          description="Access your orders, wishlist, and profile settings."
+          description="Access your orders and profile settings."
           actionLabel="Sign In"
           onAction={() => router.push('/(auth)/login')}
         />
@@ -84,7 +84,6 @@ export default function AccountScreen() {
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: 'profile', label: 'Profile', icon: 'person-outline' },
     { key: 'orders', label: 'Orders', icon: 'receipt-outline' },
-    { key: 'wishlist', label: 'Wishlist', icon: 'heart-outline' },
     { key: 'settings', label: 'Settings', icon: 'settings-outline' },
   ];
 
@@ -125,7 +124,6 @@ export default function AccountScreen() {
 
       {activeTab === 'profile' && <ProfileTab />}
       {activeTab === 'orders' && <OrdersTab userId={user.id} />}
-      {activeTab === 'wishlist' && <WishlistTab />}
       {activeTab === 'settings' && <SettingsTab onSignOut={signOut} />}
     </View>
   );
@@ -458,56 +456,6 @@ function OrdersTab({ userId }: { userId: string }) {
       />
       <ReviewModal state={reviewState} onClose={() => setReviewState(null)} />
     </>
-  );
-}
-
-function WishlistTab() {
-  const router = useRouter();
-  const tabBarClearance = useTabBarClearance();
-  const items = useWishlistStore((s) => s.items);
-
-  const products = useMemo(
-    () =>
-      items.map((item) => ({
-        id: item.productId,
-        slug: item.slug,
-        name: item.name,
-        brand: item.brand,
-        price: item.price,
-        sale_price: item.salePrice ?? null,
-        stock: item.stock,
-        image_urls: [item.imageUrl],
-        rating: null,
-        review_count: null,
-      } as any)),
-    [items]
-  );
-
-  if (!items.length) {
-    return (
-      <EmptyState
-        illustration={<HeartIllustration />}
-        title="Your wishlist is empty"
-        description="Save items you love and come back later."
-        actionLabel="Browse Shop"
-        onAction={() => router.push('/(tabs)/shop')}
-      />
-    );
-  }
-
-  return (
-    <FlashList
-      data={products}
-      numColumns={2}
-      estimatedItemSize={230}
-      keyExtractor={(i) => i.id}
-      contentContainerStyle={{ padding: 12, paddingBottom: tabBarClearance }}
-      renderItem={({ item }) => (
-        <View style={{ flex: 1, margin: 6 }}>
-          <ProductCard product={item} />
-        </View>
-      )}
-    />
   );
 }
 
