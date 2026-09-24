@@ -15,6 +15,7 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { alertDialog } from '@/components/ui/Dialog';
 import { ListGroup, ListRow } from '@/components/account/ListRow';
 import { ActiveOrderCard } from '@/components/home/ActiveOrderCard';
+import { ProfileAvatar } from '@/components/account/ProfileAvatar';
 
 /**
  * Account hub. Nothing is edited here: every task is a row or tile that opens
@@ -52,7 +53,6 @@ export default function AccountScreen() {
   }
 
   const fullName = profile ? `${profile.first_name} ${profile.last_name ?? ''}`.trim() : '';
-  const initial = (profile?.first_name?.[0] ?? user?.email?.[0] ?? '?').toUpperCase();
   const profileIncomplete = !!user && (!profile?.phone || !profile?.address);
 
   return (
@@ -63,9 +63,7 @@ export default function AccountScreen() {
       <View style={{ backgroundColor: color.surface, paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: gutter, ...shadow.header }}>
         {user ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-            <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-              <Text variant="title" tone="accent">{initial}</Text>
-            </View>
+            <ProfileAvatar size={60} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text variant="title" numberOfLines={1}>{fullName || 'Welcome back'}</Text>
               <Text variant="body" tone="muted" numberOfLines={1}>{user.email}</Text>
