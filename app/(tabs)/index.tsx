@@ -30,7 +30,7 @@ import { CategoryGrid } from '@/components/home/CategoryGrid';
 import { QuickLinks } from '@/components/home/QuickLinks';
 import { ActiveOrderCard } from '@/components/home/ActiveOrderCard';
 import { useTasteStore, rankedCategories } from '@/store/taste';
-import { usePickedForYou, useCategoryRail } from '@/lib/personalization';
+import { usePickedForYou, useCategoryRail, likeSubtitle } from '@/lib/personalization';
 import type { Product, Category } from '@/types';
 import { Text } from '@/components/ui/Text';
 
@@ -352,7 +352,7 @@ export default function HomeScreen() {
         {picked.personalized && (
           <ProductRail
             title="Picked for you"
-            subtitle={`Because you like ${picked.topCategories.map((c) => c.name).slice(0, 2).join(' & ')}`}
+            subtitle={likeSubtitle(picked.topCategories)}
             products={picked.products}
             loading={picked.isLoading}
             actionLabel="Browse"
@@ -470,13 +470,13 @@ function CategoryShelf({ category, onSeeAll }: { category: Category; onSeeAll: (
 
 function SectionHeader({ title, subtitle, onSeeAll }: { title: string; subtitle?: string; onSeeAll?: () => void }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: gutter, marginBottom: spacing.lg }}>
-      <View style={{ flex: 1 }}>
-        <Text variant="title">{title}</Text>
-        {subtitle && <Text variant="meta" tone="muted" style={{ marginTop: 3 }}>{subtitle}</Text>}
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: gutter, marginBottom: spacing.lg }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text variant="title" numberOfLines={1}>{title}</Text>
+        {subtitle && <Text variant="meta" tone="muted" numberOfLines={1} style={{ marginTop: 3 }}>{subtitle}</Text>}
       </View>
       {onSeeAll && (
-        <TouchableOpacity onPress={onSeeAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }} hitSlop={8}>
+        <TouchableOpacity onPress={onSeeAll} style={{ flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 2 }} hitSlop={8}>
           <Text variant="small" tone="accent">See all</Text>
           <Ionicons name="chevron-forward" size={14} color={color.accent} />
         </TouchableOpacity>

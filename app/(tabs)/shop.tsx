@@ -29,7 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
 import { ProductRail } from '@/components/shop/ProductRail';
 import { useTasteStore, rankedCategories } from '@/store/taste';
-import { usePickedForYou } from '@/lib/personalization';
+import { usePickedForYou, likeSubtitle } from '@/lib/personalization';
 import type { Product, ProductFilters, SortOption, Category } from '@/types';
 import { Text } from '@/components/ui/Text';
 
@@ -548,7 +548,7 @@ export default function ShopScreen() {
               <ProductRail
                 compact
                 title={picked.personalized ? 'Picked for you' : 'Popular right now'}
-                subtitle={picked.personalized ? `Because you like ${picked.topCategories.map((c) => c.name).slice(0, 2).join(' & ')}` : undefined}
+                subtitle={picked.personalized ? likeSubtitle(picked.topCategories) : undefined}
                 products={picked.products}
                 loading={picked.isLoading}
               />
