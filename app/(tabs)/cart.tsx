@@ -202,7 +202,7 @@ export default function CartScreen() {
           borderRadius: radius.md,
         }}>
           <Ionicons name="information-circle" size={18} color={color.accent} />
-          <Text style={{ flex: 1, fontSize: 12.5, color: color.accentPressed, fontWeight: '600' }}>
+          <Text style={{ flex: 1, fontSize: 12, color: color.accentPressed, fontWeight: '600' }}>
             {syncNotice}
           </Text>
           <TouchableOpacity onPress={dismissSyncNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
@@ -221,7 +221,7 @@ export default function CartScreen() {
           borderRadius: radius.md,
         }}>
           <Ionicons name="information-circle" size={18} color={color.accent} />
-          <Text style={{ flex: 1, fontSize: 12.5, color: color.accentPressed, fontWeight: '600' }}>
+          <Text style={{ flex: 1, fontSize: 12, color: color.accentPressed, fontWeight: '600' }}>
             We combined this cart with items saved to your account.
           </Text>
           <TouchableOpacity onPress={dismissMergeNotice} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss">
@@ -246,11 +246,11 @@ export default function CartScreen() {
           borderColor: color.border,
         }}>
           <Ionicons name="cloud-offline-outline" size={18} color={color.inkMuted} />
-          <Text style={{ flex: 1, fontSize: 12.5, color: color.inkMuted, fontWeight: '600' }}>
+          <Text style={{ flex: 1, fontSize: 12, color: color.inkMuted, fontWeight: '600' }}>
             Cart changes are saved on this phone but not to your account yet.
           </Text>
           <TouchableOpacity onPress={handleRetrySync} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retry sync">
-            <Text style={{ fontSize: 12.5, color: color.accent, fontWeight: '800' }}>Retry</Text>
+            <Text style={{ fontSize: 12, color: color.accent, fontWeight: '700' }}>Retry</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -276,7 +276,7 @@ export default function CartScreen() {
               </View>
               <View style={{ height: 1, backgroundColor: color.border, marginVertical: 4 }} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 16, fontWeight: '800', color: color.ink }}>Total</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: color.ink }}>Total</Text>
                 <Text style={{ fontSize: 16, fontFamily: font.displayHeavy, color: color.accent }}>{formatCurrency(total)}</Text>
               </View>
             </View>

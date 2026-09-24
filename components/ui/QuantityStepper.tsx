@@ -41,7 +41,7 @@ export function QuantityStepper({ quantity, max, onDecrement, onIncrement }: Pro
           color={quantity === 1 ? color.danger : color.ink}
         />
       </PressableScale>
-      <Text style={{ fontSize: 13, fontWeight: '800', color: color.ink, width: 28, textAlign: 'center' }}>
+      <Text style={{ fontSize: 13, fontWeight: '700', color: color.ink, width: 28, textAlign: 'center' }}>
         {quantity}
       </Text>
       <PressableScale

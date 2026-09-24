@@ -442,7 +442,7 @@ export default function ProductDetailScreen() {
 
           {hasDiscount && (
             <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + 72, left: 16, backgroundColor: color.accent, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 0.3 }}>-{discount}% OFF</Text>
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700', letterSpacing: 0.3 }}>-{discount}% OFF</Text>
             </View>
           )}
 
@@ -524,7 +524,7 @@ export default function ProductDetailScreen() {
             </Text>
             <Text
               onLayout={(e) => { nameY.current = e.nativeEvent.layout.y; updateTitleThreshold(); }}
-              style={{ fontSize: 22, fontFamily: font.display, color: color.ink, lineHeight: 29, marginBottom: 8 }}
+              style={{ fontSize: 20, fontFamily: font.display, color: color.ink, lineHeight: 29, marginBottom: 8 }}
             >
               {product.name}
             </Text>
@@ -665,7 +665,7 @@ export default function ProductDetailScreen() {
                   >
                     <Ionicons name="remove" size={20} color={color.ink} />
                   </TouchableOpacity>
-                  <Text style={{ minWidth: 32, textAlign: 'center', fontSize: 16, fontWeight: '800', color: color.ink }} accessibilityLabel={`Quantity ${quantity}`}>
+                  <Text style={{ minWidth: 32, textAlign: 'center', fontSize: 16, fontWeight: '700', color: color.ink }} accessibilityLabel={`Quantity ${quantity}`}>
                     {quantity}
                   </Text>
                   <TouchableOpacity
@@ -748,7 +748,7 @@ export default function ProductDetailScreen() {
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: color.star + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
                     <Ionicons name="star" size={13} color={color.star} />
-                    <Text style={{ fontSize: 13, fontWeight: '800', color: '#92400e' }}>{avgRating.toFixed(1)}</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400e' }}>{avgRating.toFixed(1)}</Text>
                   </View>
                 </View>
                 {reviews.slice(0, 5).map((review, i, arr) => (
@@ -783,7 +783,7 @@ export default function ProductDetailScreen() {
           {(relatedLoading || (related && related.length > 0)) && (
             <View style={{ marginTop: 24, paddingTop: 24, borderTopWidth: 1, borderTopColor: color.border }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: GUTTER, marginBottom: 14 }}>
-                <Text style={{ fontSize: 18, fontFamily: font.display, color: color.ink }}>You may also like</Text>
+                <Text style={{ fontSize: 17, fontFamily: font.display, color: color.ink }}>You may also like</Text>
                 <TouchableOpacity
                   onPress={() =>
                     router.push(product.category_slug ? `/category/${product.category_slug}` : '/(tabs)/shop')
@@ -861,7 +861,7 @@ export default function ProductDetailScreen() {
               size={20}
               color={inStock ? '#fff' : color.inkBody}
             />
-            <Text style={{ color: inStock ? '#fff' : color.inkBody, fontSize: 16, fontWeight: '800' }}>
+            <Text style={{ color: inStock ? '#fff' : color.inkBody, fontSize: 16, fontWeight: '700' }}>
               {ctaLabel}
             </Text>
           </Animated.View>

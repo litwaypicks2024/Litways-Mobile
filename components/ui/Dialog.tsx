@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { AccessibilityInfo, BackHandler, Platform, Pressable, Text, View } from 'react-native';
+import { AccessibilityInfo, BackHandler, Platform, Pressable, View } from 'react-native';
+import { Text } from '@/components/ui/Text';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeOut, ReduceMotion, ZoomIn } from 'react-native-reanimated';
 import { color, radius, shadow } from '@/theme/tokens';
@@ -157,11 +158,11 @@ export function DialogHost() {
         >
           <Ionicons name={tone.icon} size={26} color={tone.fg} />
         </View>
-        <Text style={{ color: color.ink, fontSize: 19, fontWeight: '800', textAlign: 'center', letterSpacing: -0.2 }}>
+        <Text variant="title" style={{ textAlign: 'center' }}>
           {current.title}
         </Text>
         {!!current.message && (
-          <Text style={{ color: color.inkBody, fontSize: 14.5, lineHeight: 21, textAlign: 'center', marginTop: 8 }}>
+          <Text variant="bodyLg" tone="body" style={{ textAlign: 'center', marginTop: 8 }}>
             {current.message}
           </Text>
         )}
@@ -223,7 +224,7 @@ function DialogButtonView({
         paddingHorizontal: 20,
       }}
     >
-      <Text numberOfLines={1} style={{ color: fg, fontSize: 15.5, fontWeight: '700' }}>
+      <Text variant="button" numberOfLines={1} style={{ color: fg }}>
         {text}
       </Text>
     </PressableScale>

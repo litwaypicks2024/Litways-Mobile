@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, Text, View, type PressableProps } from 'react-native';
+import { ActivityIndicator, View, type PressableProps } from 'react-native';
+import { Text } from '@/components/ui/Text';
 import { LinearGradient } from 'expo-linear-gradient';
 import { color, radius, shadow } from '@/theme/tokens';
 import { PressableScale } from './PressableScale';
@@ -41,10 +42,10 @@ export function Button({
         <>
           {icon && <View style={{ marginRight: 8 }}>{icon}</View>}
           <Text
+            variant="button"
             numberOfLines={1}
             style={{
               fontSize: dims.fontSize,
-              fontWeight: '700',
               color:
                 variant === 'primary' || variant === 'dark'
                   ? color.onAccent

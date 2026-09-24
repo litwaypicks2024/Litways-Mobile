@@ -2,12 +2,12 @@ import React, { useState, forwardRef } from 'react';
 import {
   TextInput,
   View,
-  Text,
   type TextInputProps,
   type ViewStyle,
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Text } from '@/components/ui/Text';
 import { color, radius } from '@/theme/tokens';
 
 interface Props extends TextInputProps {
@@ -45,7 +45,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
   return (
     <View style={{ marginBottom: 16 }}>
       {label && (
-        <Text style={{ fontSize: 13, fontWeight: '600', color: color.inkMuted, marginBottom: 6 }}>{label}</Text>
+        <Text variant="small" tone="muted" style={{ marginBottom: 6 }}>{label}</Text>
       )}
       <View
         style={[
@@ -73,7 +73,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
         )}
         <TextInput
           ref={ref}
-          style={[{ flex: 1, fontSize: 14, color: color.ink, paddingVertical: 12 }, style]}
+          style={[{ flex: 1, fontSize: 14, lineHeight: 20, color: color.ink, paddingVertical: 12 }, style]}
           placeholderTextColor={color.inkFaint}
           secureTextEntry={isPassword && !showPassword}
           onFocus={() => setFocused(true)}
@@ -101,7 +101,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
         ) : null}
       </View>
       {error && (
-        <Text style={{ fontSize: 12, color: color.danger, marginTop: 4, marginLeft: 4 }}>{error}</Text>
+        <Text variant="meta" tone="danger" style={{ marginTop: 4, marginLeft: 4 }}>{error}</Text>
       )}
     </View>
   );

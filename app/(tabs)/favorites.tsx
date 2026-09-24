@@ -74,7 +74,7 @@ export default function FavoritesScreen() {
   const header = (
     <View style={{ backgroundColor: color.surface, paddingTop: insets.top + 12, paddingBottom: 12, ...shadow.header }}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: gutter }}>
-        <Text style={{ fontSize: 26, fontFamily: font.displayHeavy, color: color.ink, letterSpacing: -0.5 }}>Favorites</Text>
+        <Text style={{ fontSize: 28, fontFamily: font.displayHeavy, color: color.ink, letterSpacing: -0.5 }}>Favorites</Text>
         {items.length > 0 && <Text style={{ fontSize: 14, color: color.inkMuted, fontWeight: '600' }}>{items.length}</Text>}
       </View>
       {categories.length > 1 && (
@@ -96,7 +96,7 @@ export default function FavoritesScreen() {
         <ScrollView contentContainerStyle={{ paddingBottom: clearance }} showsVerticalScrollIndicator={false}>
           <View style={{ paddingHorizontal: 32, paddingTop: 40, alignItems: 'center' }}>
             <HeartIllustration />
-            <Text style={{ fontSize: 19, fontFamily: font.display, color: color.ink, textAlign: 'center', marginTop: 16, marginBottom: 6 }}>
+            <Text style={{ fontSize: 20, fontFamily: font.display, color: color.ink, textAlign: 'center', marginTop: 16, marginBottom: 6 }}>
               Nothing saved yet
             </Text>
             <Text style={{ fontSize: 14, color: color.inkMuted, textAlign: 'center', lineHeight: 20 }}>
@@ -165,7 +165,7 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
         borderColor: active ? color.accent : color.fieldBorder,
       }}
     >
-      <Text style={{ fontSize: 12.5, fontWeight: '700', color: active ? color.onAccent : color.inkBody }}>{label}</Text>
+      <Text style={{ fontSize: 12, fontWeight: '700', color: active ? color.onAccent : color.inkBody }}>{label}</Text>
     </TouchableOpacity>
   );
 }

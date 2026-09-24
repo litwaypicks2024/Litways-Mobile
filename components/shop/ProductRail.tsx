@@ -1,7 +1,8 @@
 import React from 'react';
-import { FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, TouchableOpacity, View } from 'react-native';
+import { Text } from '@/components/ui/Text';
 import { Ionicons } from '@expo/vector-icons';
-import { color, font, gutter, spacing } from '@/theme/tokens';
+import { color, gutter, spacing } from '@/theme/tokens';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { ProductCardSkeleton } from '@/components/ui/SkeletonLoader';
 import type { Product } from '@/types';
@@ -25,12 +26,12 @@ export function ProductRail({ title, subtitle, products, loading, actionLabel, o
     <View style={{ marginTop: compact ? spacing.xl : spacing['2xl'] }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: gutter, marginBottom: spacing.md }}>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: compact ? 17 : 20, fontFamily: font.display, color: color.ink, letterSpacing: -0.3 }}>{title}</Text>
-          {!!subtitle && <Text style={{ fontSize: 12.5, color: color.inkMuted, fontWeight: '500', marginTop: 2 }}>{subtitle}</Text>}
+          <Text variant={compact ? 'heading' : 'title'}>{title}</Text>
+          {!!subtitle && <Text variant="meta" tone="muted" style={{ marginTop: 2 }}>{subtitle}</Text>}
         </View>
         {!!actionLabel && !!onAction && (
           <TouchableOpacity onPress={onAction} hitSlop={8} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-            <Text style={{ fontSize: 13, color: color.accent, fontWeight: '700' }}>{actionLabel}</Text>
+            <Text variant="small" tone="accent">{actionLabel}</Text>
             <Ionicons name="chevron-forward" size={14} color={color.accent} />
           </TouchableOpacity>
         )}

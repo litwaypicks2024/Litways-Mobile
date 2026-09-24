@@ -267,7 +267,7 @@ export default function HomeScreen() {
                 <View key={phrase} style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text
                     style={{
-                      color: color.onInk, fontSize: 11, fontWeight: '800',
+                      color: color.onInk, fontSize: 11, fontWeight: '700',
                       letterSpacing: 1.2, textTransform: 'uppercase',
                     }}
                   >
@@ -437,9 +437,9 @@ export default function HomeScreen() {
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                         <Ionicons name="pricetag" size={14} color={color.accent} />
-                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' }}>Deals on now</Text>
+                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>Deals on now</Text>
                       </View>
-                      <Text style={{ color: '#fff', fontSize: 26, fontFamily: font.displayHeavy, letterSpacing: -0.5 }}>
+                      <Text style={{ color: '#fff', fontSize: 28, fontFamily: font.displayHeavy, letterSpacing: -0.5 }}>
                         {maxDiscount > 0 ? `Up to ${maxDiscount}% off` : 'Save on selected items'}
                       </Text>
                       <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 3 }}>Selected items · while stocks last</Text>
@@ -578,7 +578,7 @@ function SectionHeader({ title, subtitle, onSeeAll }: { title: string; subtitle?
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: gutter, marginBottom: spacing.lg }}>
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 20, fontFamily: font.display, color: color.text, letterSpacing: -0.4 }}>{title}</Text>
-        {subtitle && <Text style={{ fontSize: 12.5, color: color.textMuted, fontWeight: '500', marginTop: 3 }}>{subtitle}</Text>}
+        {subtitle && <Text style={{ fontSize: 12, color: color.textMuted, fontWeight: '400', marginTop: 3 }}>{subtitle}</Text>}
       </View>
       {onSeeAll && (
         <TouchableOpacity onPress={onSeeAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }} hitSlop={8}>
