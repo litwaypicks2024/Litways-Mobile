@@ -27,6 +27,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CartItem } from '@/types';
 import { alertDialog } from '@/components/ui/Dialog';
 import { Text } from '@/components/ui/Text';
+import { AvailabilityBanner } from '@/components/cart/AvailabilityBanner';
+import { useCartAvailability } from '@/lib/cartAvailability';
 
 // Background refreshes are throttled so flicking between tabs doesn't hammer
 // the server; pull-to-refresh always runs.
@@ -50,6 +52,8 @@ export default function CartScreen() {
   const dismissSyncNotice = useCartStore((s) => s.dismissSyncNotice);
   const manualSync = useCartStore((s) => s.manualSync);
   const userId = useAuthStore((s) => s.user?.id);
+  // Guests too: nothing else rechecks stock before the pay tap.
+  const availability = useCartAvailability();
 
   function handleRetrySync() {
     if (userId) void retrySync(userId);
@@ -120,6 +124,11 @@ export default function CartScreen() {
         }}>
           <Text variant="title">My Cart</Text>
         </View>
+        {availability.report && (
+          <View style={{ marginHorizontal: 12, marginTop: 12 }}>
+            <AvailabilityBanner report={availability.report} onDismiss={availability.dismiss} />
+          </View>
+        )}
         {syncNotice && (
           <View style={{
             marginHorizontal: 16, marginTop: 12, padding: 12,
@@ -179,6 +188,12 @@ export default function CartScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {availability.report && (
+        <View style={{ marginHorizontal: 12, marginTop: 12 }}>
+          <AvailabilityBanner report={availability.report} onDismiss={availability.dismiss} />
+        </View>
+      )}
 
       {/* syncNotice (manual sync outcome) takes this slot over mergeNotice
           when both would otherwise apply, so the two banners never stack. */}
@@ -351,6 +366,12 @@ const CartItemRow = React.memo(function CartItemRow({
               </View>
             )}
           </View>
+        )}
+
+        {item.stock <= 5 && (
+          <Text variant="metaStrong" tone="danger" style={{ marginBottom: 6 }}>
+            {item.quantity >= item.stock ? `Max available: ${item.stock}` : `Only ${item.stock} left`}
+          </Text>
         )}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
