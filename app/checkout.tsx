@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
-  Alert,
   KeyboardAvoidingView,
   AppState,
   TextInput,
@@ -30,6 +29,7 @@ import { pendingPayment } from '@/lib/storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LoadingOverlay } from '@/components/motion/LoadingOverlay';
 import type { CheckoutForm } from '@/types';
+import { alertDialog } from '@/components/ui/Dialog';
 
 type PaymentStatus = 'idle' | 'processing' | 'polling' | 'success' | 'failed';
 type Step = 1 | 2;
@@ -52,6 +52,7 @@ export default function CheckoutScreen() {
   const clearCart = useCartStore((s) => s.clearCart);
   const reconcile = useCartStore((s) => s.reconcile);
   const total = useCartStore((s) => s.subtotal());
+  const itemCount = useCartStore((s) => s.itemCount());
   const mergeNotice = useCartStore((s) => s.mergeNotice);
   const dismissMergeNotice = useCartStore((s) => s.dismissMergeNotice);
   const user = useAuthStore((s) => s.user);
@@ -122,7 +123,7 @@ export default function CheckoutScreen() {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       if (!isProcessing) return;
       e.preventDefault();
-      Alert.alert(
+      alertDialog(
         'Payment in progress',
         'Leaving now can abandon it. Are you sure you want to leave?',
         [
@@ -781,14 +782,17 @@ export default function CheckoutScreen() {
             paddingHorizontal: 16,
             paddingTop: 12,
             paddingBottom: Math.max(insets.bottom, 12),
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 14,
+            gap: 12,
           }}
         >
-          <View>
-            <Text style={{ fontSize: 12, color: color.inkMuted }}>Subtotal</Text>
-            <Text style={{ fontSize: 18, fontFamily: font.displayHeavy, color: color.ink }}>{formatCurrency(total)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: color.ink }}>Subtotal</Text>
+              <Text style={{ fontSize: 11.5, color: color.inkMuted, marginTop: 1 }}>
+                {itemCount} item{itemCount === 1 ? '' : 's'} · delivery fee shown at payment
+              </Text>
+            </View>
+            <Text style={{ fontSize: 24, fontFamily: font.displayHeavy, color: color.ink }}>{formatCurrency(total)}</Text>
           </View>
           {step === 1 ? (
             <Button
@@ -796,7 +800,7 @@ export default function CheckoutScreen() {
               onPress={() => { if (validateDelivery()) setStep(2); }}
               variant="primary"
               size="lg"
-              style={{ flex: 1 }}
+              fullWidth
               icon={<Ionicons name="arrow-forward" size={18} color={color.onAccent} />}
             />
           ) : (
@@ -811,7 +815,7 @@ export default function CheckoutScreen() {
               loading={isProcessing}
               variant="primary"
               size="lg"
-              style={{ flex: 1 }}
+              fullWidth
               icon={!isProcessing ? <Ionicons name="lock-closed" size={18} color={color.onAccent} /> : undefined}
             />
           )}
