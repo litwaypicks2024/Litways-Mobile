@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { formatCurrency } from '@/lib/currency';
 import { shortOrderId } from '@/lib/orderStatus';
+import { useOrderImages } from '@/lib/orderImages';
 import type { Order } from '@/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/Text';
@@ -39,6 +40,8 @@ export default function OrderDetailScreen() {
     },
     enabled: !!id,
   });
+
+  const imageFor = useOrderImages((order?.items as any[]) ?? []);
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -109,9 +112,9 @@ export default function OrderDetailScreen() {
                 className="flex-row items-center gap-3 py-3 border-b border-gray-50"
                 activeOpacity={item.slug ? 0.7 : 1}
               >
-                {item.imageUrl ? (
+                {imageFor(item) ? (
                   <View className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100">
-                    <Image source={{ uri: item.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                    <Image source={{ uri: imageFor(item)! }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                   </View>
                 ) : (
                   <View className="w-14 h-14 rounded-xl bg-gray-100 items-center justify-center">
