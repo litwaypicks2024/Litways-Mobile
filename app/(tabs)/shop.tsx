@@ -53,7 +53,7 @@ export default function ShopScreen() {
   // so a plain useState initializer would miss a param that arrives on an
   // already-mounted instance — react to param changes explicitly instead,
   // mirroring the account.tsx tab-param pattern.
-  const { sort: sortParam } = useLocalSearchParams<{ sort?: string }>();
+  const { sort: sortParam, sale: saleParam } = useLocalSearchParams<{ sort?: string; sale?: string }>();
   const [inputValue, setInputValue] = useState('');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortOption>('featured');
@@ -61,6 +61,7 @@ export default function ShopScreen() {
   const [filterVisible, setFilterVisible] = useState(false);
   const [focused, setFocused] = useState(false);
   const [category, setCategory] = useState<string | null>(null);
+  const [saleOnly, setSaleOnly] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tabBarClearance = useTabBarClearance();
@@ -108,6 +109,14 @@ export default function ShopScreen() {
     }
   }, [sortParam]);
 
+  // Home's Deals shortcuts deep-link with ?sale=1.
+  useEffect(() => {
+    if (saleParam === '1') {
+      setSaleOnly(true);
+      router.setParams({ sale: undefined });
+    }
+  }, [saleParam]);
+
   // Debounced search
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -127,7 +136,7 @@ export default function ShopScreen() {
     hasNextPage,
     fetchNextPage,
   } = useInfiniteQuery({
-    queryKey: ['products', query, sort, filters, category],
+    queryKey: ['products', query, sort, filters, category, saleOnly],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       if (query) {
@@ -140,8 +149,12 @@ export default function ShopScreen() {
         const raw = (data ?? []) as Product[];
         // rawLen tracks the *server* page size so pagination doesn't stop early
         // when client-side filters shrink the visible list.
-        const scoped = category ? raw.filter((p) => p.category_slug === category) : raw;
-        return { items: applyClientFilters(scoped, filters, sort), rawLen: raw.length };
+        const scoped = raw.filter(
+          (p) => (!category || p.category_slug === category) && (!saleOnly || (p.sale_price != null && p.sale_price < (p.price ?? 0)))
+        );
+        // rawCats keeps the category breakdown of the whole page (before the
+        // category chip narrows it) so the chips stay switchable.
+        return { items: applyClientFilters(scoped, filters, sort), rawLen: raw.length, rawCats: raw.map((p) => ({ slug: p.category_slug, name: p.category_name })) };
       }
 
       let q = supabase
@@ -153,6 +166,7 @@ export default function ShopScreen() {
       if (filters.maxPrice != null) q = q.lte('price', filters.maxPrice);
       if (filters.brands?.length) q = q.in('brand', filters.brands);
       if (category) q = q.eq('category_slug', category);
+      if (saleOnly) q = q.not('sale_price', 'is', null);
 
       switch (sort) {
         case 'price_asc': q = q.order('price', { ascending: true }); break;
@@ -169,7 +183,7 @@ export default function ShopScreen() {
       const items = filters.sizes?.length
         ? raw.filter((p) => filters.sizes!.some((s) => p.sizes?.includes(s)))
         : raw;
-      return { items, rawLen: raw.length };
+      return { items, rawLen: raw.length, rawCats: [] as { slug: string | null; name: string | null }[] };
     },
     getNextPageParam: (lastPage, allPages) =>
       lastPage.rawLen === PAGE_SIZE ? allPages.length : undefined,
@@ -199,10 +213,10 @@ export default function ShopScreen() {
   const resultCategories = useMemo(() => {
     if (!query) return [] as { slug: string; name: string; n: number }[];
     const counts = new Map<string, { slug: string; name: string; n: number }>();
-    for (const p of data?.pages.flatMap((pg) => pg.items) ?? []) {
-      if (!p.category_slug) continue;
-      const c = counts.get(p.category_slug);
-      counts.set(p.category_slug, { slug: p.category_slug, name: p.category_name ?? p.category_slug, n: (c?.n ?? 0) + 1 });
+    for (const p of data?.pages.flatMap((pg) => pg.rawCats) ?? []) {
+      if (!p.slug) continue;
+      const c = counts.get(p.slug);
+      counts.set(p.slug, { slug: p.slug, name: p.name ?? p.slug, n: (c?.n ?? 0) + 1 });
     }
     return [...counts.values()].sort((a, b) => b.n - a.n);
   }, [data, query]);
@@ -246,7 +260,7 @@ export default function ShopScreen() {
 
   // Personal rails only belong on the plain catalog — not once the shopper has
   // narrowed by search, category, filter or a non-default sort.
-  const showRails = !query && !category && activeFilterCount === 0 && sort === 'featured';
+  const showRails = !query && !category && !saleOnly && activeFilterCount === 0 && sort === 'featured';
 
   function handleApplyFilters(f: ProductFilters) {
     setFilters(f);
@@ -347,6 +361,20 @@ export default function ShopScreen() {
         {/* Sort pills */}
         {!focused && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 6 }}>
+          <TouchableOpacity
+            onPress={() => setSaleOnly((v) => !v)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: saleOnly }}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 5,
+              paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full,
+              backgroundColor: saleOnly ? color.accent : color.surface,
+              borderWidth: 1, borderColor: saleOnly ? color.accent : color.border,
+            }}
+          >
+            <Ionicons name="pricetag" size={12} color={saleOnly ? color.onAccent : color.accent} />
+            <Text variant="metaStrong" style={{ color: saleOnly ? color.onAccent : color.inkMuted }}>On sale</Text>
+          </TouchableOpacity>
           {SORT_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.value}
@@ -502,7 +530,7 @@ export default function ShopScreen() {
           title="No products found"
           description={query ? `No results for "${query}".` : 'No products match your filters.'}
           actionLabel="Clear filters"
-          onAction={() => { handleClear(); setFilters({}); }}
+          onAction={() => { handleClear(); setFilters({}); setSaleOnly(false); }}
         />
       ) : (
         <Animated.View
