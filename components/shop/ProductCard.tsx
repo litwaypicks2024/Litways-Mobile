@@ -1,12 +1,17 @@
-import React, { memo } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { memo, useEffect, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, type GestureResponderEvent } from 'react-native';
 import { Image } from 'expo-image';
 import Animated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { color, font, radius, type } from '@/theme/tokens';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useWishlistStore } from '@/store/wishlist';
+import { useCartStore } from '@/store/cart';
+import { flyToCart } from '@/components/motion/FlyToCart';
+import { showToast } from '@/components/ui/Toast';
+import { openQuickAdd } from '@/components/shop/QuickAddSheet';
 import { formatCurrency, discountPercent } from '@/lib/currency';
 import type { Product } from '@/types';
 
@@ -21,6 +26,15 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
   const toggle = useWishlistStore((s) => s.toggle);
   const isWishlisted = useWishlistStore((s) => s.isWishlisted(product.id ?? ''));
 
+  const addItem = useCartStore((s) => s.addItem);
+  // Units of this product already in the cart, across every size/colour line.
+  const inCart = useCartStore((s) =>
+    s.items.reduce((n, i) => (i.productId === product.id ? n + i.quantity : n), 0)
+  );
+  const [justAdded, setJustAdded] = useState(false);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (resetTimer.current) clearTimeout(resetTimer.current); }, []);
+
   const imageUrl = product.image_urls?.[0] ?? null;
   const hasDiscount = product.sale_price != null && product.sale_price < (product.price ?? 0);
   const discount = hasDiscount ? discountPercent(product.price!, product.sale_price!) : 0;
@@ -30,6 +44,55 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
   const reviewCount = product.review_count ?? 0;
 
   const isHorizontal = variant === 'horizontal';
+
+  // The + always adds without leaving the list. A product with a real choice
+  // (several sizes or colours) opens the quick-select sheet first; otherwise it
+  // goes straight in with its only option.
+  const sizes = product.sizes ?? [];
+  const colors = product.colors ?? [];
+  const needsChoice = sizes.length > 1 || colors.length > 1;
+  const atStockLimit = inCart >= (product.stock ?? 0);
+
+  function handleQuickAdd(e: GestureResponderEvent) {
+    if (atStockLimit) {
+      showToast({
+        title: 'Already in your cart',
+        detail: `All ${product.stock} available units of ${product.name} are in your cart`,
+        tone: 'info',
+        action: { label: 'View cart', href: '/(tabs)/cart' },
+      });
+      return;
+    }
+    if (needsChoice) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      openQuickAdd(product);
+      return;
+    }
+    flyToCart(e.nativeEvent.pageX, e.nativeEvent.pageY);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    addItem({
+      productId: product.id ?? '',
+      name: product.name ?? '',
+      brand: product.brand ?? '',
+      price: displayPrice,
+      listPrice: hasDiscount ? product.price ?? undefined : undefined,
+      imageUrl: imageUrl ?? '',
+      slug: product.slug ?? '',
+      stock: product.stock ?? 0,
+      size: sizes[0],
+      color: colors[0],
+    });
+    const variant = [sizes[0], colors[0]].filter(Boolean).join(' · ');
+    showToast({
+      title: 'Added to cart',
+      detail: variant ? `${product.name} · ${variant}` : product.name ?? undefined,
+      imageUrl,
+      action: { label: 'View cart', href: '/(tabs)/cart' },
+    });
+    setJustAdded(true);
+    if (resetTimer.current) clearTimeout(resetTimer.current);
+    resetTimer.current = setTimeout(() => setJustAdded(false), 1400);
+  }
 
   function handleWishlist() {
     toggle({
@@ -121,6 +184,34 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
             color={isWishlisted ? '#ef4444' : color.inkMuted}
           />
         </TouchableOpacity>
+
+        {/* Quick add — bottom-right of the image, clear of the wishlist heart */}
+        {inStock && (
+          <TouchableOpacity
+            onPress={handleQuickAdd}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={needsChoice ? `Choose options for ${product.name}` : `Add ${product.name} to cart`}
+            style={{
+              position: 'absolute', bottom: 8, right: 8,
+              minWidth: 36, height: 36, borderRadius: 18,
+              paddingHorizontal: 6,
+              backgroundColor: justAdded ? color.success : inCart > 0 ? color.accent : 'rgba(255,255,255,0.97)',
+              alignItems: 'center', justifyContent: 'center',
+              shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+              elevation: 3,
+              opacity: atStockLimit && !justAdded ? 0.6 : 1,
+            }}
+          >
+            {justAdded ? (
+              <Ionicons name="checkmark" size={20} color="#fff" />
+            ) : inCart > 0 ? (
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>{inCart}</Text>
+            ) : (
+              <Ionicons name="add" size={22} color={color.ink} />
+            )}
+          </TouchableOpacity>
+        )}
       </Animated.View>
 
       {/* Caption — sits directly on the grey canvas, no card box */}

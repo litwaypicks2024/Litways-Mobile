@@ -17,6 +17,8 @@ import { registerForPushNotifications, savePushToken, syncPushTokenForUser, useN
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { BrandSplash } from '@/components/BrandSplash';
 import { FlyToCartOverlay } from '@/components/motion/FlyToCart';
+import { ToastHost } from '@/components/ui/Toast';
+import { QuickAddSheetHost } from '@/components/shop/QuickAddSheet';
 import { LoadingOverlay } from '@/components/motion/LoadingOverlay';
 
 // Hard cap on the post-sign-in hydration overlay (Moment 1 below) — clears
@@ -395,6 +397,8 @@ function AppContent() {
       subtitle="Syncing your cart and saved items"
     />
     <FlyToCartOverlay />
+    <ToastHost />
+    <QuickAddSheetHost />
     {showSplash && <BrandSplash visible={!appReady} onHidden={() => setShowSplash(false)} />}
     </>
   );
