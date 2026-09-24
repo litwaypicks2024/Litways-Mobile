@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { formatCurrency } from '@/lib/currency';
+import { shortOrderId } from '@/lib/orderStatus';
 import type { Order } from '@/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/Text';
@@ -52,7 +53,7 @@ export default function OrderDetailScreen() {
         <View className="flex-1">
           <Text variant="heading">Order Details</Text>
           {order?.external_id && (
-            <Text variant="metaStrong" tone="muted">{order.external_id}</Text>
+            <Text variant="metaStrong" tone="muted">{shortOrderId(order.external_id)}</Text>
           )}
         </View>
         {order && <Badge label={order.payment_status} status={order.payment_status} />}

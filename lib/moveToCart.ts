@@ -61,3 +61,67 @@ export async function moveFavoritesToCart(items: WishlistItem[]): Promise<MoveRe
   }
   return result;
 }
+
+export interface BuyAgainItem {
+  /** Product id. */
+  id: string;
+  name: string;
+  quantity?: number;
+  imageUrl?: string;
+}
+
+export interface BuyAgainResult {
+  added: BuyAgainItem[];
+  needsChoice: BuyAgainItem[];
+  unavailable: BuyAgainItem[];
+  atLimit: BuyAgainItem[];
+}
+
+/**
+ * Put a past order's items back in the cart at TODAY's price and stock, in the
+ * quantities originally bought (capped by stock). Same rules as the card's +
+ * button: a product with several sizes/colours is not added blindly.
+ */
+export async function buyAgain(items: BuyAgainItem[]): Promise<BuyAgainResult> {
+  const result: BuyAgainResult = { added: [], needsChoice: [], unavailable: [], atLimit: [] };
+  const valid = items.filter((i) => !!i.id);
+  if (!valid.length) return result;
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, name, brand, price, sale_price, image_urls, slug, stock, sizes, colors')
+    .in('id', valid.map((i) => i.id));
+  if (error) throw error;
+  const fresh = new Map((data ?? []).map((p) => [p.id, p]));
+
+  for (const item of valid) {
+    const p = fresh.get(item.id);
+    if (!p || (p.stock ?? 0) <= 0) { result.unavailable.push(item); continue; }
+    const sizes = p.sizes ?? [];
+    const colors = p.colors ?? [];
+    if (sizes.length > 1 || colors.length > 1) { result.needsChoice.push(item); continue; }
+
+    const inCart = useCartStore.getState().items.reduce((n, i) => (i.productId === p.id ? n + i.quantity : n), 0);
+    const room = p.stock - inCart;
+    if (room <= 0) { result.atLimit.push(item); continue; }
+
+    const onSale = p.sale_price != null && p.sale_price < p.price;
+    const times = Math.min(Math.max(item.quantity ?? 1, 1), room);
+    for (let n = 0; n < times; n++) {
+      useCartStore.getState().addItem({
+        productId: p.id,
+        name: p.name,
+        brand: p.brand,
+        price: onSale ? p.sale_price! : p.price,
+        listPrice: onSale ? p.price : undefined,
+        imageUrl: p.image_urls?.[0] ?? item.imageUrl ?? '',
+        slug: p.slug,
+        stock: p.stock,
+        size: sizes[0],
+        color: colors[0],
+      });
+    }
+    result.added.push(item);
+  }
+  return result;
+}

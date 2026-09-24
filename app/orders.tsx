@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useReviewedStore } from '@/store/reviewed';
-import { color } from '@/theme/tokens';
+import { color, gutter, radius, shadow, spacing } from '@/theme/tokens';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
@@ -27,6 +27,9 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ReceiptIllustration } from '@/components/illustrations';
 import { formatCurrency } from '@/lib/currency';
+import { buyAgain } from '@/lib/moveToCart';
+import { orderStatus, shortOrderId, type OrderGroup } from '@/lib/orderStatus';
+import { showToast } from '@/components/ui/Toast';
 import { alertDialog } from '@/components/ui/Dialog';
 import { Text } from '@/components/ui/Text';
 import type { Order } from '@/types';
@@ -138,11 +141,21 @@ function ReviewModal({ state, onClose }: { state: ReviewState | null; onClose: (
   );
 }
 
+type Filter = 'all' | OrderGroup;
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'progress', label: 'In progress' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'cancelled', label: 'Cancelled' },
+];
+
 function OrdersList({ userId }: { userId: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const bottomPad = insets.bottom + 16;
   const [reviewState, setReviewState] = useState<ReviewState | null>(null);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [reordering, setReordering] = useState<string | null>(null);
   const isReviewed = useReviewedStore((s) => s.isReviewed);
 
   const { data: orders, isLoading, isError, isFetching, refetch } = useQuery({
@@ -157,6 +170,54 @@ function OrdersList({ userId }: { userId: string }) {
       return data as Order[];
     },
   });
+
+  const counts = useMemo(() => {
+    const c: Record<Filter, number> = { all: 0, progress: 0, completed: 0, cancelled: 0 };
+    for (const o of orders ?? []) {
+      c.all++;
+      c[orderStatus(o.payment_status).group]++;
+    }
+    return c;
+  }, [orders]);
+
+  const visible = useMemo(
+    () => (orders ?? []).filter((o) => filter === 'all' || orderStatus(o.payment_status).group === filter),
+    [orders, filter]
+  );
+
+  async function handleBuyAgain(order: Order) {
+    const items = ((order.items as any[]) ?? []).map((i) => ({ id: i.id, name: i.name, quantity: i.quantity, imageUrl: i.imageUrl }));
+    setReordering(order.id);
+    try {
+      const r = await buyAgain(items);
+      const lines: string[] = [];
+      if (r.needsChoice.length) lines.push(`Choose a size or colour: ${r.needsChoice.map((i) => i.name).join(', ')}.`);
+      if (r.unavailable.length) lines.push(`Sold out: ${r.unavailable.map((i) => i.name).join(', ')}.`);
+      if (r.atLimit.length) lines.push(`Already in your cart at the most available: ${r.atLimit.map((i) => i.name).join(', ')}.`);
+      const skipped = r.needsChoice.length + r.unavailable.length + r.atLimit.length;
+
+      if (r.added.length && !skipped) {
+        showToast({
+          title: r.added.length === 1 ? 'Added 1 item to your cart' : `Added ${r.added.length} items to your cart`,
+          tone: 'success',
+          action: { label: 'View cart', href: '/(tabs)/cart' },
+        });
+      } else if (r.added.length) {
+        alertDialog(
+          `Added ${r.added.length} of ${items.length} to your cart`,
+          lines.join(' '),
+          [{ text: 'View cart', onPress: () => router.push('/(tabs)/cart') }, { text: 'Stay here', style: 'cancel' }],
+          'success'
+        );
+      } else {
+        alertDialog("Couldn't add anything", lines.join(' ') || 'Nothing from this order is available right now.', [{ text: 'OK' }], 'warning');
+      }
+    } catch {
+      alertDialog("Couldn't reorder", 'Check your connection and try again.', [{ text: 'OK' }], 'warning');
+    } finally {
+      setReordering(null);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -188,93 +249,181 @@ function OrdersList({ userId }: { userId: string }) {
     );
   }
 
-  const COMPLETED_STATUSES = ['SUCCESSFUL', 'COMPLETED'];
-
   return (
     <>
-      <FlashList
-        data={orders}
-        estimatedItemSize={140}
-        keyExtractor={(o) => o.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: bottomPad }}
-        refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={() => refetch()} tintColor={color.accent} />
-        }
-        renderItem={({ item: order }) => {
-          const items = (order.items as any[]) ?? [];
-          const firstImg = items[0]?.imageUrl;
-          const isCompleted = COMPLETED_STATUSES.includes(order.payment_status ?? '');
+      {/* Filter pills, with counts */}
+      <View style={{ backgroundColor: color.surface, borderBottomWidth: 1, borderBottomColor: color.border }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, paddingVertical: 10, gap: 8 }}>
+          {FILTERS.map((f) => {
+            const active = filter === f.key;
+            return (
+              <TouchableOpacity
+                key={f.key}
+                onPress={() => setFilter(f.key)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                style={{
+                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.full,
+                  backgroundColor: active ? color.ink : color.surface,
+                  borderWidth: 1.5, borderColor: active ? color.ink : color.fieldBorder,
+                }}
+              >
+                <Text variant="small" style={{ color: active ? color.onInk : color.ink }}>
+                  {f.label}{counts[f.key] ? ` · ${counts[f.key]}` : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
-          return (
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => router.push(`/order/${order.id}` as any)}
-              className="bg-white rounded-2xl p-4 mb-3 shadow-sm"
-            >
-              <View className="flex-row items-center justify-between mb-3">
-                <View>
-                  <Text variant="metaStrong" tone="muted">{order.external_id}</Text>
-                  <Text variant="meta" tone="muted" style={{ marginTop: 2 }}>
-                    {new Date(order.created_at!).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </Text>
-                </View>
-                <Badge label={order.payment_status} status={order.payment_status} />
-              </View>
-
-              <View className="flex-row items-center gap-3">
-                {firstImg && (
-                  <View className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100">
-                    <Image source={{ uri: firstImg }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                  </View>
-                )}
-                <View className="flex-1">
-                  <Text variant="body" tone="muted" numberOfLines={1}>
-                    {items.length} {items.length === 1 ? 'item' : 'items'} · {order.delivery_state}
-                  </Text>
-                  <Text variant="price" tone="accent" style={{ marginTop: 4 }}>
-                    {formatCurrency(order.final_total)}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Write review for completed orders */}
-              {isCompleted && items.length > 0 && (
-                <View className="mt-3 pt-3 border-t border-gray-50">
-                  <Text variant="metaStrong" tone="muted" style={{ marginBottom: 8 }}>Leave a review:</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                    {items.map((item: any) => {
-                      const reviewed = isReviewed(order.id, item.id);
-                      return (
-                        <TouchableOpacity
-                          key={item.id}
-                          disabled={reviewed}
-                          onPress={() => setReviewState({ order, item: { id: item.id, name: item.name, imageUrl: item.imageUrl } })}
-                          className={`flex-row items-center gap-2 rounded-full px-3 py-2 border ${reviewed ? 'bg-gray-50 border-gray-100' : 'bg-primary-50 border-primary-100'}`}
-                        >
-                          {!reviewed && <Ionicons name="star-outline" size={13} color={color.accent} />}
-                          <Text
-                            variant="metaStrong"
-                            tone={reviewed ? 'muted' : 'accent'}
-                            numberOfLines={1}
-                            style={{ maxWidth: 120 }}
-                          >
-                            {reviewed ? 'Reviewed ✓' : item.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        }}
-      />
+      {!visible.length ? (
+        <EmptyState
+          illustration={<ReceiptIllustration />}
+          title={{ all: 'No orders yet', progress: 'No orders in progress', completed: 'No completed orders', cancelled: 'No cancelled orders' }[filter]}
+          description="Orders in this state will show up here."
+          actionLabel="See all orders"
+          onAction={() => setFilter('all')}
+        />
+      ) : (
+        <FlashList
+          data={visible}
+          estimatedItemSize={230}
+          keyExtractor={(o) => o.id}
+          contentContainerStyle={{ padding: 16, paddingBottom: bottomPad }}
+          refreshControl={<RefreshControl refreshing={isFetching} onRefresh={() => refetch()} tintColor={color.accent} />}
+          renderItem={({ item: order }) => (
+            <OrderCard
+              order={order}
+              reordering={reordering === order.id}
+              isReviewed={isReviewed}
+              onOpen={() => router.push(`/order/${order.id}` as any)}
+              onBuyAgain={() => handleBuyAgain(order)}
+              onCheckStatus={() =>
+                order.reference_id &&
+                router.push({ pathname: '/confirmation', params: { referenceId: order.reference_id } } as any)
+              }
+              onReview={(item) => setReviewState({ order, item })}
+            />
+          )}
+        />
+      )}
       <ReviewModal state={reviewState} onClose={() => setReviewState(null)} />
     </>
   );
 }
 
+const THUMB = 56;
+const MAX_THUMBS = 4;
+
+function OrderCard({
+  order, reordering, isReviewed, onOpen, onBuyAgain, onCheckStatus, onReview,
+}: {
+  order: Order;
+  reordering: boolean;
+  isReviewed: (orderId: string, productId: string) => boolean;
+  onOpen: () => void;
+  onBuyAgain: () => void;
+  onCheckStatus: () => void;
+  onReview: (item: { id: string; name: string; imageUrl?: string }) => void;
+}) {
+  const status = orderStatus(order.payment_status);
+  const items = ((order.items as any[]) ?? []) as { id: string; name: string; imageUrl?: string; quantity?: number }[];
+  const unitCount = items.reduce((n, i) => n + (i.quantity ?? 1), 0);
+  const shown = items.slice(0, MAX_THUMBS);
+  const extra = items.length - shown.length;
+  const canReview = ['SUCCESSFUL', 'COMPLETED'].includes(order.payment_status ?? '') && items.length > 0;
+  const toReview = canReview ? items.filter((i) => !isReviewed(order.id, i.id)) : [];
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={onOpen}
+      accessibilityRole="button"
+      accessibilityLabel={`Order ${shortOrderId(order.external_id)}, ${status.label}, ${formatCurrency(order.final_total)}`}
+      style={{ backgroundColor: color.surface, borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.md, ...shadow.card }}
+    >
+      {/* Status + date */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: status.bg, paddingHorizontal: 10, height: 28, borderRadius: 14, flexShrink: 1 }}>
+          <Ionicons name={status.icon} size={15} color={status.fg} />
+          <Text variant="metaStrong" numberOfLines={1} style={{ color: status.fg }}>{status.label}</Text>
+        </View>
+        <Text variant="meta" tone="muted" numberOfLines={1}>
+          {new Date(order.created_at!).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+        </Text>
+      </View>
+
+      <Text variant="bodyStrong" style={{ marginTop: spacing.md }}>Order {shortOrderId(order.external_id)}</Text>
+
+      {/* Item thumbnails */}
+      {items.length > 0 && (
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: spacing.md }}>
+          {shown.map((it, i) => (
+            <View key={`${it.id}-${i}`} style={{ width: THUMB, height: THUMB, borderRadius: radius.md, overflow: 'hidden', backgroundColor: color.surfaceMuted, alignItems: 'center', justifyContent: 'center' }}>
+              {it.imageUrl ? (
+                <Image source={{ uri: it.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+              ) : (
+                <Ionicons name="cube-outline" size={22} color={color.inkFaint} />
+              )}
+            </View>
+          ))}
+          {extra > 0 && (
+            <View style={{ width: THUMB, height: THUMB, borderRadius: radius.md, backgroundColor: color.surfaceSunken, alignItems: 'center', justifyContent: 'center' }}>
+              <Text variant="bodyStrong" tone="body">+{extra}</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Summary + total */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.md, marginTop: spacing.md }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text variant="body" tone="muted" numberOfLines={1}>
+            {unitCount} {unitCount === 1 ? 'item' : 'items'}{order.delivery_state ? ` · ${order.delivery_state}` : ''}
+          </Text>
+          {order.payment_status === 'FAILED' && (
+            <Text variant="meta" tone="danger" numberOfLines={2} style={{ marginTop: 2 }}>
+              {order.failure_reason || 'This payment did not go through. You were not charged.'}
+            </Text>
+          )}
+        </View>
+        <Text variant="priceLg" tone="accent" style={{ flexShrink: 0 }}>{formatCurrency(order.final_total)}</Text>
+      </View>
+
+      {/* Actions */}
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: spacing.lg, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: color.border }}>
+        {order.payment_status === 'PENDING' && !!order.reference_id && (
+          <Button title="Check status" size="sm" variant="outline" onPress={onCheckStatus} />
+        )}
+        <Button title="View details" size="sm" variant="outline" onPress={onOpen} />
+        {items.length > 0 && order.payment_status !== 'PENDING' && (
+          <Button title="Buy again" size="sm" onPress={onBuyAgain} loading={reordering} />
+        )}
+      </View>
+
+      {/* Reviews for delivered items */}
+      {toReview.length > 0 && (
+        <View style={{ marginTop: spacing.md }}>
+          <Text variant="metaStrong" tone="muted" style={{ marginBottom: 8 }}>Rate your items</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {toReview.map((it) => (
+              <TouchableOpacity
+                key={it.id}
+                onPress={() => onReview({ id: it.id, name: it.name, imageUrl: it.imageUrl })}
+                accessibilityRole="button"
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 34, borderRadius: 17, backgroundColor: color.accentSoft, borderWidth: 1, borderColor: color.peachTint }}
+              >
+                <Ionicons name="star-outline" size={13} color={color.accent} />
+                <Text variant="metaStrong" tone="accent" numberOfLines={1} style={{ maxWidth: 140 }}>{it.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
 
 export default function OrdersScreen() {
   const router = useRouter();
