@@ -52,7 +52,6 @@ export default function AccountScreen() {
   }
 
   const fullName = profile ? `${profile.first_name} ${profile.last_name ?? ''}`.trim() : '';
-  const initial = (profile?.first_name?.[0] ?? user?.email?.[0] ?? '?').toUpperCase();
   const profileIncomplete = !!user && (!profile?.phone || !profile?.address);
 
   return (
@@ -64,7 +63,7 @@ export default function AccountScreen() {
         {user ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
             <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-              <Text variant="title" tone="accent">{initial}</Text>
+              <Ionicons name="person" size={28} color={color.accent} />
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text variant="title" numberOfLines={1}>{fullName || 'Welcome back'}</Text>
