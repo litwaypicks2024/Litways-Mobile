@@ -802,8 +802,8 @@ export default function CheckoutScreen() {
           ) : (
             <Button
               title={
-                paymentStatus === 'processing' ? 'Starting payment…'
-                : paymentStatus === 'polling' ? 'Waiting for MoMo…'
+                paymentStatus === 'processing' ? 'Placing your order…'
+                : paymentStatus === 'polling' ? 'Almost there…'
                 : 'Pay with MoMo'
               }
               onPress={handlePlaceOrder}
@@ -821,13 +821,13 @@ export default function CheckoutScreen() {
 
     <LoadingOverlay
       visible={paymentStatus === 'processing'}
-      title="Contacting MTN MoMo…"
-      subtitle="Setting up your payment — this takes a moment."
+      title="Placing your order…"
+      subtitle="This only takes a moment."
     />
     <LoadingOverlay
       visible={paymentStatus === 'polling'}
-      title="Check your phone"
-      subtitle={`Approve the MoMo prompt sent to ${form.phone || 'your phone'}. We'll confirm automatically.`}
+      title="Almost there"
+      subtitle="Approve the request on your phone to finish. We'll confirm automatically."
     />
     </>
   );
