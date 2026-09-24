@@ -362,7 +362,10 @@ interface CartState {
    * automatic retry have already fired and cleared their timers, so
    * flushSync's "only if pending" guard would otherwise no-op here. */
   retrySync: (userId: string) => Promise<void>;
-  loadFromDb: (userId: string) => Promise<void>;
+  /** `silent` skips the "we combined this cart" banner — used by background
+   * refreshes (app foreground, Cart tab focus) where the shopper did nothing
+   * to explain a banner. */
+  loadFromDb: (userId: string, opts?: { silent?: boolean }) => Promise<void>;
   itemCount: () => number;
   subtotal: () => number;
 }
@@ -616,7 +619,7 @@ export const useCartStore = create<CartState>()(
         }
       },
 
-      loadFromDb: async (userId) => {
+      loadFromDb: async (userId, opts) => {
         const { data, error } = await supabase
           .from('carts')
           .select('items')
@@ -654,7 +657,7 @@ export const useCartStore = create<CartState>()(
             items: merged,
             lastSyncedItems: merged,
             lastSyncedUserId: userId,
-            mergeNotice: changed,
+            mergeNotice: opts?.silent ? state.mergeNotice : changed,
           };
         });
       },
