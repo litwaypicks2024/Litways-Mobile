@@ -23,6 +23,7 @@ import { useQuery } from '@tanstack/react-query';
 import { FlashList } from '@/components/ui/List';
 import { supabase } from '@/lib/supabase';
 import { color, font, radius, spacing, gutter, shadow, type as t } from '@/theme/tokens';
+import { useAuthStore } from '@/store/auth';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { ProductCardSkeleton, SkeletonBlock } from '@/components/ui/SkeletonLoader';
@@ -71,6 +72,7 @@ function daypartGreeting(): string {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const firstName = useAuthStore((s) => s.profile?.first_name);
   const [refreshing, setRefreshing] = useState(false);
   const tabBarClearance = useTabBarClearance();
 
@@ -191,9 +193,20 @@ export default function HomeScreen() {
           ...shadow.header,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           {/* Mark only — the full lockup's wordmark clipped and the bag already carries the brand */}
           <LogoMark size={44} variant="onLight" />
+
+          {/* Greeting fills the row the way Walmart / Instacart headers do; it
+              shrinks and truncates on its own, so it can never clip the mark */}
+          <View style={{ flex: 1 }}>
+            <Text numberOfLines={1} style={{ fontSize: 13, color: color.inkBody }}>
+              {firstName ? `Hi, ${firstName}` : 'Welcome'}
+            </Text>
+            <Text numberOfLines={1} style={{ fontSize: 17, fontFamily: font.display, color: color.ink, marginTop: 1 }}>
+              What are you shopping for?
+            </Text>
+          </View>
 
           {/* Contact us — headset reads as "talk to a person" */}
           <IconButton icon="headset-outline" onPress={() => router.push('/contact')} accessibilityLabel="Contact us" />
