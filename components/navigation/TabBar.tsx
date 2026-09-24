@@ -62,7 +62,7 @@ function IconBadge({ count }: { count: number }) {
           minWidth: 17,
           height: 17,
           borderRadius: 9,
-          backgroundColor: color.accent,
+          backgroundColor: color.accentFill,
           alignItems: 'center',
           justifyContent: 'center',
           paddingHorizontal: 4,

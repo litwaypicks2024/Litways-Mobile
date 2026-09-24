@@ -62,7 +62,7 @@ export default function OnboardingScreen() {
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl }}>
         <View style={{
           width: 220, height: 260, borderRadius: radius['2xl'],
-          backgroundColor: color.accent,
+          backgroundColor: color.accentFill,
           alignItems: 'center', justifyContent: 'center',
         }}>
           {index === 0 ? (
@@ -92,7 +92,7 @@ export default function OnboardingScreen() {
               width: i === index ? 22 : 7,
               height: 7,
               borderRadius: radius.full,
-              backgroundColor: i === index ? color.accent : color.border,
+              backgroundColor: i === index ? color.accentFill : color.border,
             }}
           />
         ))}

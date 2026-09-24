@@ -59,7 +59,7 @@ export function IconButton({ icon, onPress, size = 42, iconSize = 19, variant = 
             minWidth: 16,
             height: 16,
             borderRadius: 8,
-            backgroundColor: color.accent,
+            backgroundColor: color.accentFill,
             alignItems: 'center',
             justifyContent: 'center',
             paddingHorizontal: 3,

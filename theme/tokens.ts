@@ -104,10 +104,12 @@ export const color = {
   accent: palette.primary[600],
   /** The accent as TEXT (prices, links). #ea580c is 3.0:1 on the canvas; this is 4.8:1. Use accent for fills and icons. */
   accentText: '#b93a08',
+  /** Accent as a FILL that carries white text (buttons, badges, active chips): 4.5:1 with white, where #ea580c is only 3.6:1. Same hue, a step deeper. */
+  accentFill: '#d2470b',
   accentPressed: palette.primary[700],
   accentSoft: palette.primary[50],
   /** Gradient fill for primary pill CTAs only. */
-  accentGradient: [palette.primary[500], palette.primary[600]] as const,
+  accentGradient: ['#d2470b', palette.primary[700]] as const,
 
   /** Soft accent-tinted card background (order-ID card, info callouts). */
   peachTint: '#fdecd8',

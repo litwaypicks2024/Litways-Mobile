@@ -441,7 +441,7 @@ export default function ProductDetailScreen() {
           />
 
           {hasDiscount && (
-            <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + 72, left: 16, backgroundColor: color.accent, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+            <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + 72, left: 16, backgroundColor: color.accentFill, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
               <Text variant="small" style={{ color: '#fff' }}>-{discount}% OFF</Text>
             </View>
           )}
@@ -559,7 +559,7 @@ export default function ProductDetailScreen() {
               </View>
               {(!inStock || lowStock) && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: !inStock ? color.danger : color.accent }} />
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: !inStock ? color.danger : color.accentFill }} />
                   <Text variant="small" style={{ color: !inStock ? color.danger : color.accentPressed }}>
                     {!inStock ? 'Out of stock' : `Only ${product.stock} left, order soon`}
                   </Text>
@@ -849,7 +849,7 @@ export default function ProductDetailScreen() {
             flex: 1,
             height: 52,
             borderRadius: radius.full,
-            backgroundColor: addedToCart ? color.success : (inStock ? color.accent : color.surfaceSunken),
+            backgroundColor: addedToCart ? color.success : (inStock ? color.accentFill : color.surfaceSunken),
             alignItems: 'center',
             justifyContent: 'center',
           }}

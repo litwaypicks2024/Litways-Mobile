@@ -31,7 +31,7 @@ export function ProgressStepper({ steps, currentStep }: Props) {
                   borderRadius: 18,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: active ? color.accent : color.surfaceSunken,
+                  backgroundColor: active ? color.accentFill : color.surfaceSunken,
                 }}
               >
                 <Ionicons
