@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { recentSearches as searchStorage } from '@/lib/storage';
-import { color, font, radius, shadow } from '@/theme/tokens';
+import { color, font, inputText, radius, shadow } from '@/theme/tokens';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { FilterSheet } from '@/components/shop/FilterSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -288,7 +288,7 @@ export default function ShopScreen() {
               returnKeyType="search"
               placeholder="Search products, brands..."
               placeholderTextColor={color.inkFaint}
-              style={{ flex: 1, fontSize: 14, fontFamily: font.sans, color: color.ink }}
+              style={[inputText, { flex: 1 }]}
             />
             {inputValue.length > 0 && (
               <TouchableOpacity onPress={handleClear} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">

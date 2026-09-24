@@ -212,6 +212,14 @@ export const type = {
   button: { fontSize: 15, lineHeight: 20, fontFamily: font.sansBold, color: color.text },
 } as const satisfies Record<string, TextStyle>;
 
+/** Style for every TextInput (they don't inherit from <Text>): same size, line height and family as `body`. */
+export const inputText = {
+  fontSize: 14,
+  lineHeight: 20,
+  fontFamily: font.sans,
+  color: color.ink,
+} as const satisfies TextStyle;
+
 export type TypeVariant = keyof typeof type;
 
 export const theme = { spacing, gutter, radius, palette, color, shadow, type, weight, font } as const;
