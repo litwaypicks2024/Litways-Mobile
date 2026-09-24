@@ -8,31 +8,32 @@ import {
   AppState,
   TextInput,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useCartStore } from '@/store/cart';
 import { useAuthStore } from '@/store/auth';
 import { Input } from '@/components/ui/Input';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { IconButton } from '@/components/ui/IconButton';
-import { ProgressStepper } from '@/components/ui/ProgressStepper';
-import { color, radius, shadow } from '@/theme/tokens';
-import { LIBERIAN_COUNTIES } from '@/constants/counties';
-import { momoAPI } from '@/lib/api';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { CheckoutSection } from '@/components/checkout/CheckoutSection';
+import { CountyField } from '@/components/checkout/CountyField';
+import { OrderSummary, SecureNote } from '@/components/checkout/OrderSummary';
+import { PayBar } from '@/components/checkout/PayBar';
+import { PaymentProgress } from '@/components/checkout/PaymentProgress';
+import { AvailabilityBanner } from '@/components/cart/AvailabilityBanner';
+import { useCartAvailability } from '@/lib/cartAvailability';
+import { color, gutter, radius, spacing } from '@/theme/tokens';
+import { momoAPI, PaymentUncertainError } from '@/lib/api';
+import { findEarlierPendingOrder } from '@/lib/paymentRecovery';
 import { supabase } from '@/lib/supabase';
-import { formatCurrency } from '@/lib/currency';
 import { normalizeLiberianPhone, isValidLiberianMobile, isMtnMobile } from '@/lib/phone';
-import { pendingPayment } from '@/lib/storage';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LoadingOverlay } from '@/components/motion/LoadingOverlay';
+import { paymentAttempt, pendingPayment } from '@/lib/storage';
 import type { CheckoutForm } from '@/types';
 import { alertDialog } from '@/components/ui/Dialog';
 import { Text } from '@/components/ui/Text';
 
-type PaymentStatus = 'idle' | 'processing' | 'polling' | 'success' | 'failed';
-type Step = 1 | 2;
+// 'checking' = the pay request's reply was lost and we're looking for the order it may have created.
+type PaymentStatus = 'idle' | 'processing' | 'checking' | 'polling' | 'success' | 'failed';
 
 /** Inline status message — replaces modal alerts for payment/cart/sign-in outcomes. */
 type Notice = {
@@ -43,9 +44,13 @@ type Notice = {
 };
 
 const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
+// A saved unresolved payment / lost-reply attempt younger than this blocks a fresh Pay tap.
+const OPEN_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
+const ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const looksOffline = (m?: string) => /network|offline|internet|timed? ?out|failed to fetch|connection/i.test(m ?? '');
 
 export default function CheckoutScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const navigation = useNavigation();
   const items = useCartStore((s) => s.items);
@@ -58,7 +63,6 @@ export default function CheckoutScreen() {
   const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
 
-  const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<CheckoutForm>({
     firstName: profile?.first_name ?? '',
     lastName: profile?.last_name ?? '',
@@ -74,6 +78,8 @@ export default function CheckoutScreen() {
   // below can also collapse it later (signing in mid-checkout), but a tap on
   // "Edit" latches detailsExpandedByUserRef so it's never auto-collapsed
   // back out from under someone actively editing.
+  // Rechecked on entry so a sold-out line is dealt with before the shopper fills in the form.
+  const availability = useCartAvailability();
   const [detailsExpanded, setDetailsExpanded] = useState(
     () => !(form.firstName && form.email && form.phone && form.address)
   );
@@ -86,8 +92,11 @@ export default function CheckoutScreen() {
   // into an error state instead of a modal interrupting them.
   const [signInNudge, setSignInNudge] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const [showCountyPicker, setShowCountyPicker] = useState(false);
+  // Y of the delivery block, so a failed validation can scroll straight to it.
+  const deliveryY = useRef(0);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
+  // True while status checks are failing (offline / server unreachable) during the wait.
+  const [connectionLost, setConnectionLost] = useState(false);
   const [referenceId, setReferenceId] = useState<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -106,12 +115,18 @@ export default function CheckoutScreen() {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   }
 
+  function scrollToDelivery() {
+    scrollRef.current?.scrollTo({ y: Math.max(deliveryY.current - spacing.md, 0), animated: true });
+  }
+
   function setField(key: keyof CheckoutForm, value: string) {
     setForm((s) => ({ ...s, [key]: value }));
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
   }
 
-  const isProcessing = paymentStatus === 'processing' || paymentStatus === 'polling';
+  const isProcessing = paymentStatus === 'processing' || paymentStatus === 'checking' || paymentStatus === 'polling';
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   // Header back button (above) is already disabled while processing, but that
   // only covers a tap on our own IconButton. Android hardware back and iOS
@@ -187,11 +202,11 @@ export default function CheckoutScreen() {
     // an order history to point at. The "Check status" action goes straight
     // to confirmation.tsx, which knows how to poll/refresh a still-pending
     // order (see its "Check again" affordance).
-    function showPaymentNotice(title: string, base: string) {
+    function showPaymentNotice(title: string, lines: string[], tone: 'error' | 'warning' = 'error') {
       setNotice({
-        tone: 'error',
+        tone,
         title,
-        lines: [`${base} If you approved the prompt, check the order status before paying again.`],
+        lines,
         action: {
           label: 'Check order status',
           onPress: () => router.push({ pathname: '/confirmation', params: { referenceId } }),
@@ -217,7 +232,10 @@ export default function CheckoutScreen() {
         cleanup();
         void pendingPayment.clear();
         setPaymentStatus('failed');
-        showPaymentNotice('Payment failed', 'Your payment was declined.');
+        showPaymentNotice('Payment failed', [
+          'Your payment was declined, so nothing was charged.',
+          'You can try again, or use a different MTN number.',
+        ]);
       }
     }
 
@@ -251,14 +269,24 @@ export default function CheckoutScreen() {
 
     // Fallback poll — covers a dropped realtime socket or a wrong realtime
     // filter (see B-02): the backend resolves the reference itself.
+    const check = () =>
+      momoAPI
+        .checkStatus(referenceId)
+        .then((r) => {
+          if (mountedRef.current) setConnectionLost(false);
+          finalize(r.status);
+        })
+        .catch(() => {
+          if (mountedRef.current) setConnectionLost(true);
+        });
     const pollId = setInterval(() => {
-      momoAPI.checkStatus(referenceId).then((r) => finalize(r.status)).catch(() => {});
+      void check();
     }, 6000);
 
     // Re-check immediately when the app returns to the foreground.
     const appStateSub = AppState.addEventListener('change', (s) => {
       if (s === 'active') {
-        momoAPI.checkStatus(referenceId).then((r) => finalize(r.status)).catch(() => {});
+        void check();
       }
     });
 
@@ -273,7 +301,15 @@ export default function CheckoutScreen() {
       if (resolved) return;
       cleanup();
       setPaymentStatus('failed');
-      showPaymentNotice('Payment timed out', 'We didn\'t get a confirmation from MoMo in time.');
+      // Not a failure: the shopper may well have approved it and the confirmation is just slow.
+      showPaymentNotice(
+        'Still waiting for confirmation',
+        [
+          "We haven't heard back from MoMo yet. If you approved the prompt, your order will appear in Orders as soon as it's confirmed. There's no need to pay again.",
+          'If you did not approve it, nothing was charged.',
+        ],
+        'warning'
+      );
     }, PAYMENT_TIMEOUT_MS);
 
     return () => cleanup();
@@ -307,6 +343,7 @@ export default function CheckoutScreen() {
         detailsExpandedByUserRef.current = true;
         setDetailsExpanded(true);
       }
+      scrollToDelivery();
       return false;
     }
     return true;
@@ -314,17 +351,91 @@ export default function CheckoutScreen() {
 
   async function handlePlaceOrder() {
     if (items.length === 0) return;
+    if (!validateDelivery()) return;
     // Session may have expired since step 1 — the API would 401. Re-check
     // fresh state (not the render-time snapshot) before charging anyone.
     if (!useAuthStore.getState().user) {
-      setStep(1);
       setSignInNudge(true);
       setNotice({ tone: 'warning', title: 'Your session ended', lines: ['Sign in again to place this order. Your details are saved.'] });
       scrollToTop();
       return;
     }
+    // A payment from earlier is still unresolved: don't start a second one on top of it.
+    const open = await pendingPayment.get();
+    if (open && Date.now() - open.createdAt < OPEN_PAYMENT_WINDOW_MS) {
+      alertDialog(
+        'You already have a payment in progress',
+        "Paying again could charge you twice. Check where the earlier one stands first. If it didn't go through, you can pay again.",
+        [
+          { text: 'Check status', onPress: () => router.push({ pathname: '/confirmation', params: { referenceId: open.referenceId } }) },
+          { text: 'Pay again anyway', style: 'destructive', onPress: () => { void pendingPayment.clear().then(startPayment); } },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+    await startPayment();
+  }
+
+  /** Continue tracking an order the server already created for us. */
+  async function adoptOrder(ref: string) {
+    await pendingPayment.save({ referenceId: ref, createdAt: Date.now() });
+    await paymentAttempt.clear();
+    if (!mountedRef.current) return;
+    setReferenceId(ref);
+    setPaymentStatus('polling');
+  }
+
+  /**
+   * The pay request's reply was lost, so the server may have created the order
+   * and sent the MoMo prompt without us knowing. Look for it before letting
+   * anyone tap Pay again. Returns true if it found and adopted an order.
+   */
+  async function recoverLostRequest(startedAt: number, attempts: number): Promise<'adopted' | 'none' | 'unreachable'> {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return 'unreachable';
+    let last: 'none' | 'unreachable' = 'unreachable';
+    for (let i = 0; i < attempts; i++) {
+      if (i > 0) await sleep(3000);
+      if (!mountedRef.current) return 'unreachable';
+      const r = await findEarlierPendingOrder(userId, startedAt);
+      if (r.kind === 'found') {
+        await adoptOrder(r.referenceId);
+        return 'adopted';
+      }
+      last = r.kind;
+    }
+    return last;
+  }
+
+  async function startPayment() {
     setNotice(null);
+
+    // An earlier request's reply was lost and never resolved: settle that first.
+    const earlier = await paymentAttempt.get();
+    if (earlier && Date.now() - earlier.startedAt < ATTEMPT_WINDOW_MS) {
+      setPaymentStatus('checking');
+      const found = await recoverLostRequest(earlier.startedAt, 2);
+      if (found === 'adopted') return;
+      if (found === 'unreachable') {
+        setPaymentStatus('idle');
+        setNotice({
+          tone: 'warning',
+          title: "We can't reach our servers yet",
+          lines: [
+            'Your earlier payment request may have gone through, so we need to check before you pay again. This protects you from being charged twice.',
+            'Reconnect and tap Pay again. Nothing has been taken from you by this screen.',
+          ],
+          action: { label: 'Check my orders', onPress: () => router.push('/orders') },
+        });
+        scrollToTop();
+        return;
+      }
+      await paymentAttempt.clear(); // reachable and no order exists: that request never landed
+    }
+
     setPaymentStatus('processing');
+    const startedAt = Date.now();
     try {
       // Re-validate price & stock against the live catalog before charging —
       // the cart persists locally and may hold stale prices or sold-out items.
@@ -361,14 +472,13 @@ export default function CheckoutScreen() {
         if (stockIssues.length) parts.push('Availability changed:\n• ' + stockIssues.join('\n• '));
         if (priceChanges.length) parts.push('Prices were updated for:\n• ' + priceChanges.join('\n• '));
         setPaymentStatus('idle');
-        setStep(1);
         setNotice({
           tone: 'warning',
           title: 'We updated your cart',
           lines: [
             ...(stockIssues.length ? ['Availability changed:', ...stockIssues.map((x) => `• ${x}`)] : []),
             ...(priceChanges.length ? ['Prices were updated for:', ...priceChanges.map((x) => `• ${x}`)] : []),
-            'Review the totals below, then continue.',
+            'Review the totals below, then pay.',
           ],
         });
         scrollToTop();
@@ -401,59 +511,74 @@ export default function CheckoutScreen() {
         },
       };
 
+      // Recorded BEFORE the request leaves: if the reply is lost we can still find the order.
+      await paymentAttempt.save(startedAt);
       const { referenceId: ref } = await momoAPI.initiatePayment(payload);
       // Persist the moment we have a referenceId — see lib/storage.ts
       // pendingPayment for why (recoverable if the app is killed mid-poll).
-      void pendingPayment.save({ referenceId: ref, createdAt: Date.now() });
+      await pendingPayment.save({ referenceId: ref, createdAt: Date.now() });
+      await paymentAttempt.clear();
       setReferenceId(ref);
       setPaymentStatus('polling');
     } catch (err: any) {
+      if (err instanceof PaymentUncertainError || err?.name === 'PaymentUncertainError') {
+        // The request may have landed. Never say "failed" and never invite a blind retry.
+        setPaymentStatus('checking');
+        const found = await recoverLostRequest(startedAt, 6);
+        if (found === 'adopted' || !mountedRef.current) return;
+        setPaymentStatus('failed');
+        if (found === 'none') {
+          await paymentAttempt.clear();
+          setNotice({
+            tone: 'error',
+            title: "The payment didn't start",
+            lines: ["The connection dropped before your request reached us. Nothing was charged. Please try again."],
+          });
+        } else {
+          setNotice({
+            tone: 'warning',
+            title: "We couldn't confirm your payment request",
+            lines: [
+              "You're offline, so we can't tell yet whether it went through. Nothing is lost: if a MoMo prompt arrives on your phone, approve it once and it will show in your orders.",
+              "Please don't tap Pay again until you're back online. We'll check for you first.",
+            ],
+            action: { label: 'Check my orders', onPress: () => router.push('/orders') },
+          });
+        }
+        scrollToTop();
+        return;
+      }
+      await paymentAttempt.clear(); // a definite rejection: nothing was created
       setPaymentStatus('failed');
       setNotice({
         tone: 'error',
-        title: 'Couldn\'t start the payment',
-        lines: [err.message ?? 'Something went wrong. Please try again.'],
+        title: "Couldn't start the payment",
+        lines: [
+          looksOffline(err?.message)
+            ? "You appear to be offline. Nothing was charged. Reconnect and try again."
+            : `${err?.message ?? 'Something went wrong.'} Nothing was charged.`,
+        ],
       });
       scrollToTop();
     }
   }
 
+  const payLabel = paymentStatus === 'processing' || paymentStatus === 'checking' ? 'Placing your order…' : paymentStatus === 'polling' ? 'Almost there…' : 'Pay with MoMo';
+  const deliveryReady = !!(form.firstName && form.email && form.phone && form.address && form.county);
+
   return (
     <>
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: color.bg }}>
-
-      {/* ─── Header ─── */}
-      <View style={{
-        backgroundColor: color.surface,
-        paddingHorizontal: 20,
-        paddingBottom: 16,
-        paddingTop: insets.top + 12,
-      }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-          <IconButton
-            icon="arrow-back"
-            onPress={() => (step === 1 ? router.back() : setStep(1))}
-            disabled={isProcessing}
-            accessibilityLabel={step === 1 ? 'Go back' : 'Back to delivery details'}
-          />
-          <Text variant="heading">Checkout</Text>
-        </View>
-
-        <ProgressStepper
-          steps={[
-            { label: 'Delivery', icon: 'location-outline' },
-            { label: 'Payment', icon: 'card-outline' },
-          ]}
-          currentStep={step}
-        />
-      </View>
+      <ScreenHeader title="Checkout" onBack={() => router.back()} />
 
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: spacing.lg }}
         keyboardShouldPersistTaps="handled"
       >
+        <AvailabilityBanner report={availability.report} onDismiss={availability.dismiss} />
+
         {notice && (
           <View
             accessibilityRole="alert"
@@ -489,19 +614,9 @@ export default function CheckoutScreen() {
           </View>
         )}
 
-        {/* A cart merge (e.g. signing in mid-checkout) can land while the
-            shopper is on either step — show it regardless, not just once
-            they reach Payment. */}
+        {/* A cart merge (e.g. signing in mid-checkout) can land at any point. */}
         {mergeNotice && (
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            backgroundColor: color.accentSoft,
-            marginBottom: 12,
-            padding: 12,
-            borderRadius: radius.md,
-          }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: color.accentSoft, marginBottom: 12, padding: 12, borderRadius: radius.md }}>
             <Ionicons name="information-circle" size={18} color={color.accent} />
             <Text variant="metaStrong" style={{ flex: 1, color: color.accentPressed }}>
               We combined this cart with items saved to your account.
@@ -521,103 +636,94 @@ export default function CheckoutScreen() {
           </View>
         )}
 
-        {/* ─── STEP 1: Delivery ─── */}
-        {items.length > 0 && step === 1 && (
+        {items.length > 0 && (
           <>
-            {/* The payment API requires the authenticated order owner, so an
-                account is required to place an order. Framed as what it buys
-                the customer (tracking), not as a registration demand — and
-                with email confirmation off, signup is one tap. Delivery
-                fields stay editable signed-out so nothing typed is lost;
-                only the step-2 transition is gated (see validateDelivery). */}
-            {!user ? (
-              <View style={{ backgroundColor: color.surface, borderRadius: 16, padding: 14, marginBottom: 14, borderWidth: signInNudge ? 1.5 : 1, borderColor: signInNudge ? color.danger : color.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            {/* The payment API needs the authenticated order owner. Framed as what it
+                buys the shopper (tracking); everything typed below survives the
+                round-trip (next=/checkout returns here). */}
+            {!user && (
+              <View style={{ backgroundColor: color.surface, borderRadius: radius.lg, padding: 14, marginBottom: spacing.md, borderWidth: signInNudge ? 1.5 : 1, borderColor: signInNudge ? color.danger : color.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
                   <Ionicons name="person-circle-outline" size={24} color={color.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="small">Sign in to place your order</Text>
                   <Text variant={signInNudge ? 'metaStrong' : 'meta'} tone={signInNudge ? 'danger' : 'body'} style={{ marginTop: 1 }}>
-                    {signInNudge ? 'Sign in to continue to payment. Your details are saved.' : 'Takes seconds, and lets you track this order'}
+                    {signInNudge ? 'Sign in to pay. Your details are saved.' : 'Takes seconds, and lets you track this order'}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } })} style={{ backgroundColor: color.accent, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 9 }}>
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: '/(auth)/login', params: { next: '/checkout' } })}
+                  accessibilityRole="button"
+                  style={{ backgroundColor: color.accentFill, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 9 }}
+                >
                   <Text variant="small" tone="onAccent">Sign in</Text>
                 </TouchableOpacity>
               </View>
-            ) : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, marginLeft: 2 }}>
-                <Ionicons name="checkmark-circle" size={16} color={color.success} />
-                <Text variant="metaStrong" tone="muted">Signed in as {user.email}</Text>
-              </View>
             )}
 
-            {detailsExpanded ? (
-              <SectionCard title="Contact Info" icon="person-outline">
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <View style={{ flex: 1 }}>
-                    <Input
-                      label="First Name *"
-                      leftIcon="person-outline"
-                      value={form.firstName}
-                      error={errors.firstName}
-                      onChangeText={(v) => setField('firstName', v)}
-                      returnKeyType="next"
-                      onSubmitEditing={() => lastNameRef.current?.focus()}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Input
-                      ref={lastNameRef}
-                      label="Last Name"
-                      leftIcon="person-outline"
-                      value={form.lastName}
-                      onChangeText={(v) => setField('lastName', v)}
-                      returnKeyType="next"
-                      onSubmitEditing={() => emailRef.current?.focus()}
-                    />
-                  </View>
-                </View>
-                <Input
-                  ref={emailRef}
-                  label="Email *"
-                  leftIcon="mail-outline"
-                  value={form.email}
-                  error={errors.email}
-                  onChangeText={(v) => setField('email', v)}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  returnKeyType="next"
-                  onSubmitEditing={() => phoneRef.current?.focus()}
-                />
-                <Input
-                  ref={phoneRef}
-                  label="Phone (MTN number for MoMo) *"
-                  leftIcon="call-outline"
-                  value={form.phone}
-                  error={errors.phone}
-                  onChangeText={(v) => setField('phone', v)}
-                  keyboardType="phone-pad"
-                  returnKeyType="next"
-                  onSubmitEditing={() => addressRef.current?.focus()}
-                />
-              </SectionCard>
-            ) : (
-              <KnownDetailsCard
-                form={form}
-                onEdit={() => {
-                  detailsExpandedByUserRef.current = true;
-                  setDetailsExpanded(true);
-                }}
-              />
-            )}
-
-            <SectionCard title="Delivery Address" icon="location-outline">
-              {detailsExpanded && (
+            {/* 1 · Delivery */}
+            <CheckoutSection
+              step={1}
+              title="Delivery"
+              done={deliveryReady && !detailsExpanded}
+              actionLabel={!detailsExpanded ? 'Edit' : undefined}
+              onAction={() => {
+                detailsExpandedByUserRef.current = true;
+                setDetailsExpanded(true);
+              }}
+              onLayout={(e) => { deliveryY.current = e.nativeEvent.layout.y; }}
+            >
+              {detailsExpanded ? (
                 <>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <Input
+                        label="First name *"
+                        value={form.firstName}
+                        error={errors.firstName}
+                        onChangeText={(v) => setField('firstName', v)}
+                        returnKeyType="next"
+                        onSubmitEditing={() => lastNameRef.current?.focus()}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Input
+                        ref={lastNameRef}
+                        label="Last name"
+                        value={form.lastName}
+                        onChangeText={(v) => setField('lastName', v)}
+                        returnKeyType="next"
+                        onSubmitEditing={() => emailRef.current?.focus()}
+                      />
+                    </View>
+                  </View>
+                  <Input
+                    ref={emailRef}
+                    label="Email *"
+                    leftIcon="mail-outline"
+                    value={form.email}
+                    error={errors.email}
+                    onChangeText={(v) => setField('email', v)}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    returnKeyType="next"
+                    onSubmitEditing={() => phoneRef.current?.focus()}
+                  />
+                  <Input
+                    ref={phoneRef}
+                    label="Phone (MTN number for MoMo) *"
+                    leftIcon="call-outline"
+                    value={form.phone}
+                    error={errors.phone}
+                    onChangeText={(v) => setField('phone', v)}
+                    keyboardType="phone-pad"
+                    returnKeyType="next"
+                    onSubmitEditing={() => addressRef.current?.focus()}
+                  />
                   <Input
                     ref={addressRef}
-                    label="Street Address *"
+                    label="Street address *"
                     leftIcon="home-outline"
                     value={form.address}
                     error={errors.address}
@@ -627,264 +733,82 @@ export default function CheckoutScreen() {
                   />
                   <Input
                     ref={cityRef}
-                    label="City / Town"
+                    label="City / town"
                     leftIcon="business-outline"
                     value={form.city}
                     onChangeText={(v) => setField('city', v)}
                     returnKeyType="done"
                   />
                 </>
+              ) : (
+                <KnownDetails form={form} />
               )}
-
-              {/* County picker */}
-              <View style={{ marginBottom: 8 }}>
-                <Text variant="small" tone="muted" style={{ marginBottom: 6 }}>County *</Text>
-                <TouchableOpacity
-                  onPress={() => setShowCountyPicker(!showCountyPicker)}
-                  style={{
-                    flexDirection: 'row', alignItems: 'center',
-                    backgroundColor: color.surface, borderRadius: radius.full, borderWidth: 1.5,
-                    borderColor: errors.county ? color.danger : showCountyPicker ? color.accent : 'transparent',
-                    paddingHorizontal: 16, height: 50, gap: 8,
-                  }}
-                >
-                  <Ionicons name="map-outline" size={18} color={color.inkFaint} />
-                  <Text variant="body" style={{ flex: 1, color: form.county ? color.ink : color.inkMuted }}>
-                    {form.county || 'Select county...'}
-                  </Text>
-                  <Ionicons name={showCountyPicker ? 'chevron-up' : 'chevron-down'} size={16} color={color.inkFaint} />
-                </TouchableOpacity>
-                {showCountyPicker && (
-                  <View style={{ backgroundColor: color.surface, borderRadius: 12, borderWidth: 1, borderColor: color.border, marginTop: 4, overflow: 'hidden', ...shadow.card }}>
-                    <ScrollView style={{ maxHeight: 220 }} nestedScrollEnabled>
-                      {LIBERIAN_COUNTIES.map((county) => (
-                        <TouchableOpacity
-                          key={county}
-                          onPress={() => { setField('county', county); setShowCountyPicker(false); }}
-                          style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: color.border, backgroundColor: form.county === county ? color.accentSoft : color.surface }}
-                        >
-                          <Text variant={form.county === county ? 'bodyStrong' : 'body'} tone={form.county === county ? 'accent' : 'default'}>
-                            {county}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-                {errors.county && (
-                  <Text variant="meta" tone="danger" style={{ marginTop: 4, marginLeft: 4 }}>{errors.county}</Text>
-                )}
+              <View style={{ marginTop: detailsExpanded ? 0 : spacing.lg }}>
+                <CountyField value={form.county} error={errors.county} onChange={(c) => setField('county', c)} />
               </View>
-            </SectionCard>
-
-            {/* Delivery note */}
-            <View style={{ backgroundColor: '#f0fdf4', borderRadius: 14, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Ionicons name="car-outline" size={20} color="#16a34a" />
-              <Text variant="small" style={{ flex: 1, color: '#15803d' }}>
-                We deliver across all 15 Liberian counties
-              </Text>
-            </View>
-          </>
-        )}
-
-        {/* ─── STEP 2: Payment ─── */}
-        {items.length > 0 && step === 2 && (
-          <>
-            {/* Delivery summary (read-only) */}
-            <TouchableOpacity
-              onPress={() => setStep(1)}
-              style={{ backgroundColor: color.surface, borderRadius: 16, padding: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12, ...shadow.card }}
-            >
-              <View style={{ width: 36, height: 36, backgroundColor: color.accentSoft, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="location-outline" size={18} color={color.accent} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.md }}>
+                <Ionicons name="car-outline" size={16} color={color.success} />
+                <Text variant="meta" tone="muted">We deliver across all 15 Liberian counties</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text variant="metaStrong" tone="muted" style={{ marginBottom: 2 }}>DELIVERING TO</Text>
-                <Text variant="small">
-                  {form.firstName} {form.lastName}
-                </Text>
-                <Text variant="meta" tone="muted" numberOfLines={1}>
-                  {form.address}{form.city ? `, ${form.city}` : ''}, {form.county}
-                </Text>
-              </View>
-              <Text variant="metaStrong" tone="accent">Edit</Text>
-            </TouchableOpacity>
+            </CheckoutSection>
 
-            {/* Payment method */}
-            <SectionCard title="Payment Method" icon="card-outline">
+            {/* 2 · Payment */}
+            <CheckoutSection step={2} title="Payment">
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: color.accentSoft, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: color.accent }}>
-                <View style={{ width: 48, height: 48, backgroundColor: color.accent, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
+                <View style={{ width: 46, height: 46, backgroundColor: color.accentFill, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
                   <Text variant="label" tone="onAccent">MoMo</Text>
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text variant="bodyStrong">MTN Mobile Money</Text>
-                  <Text variant="meta" tone="muted" style={{ marginTop: 2 }}>
-                    USSD prompt will be sent to {form.phone || 'your phone'}
+                  <Text variant="meta" tone="body" numberOfLines={2} style={{ marginTop: 2 }}>
+                    You'll get a prompt on {form.phone || 'your phone'} to approve the payment
                   </Text>
                 </View>
-                <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: color.accent, alignItems: 'center', justifyContent: 'center', backgroundColor: color.accent }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color.onAccent }} />
-                </View>
+                <Ionicons name="checkmark-circle" size={22} color={color.accent} />
               </View>
-            </SectionCard>
+            </CheckoutSection>
 
-            {/* Order items summary */}
-            <SectionCard title="Order Summary" icon="bag-outline">
-              {items.map((item) => (
-                <View key={`${item.productId}::${item.size}::${item.color}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: color.border }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 8, overflow: 'hidden', backgroundColor: color.surfaceSunken }}>
-                    <Image source={{ uri: item.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text variant="small" numberOfLines={1}>{item.name}</Text>
-                    {(item.size || item.color) && (
-                      <Text variant="label" tone="muted">
-                        {[item.size, item.color].filter(Boolean).join(' · ')}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text variant="small" tone="accent">
-                      {formatCurrency(item.price * item.quantity)}
-                    </Text>
-                    <Text variant="label" tone="muted">×{item.quantity}</Text>
-                  </View>
-                </View>
-              ))}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 12 }}>
-                <Text variant="button">Subtotal</Text>
-                <Text variant="price" tone="accent">{formatCurrency(total)}</Text>
-              </View>
-            </SectionCard>
+            {/* 3 · Order summary */}
+            <CheckoutSection step={3} title={`Your order (${itemCount})`}>
+              <OrderSummary items={items} subtotal={total} />
+            </CheckoutSection>
 
-            {/* We can't compute delivery fees client-side — the MoMo USSD
-                prompt on the shopper's phone is the authoritative total.
-                (Backend handoff: a pre-payment quote endpoint would let us
-                show the true total here instead.) */}
-            <Text variant="meta" tone="muted" style={{ textAlign: 'center', marginTop: -4, marginBottom: 14 }}>
-              Your final total, including any delivery fee, is shown in the MoMo prompt on your phone.
-            </Text>
-
-            <Text variant="label" tone="muted" style={{ textAlign: 'center', marginTop: 4 }}>
-              By placing your order you agree to our Terms & Conditions.{'\n'}Payment is processed securely via MTN Mobile Money.
+            <SecureNote />
+            <Text variant="label" tone="muted" style={{ textAlign: 'center', marginBottom: spacing.md }}>
+              By paying you agree to our Terms & Conditions.
             </Text>
           </>
         )}
       </ScrollView>
 
-      {/* ─── Sticky footer: total + primary action, always reachable ─── */}
       {items.length > 0 && (
-        <View
-          style={{
-            backgroundColor: color.surface,
-            borderTopWidth: 1,
-            borderTopColor: color.border,
-            paddingHorizontal: 16,
-            paddingTop: 12,
-            paddingBottom: Math.max(insets.bottom, 12),
-            gap: 12,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-            <View>
-              <Text variant="bodyStrong">Subtotal</Text>
-              <Text variant="label" tone="muted" style={{ marginTop: 1 }}>
-                {itemCount} item{itemCount === 1 ? '' : 's'} · delivery fee shown at payment
-              </Text>
-            </View>
-            <Text variant="priceLg">{formatCurrency(total)}</Text>
-          </View>
-          {step === 1 ? (
-            <Button
-              title="Continue to payment"
-              onPress={() => { if (validateDelivery()) setStep(2); }}
-              variant="primary"
-              size="lg"
-              fullWidth
-              icon={<Ionicons name="arrow-forward" size={18} color={color.onAccent} />}
-            />
-          ) : (
-            <Button
-              title={
-                paymentStatus === 'processing' ? 'Placing your order…'
-                : paymentStatus === 'polling' ? 'Almost there…'
-                : 'Pay with MoMo'
-              }
-              onPress={handlePlaceOrder}
-              disabled={isProcessing}
-              loading={isProcessing}
-              variant="primary"
-              size="lg"
-              fullWidth
-              icon={!isProcessing ? <Ionicons name="lock-closed" size={18} color={color.onAccent} /> : undefined}
-            />
-          )}
-        </View>
+        <PayBar total={total} itemCount={itemCount} busy={isProcessing} label={payLabel} onPay={handlePlaceOrder} />
       )}
     </KeyboardAvoidingView>
 
-    <LoadingOverlay
-      visible={paymentStatus === 'processing'}
-      title="Placing your order…"
-      subtitle="This only takes a moment."
-    />
-    <LoadingOverlay
-      visible={paymentStatus === 'polling'}
-      title="Almost there"
-      subtitle="Approve the request on your phone to finish. We'll confirm automatically."
-    />
+    <PaymentProgress phase={paymentStatus === 'processing' || paymentStatus === 'checking' || paymentStatus === 'polling' ? paymentStatus : null} phone={form.phone} offline={connectionLost} />
     </>
   );
 }
 
-function KnownDetailsCard({ form, onEdit }: { form: CheckoutForm; onEdit: () => void }) {
+/** Read-only contact + address summary shown when the profile already has everything. */
+function KnownDetails({ form }: { form: CheckoutForm }) {
   const rows: { icon: keyof typeof Ionicons.glyphMap; text: string }[] = [
     { icon: 'person-outline', text: `${form.firstName} ${form.lastName}`.trim() },
     { icon: 'call-outline', text: form.phone },
     { icon: 'mail-outline', text: form.email },
     { icon: 'location-outline', text: form.city ? `${form.address}, ${form.city}` : form.address },
   ];
-
   return (
-    <Card style={{ marginBottom: 12 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-        <View style={{ flex: 1, paddingRight: 12 }}>
-          <Text variant="bodyStrong">Your details</Text>
-          <Text variant="meta" tone="muted" style={{ marginTop: 2 }}>
-            We'll deliver to the details on file — edit if anything changed.
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={onEdit}
-          accessibilityRole="button"
-          accessibilityLabel="Edit your details"
-          style={{ backgroundColor: color.accentSoft, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 7 }}
-        >
-          <Text variant="metaStrong" tone="accent">Edit</Text>
-        </TouchableOpacity>
-      </View>
-      {rows.map((r, i) => (
-        <View key={r.icon} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: i === rows.length - 1 ? 0 : 10 }}>
+    <View style={{ gap: 10 }}>
+      {rows.map((r) => (
+        <View key={r.icon} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <View style={{ width: 28, height: 28, borderRadius: 9, backgroundColor: color.surfaceMuted, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name={r.icon} size={14} color={color.inkMuted} />
           </View>
-          <Text variant="small" style={{ flex: 1 }} numberOfLines={1}>{r.text}</Text>
+          <Text variant="body" style={{ flex: 1 }} numberOfLines={1}>{r.text}</Text>
         </View>
       ))}
-    </Card>
-  );
-}
-
-function SectionCard({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
-  return (
-    <Card style={{ marginBottom: 12 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <View style={{ width: 32, height: 32, backgroundColor: color.accentSoft, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name={icon as any} size={16} color={color.accent} />
-        </View>
-        <Text variant="bodyStrong">{title}</Text>
-      </View>
-      {children}
-    </Card>
+    </View>
   );
 }

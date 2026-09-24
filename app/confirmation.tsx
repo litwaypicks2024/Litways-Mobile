@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, ScrollView, Platform } from 'react-native';
 import { Image } from 'expo-image';
+import LottieView from 'lottie-react-native';
 import { BrandLoader } from '@/components/motion/BrandLoader';
 import { DrawnCheckmark } from '@/components/motion/DrawnCheckmark';
 import { IdleFloat } from '@/components/motion/IdleFloat';
@@ -12,6 +13,7 @@ import Animated, {
   ReduceMotion,
   useSharedValue,
   useAnimatedStyle,
+  useReducedMotion,
   withTiming,
 } from 'react-native-reanimated';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +22,8 @@ import { useCartStore } from '@/store/cart';
 import { momoAPI, ApiError } from '@/lib/api';
 import { pendingPayment } from '@/lib/storage';
 import { formatCurrency } from '@/lib/currency';
+import { orderStatus, shortOrderId } from '@/lib/orderStatus';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, shadow } from '@/theme/tokens';
 import { Card } from '@/components/ui/Card';
@@ -72,6 +76,7 @@ export default function ConfirmationScreen() {
   const [loading, setLoading] = useState(true);
   const [retryToken, setRetryToken] = useState(0);
   const [authRequired, setAuthRequired] = useState(false);
+  const reducedMotion = useReducedMotion();
   // Which identity (user id, or null for signed-out) the 401/403 happened
   // under. The auto-refetch below only fires when the identity has actually
   // CHANGED since then — a 403 means "wrong account", and auto-retrying as
@@ -206,6 +211,8 @@ export default function ConfirmationScreen() {
 
   useEffect(() => {
     if (outcome !== 'confirmed') return;
+    // One success haptic, on the frame the badge lands — paired with the visual, never alone.
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     ringScale.value = 1;
     ringOpacity.value = 0.35;
     ringScale.value = withTiming(1.6, { duration: 700, reduceMotion: ReduceMotion.System });
@@ -224,6 +231,17 @@ export default function ConfirmationScreen() {
           {outcome === 'confirmed' ? (
             <>
               <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                {/* One-shot confetti behind the badge. Decorative, so skipped under reduced motion. */}
+                {!reducedMotion && (
+                  <View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={{ position: 'absolute', width: 320, height: 320 }}>
+                    <LottieView
+                      source={require('@/assets/lottie/confetti-burst.json')}
+                      autoPlay
+                      loop={false}
+                      style={{ width: '100%', height: '100%' }}
+                    />
+                  </View>
+                )}
                 <Animated.View
                   pointerEvents="none"
                   style={[
@@ -252,7 +270,9 @@ export default function ConfirmationScreen() {
               <Text variant="title">Thank you!</Text>
               <Text variant="heading" tone="accent" style={{ marginTop: 2 }}>Your order is confirmed</Text>
               <Text variant="caption" tone="muted" style={{ textAlign: 'center', marginTop: 6 }}>
-                We received your order and it's now being processed.
+                {order?.customer_email
+                  ? `We're preparing it now. A receipt is on its way to ${order.customer_email}.`
+                  : "We received your order and it's now being processed."}
               </Text>
             </>
           ) : outcome === 'failed' ? (
@@ -363,7 +383,7 @@ export default function ConfirmationScreen() {
                 <Ionicons name="document-text-outline" size={22} color={color.accentPressed} />
                 <View style={{ flex: 1 }}>
                   <Text variant="label" style={{ color: color.accentPressed, marginBottom: 2 }}>ORDER ID</Text>
-                  <Text variant="bodyStrong">{order.external_id}</Text>
+                  <Text variant="bodyStrong">{shortOrderId(order.external_id)}</Text>
                 </View>
               </View>
               {/* Clay-render rider; container matches the artwork's own bg (#e9e8e7)
@@ -386,7 +406,7 @@ export default function ConfirmationScreen() {
                   Order Details
                 </Text>
                 <View style={{ gap: 10 }}>
-                  <Row label="Status" value={order.payment_status} highlight />
+                  <Row label="Status" value={orderStatus(order.payment_status).label} highlight />
                   <Row
                     label={outcome === 'confirmed' ? 'Total Paid' : 'Order total'}
                     value={formatCurrency(order.final_total)}
@@ -481,7 +501,7 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
       <Text variant="caption" tone="muted">{label}</Text>
-      <Text variant="small" style={{ color: highlight ? color.accent : color.ink }}>{value}</Text>
+      <Text variant="small" style={{ color: highlight ? color.accentText : color.ink }}>{value}</Text>
     </View>
   );
 }

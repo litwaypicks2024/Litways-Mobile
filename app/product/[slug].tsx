@@ -30,6 +30,7 @@ import { FlashList } from '@/components/ui/List';
 import { supabase } from '@/lib/supabase';
 import { color, radius } from '@/theme/tokens';
 import { useCartStore } from '@/store/cart';
+import { showToast } from '@/components/ui/Toast';
 import { useWishlistStore } from '@/store/wishlist';
 import { useTasteStore } from '@/store/taste';
 import { PressableScale } from '@/components/ui/PressableScale';
@@ -196,6 +197,16 @@ export default function ProductDetailScreen() {
   const inStock = (product?.stock ?? 0) > 0;
   const wishlisted = product ? isWishlisted(product.id ?? '') : false;
   const lowStock = inStock && (product?.stock ?? 0) <= 5;
+  // Units of this product already in the cart, across every size/colour line.
+  // What's left to add is stock minus that — the store caps silently, so without
+  // this the button would say "Added" for a tap that added nothing.
+  const inCart = useCartStore((s) => s.items.reduce((n, i) => (i.productId === product?.id ? n + i.quantity : n), 0));
+  const remaining = Math.max(0, (product?.stock ?? 0) - inCart);
+  const atLimit = inStock && remaining === 0;
+  const maxQty = Math.max(1, Math.min(remaining, 10));
+  useEffect(() => {
+    setQuantity((q) => Math.min(q, maxQty));
+  }, [maxQty]);
 
   // Drives the main gallery itself — thumbnails, arrows and swipes all funnel
   // through here so the hero image always matches the highlighted thumbnail.
@@ -208,6 +219,10 @@ export default function ProductDetailScreen() {
 
   function handleAddToCart(e?: GestureResponderEvent) {
     if (!product) return;
+    if (atLimit) {
+      router.push('/(tabs)/cart');
+      return;
+    }
     const skipped = product.sizes?.length && !selectedSize ? 'size'
       : product.colors?.length && !selectedColor ? 'color'
       : null;
@@ -231,8 +246,12 @@ export default function ProductDetailScreen() {
       size: selectedSize ?? undefined,
       color: selectedColor ?? undefined,
     };
-    // addItem adds one unit per call and caps at stock.
-    for (let i = 0; i < quantity; i++) addItem(line);
+    // addItem adds one unit per call and caps at stock; never ask for more than is left.
+    const qty = Math.min(quantity, remaining);
+    for (let i = 0; i < qty; i++) addItem(line);
+    if (qty < quantity) {
+      showToast({ title: `Added ${qty} to your cart`, detail: `That's all we have in stock`, tone: 'info' });
+    }
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   }
@@ -323,8 +342,8 @@ export default function ProductDetailScreen() {
   const reviewCount = product.review_count ?? 0;
   const needsSize = !!product.sizes?.length && !selectedSize;
   const needsColor = !!product.colors?.length && !selectedColor;
-  const maxQty = Math.max(1, Math.min(product.stock ?? 1, 10));
   const ctaLabel = !inStock ? 'Out of stock'
+    : atLimit ? 'View in cart'
     : addedToCart ? 'Added to cart'
     : needsSize ? 'Select a size'
     : needsColor ? 'Select a color'
@@ -565,6 +584,16 @@ export default function ProductDetailScreen() {
                   </Text>
                 </View>
               )}
+              {!inStock && (
+                <Text variant="caption" tone="body" style={{ marginTop: 6 }}>
+                  Sold out for now. Save it to your favorites, or take a look at similar items below.
+                </Text>
+              )}
+              {atLimit && (
+                <Text variant="caption" tone="body" style={{ marginTop: 6 }}>
+                  All {product.stock} available {product.stock === 1 ? 'unit is' : 'units are'} already in your cart.
+                </Text>
+              )}
             </View>
 
             {/* Sizes */}
@@ -782,7 +811,7 @@ export default function ProductDetailScreen() {
           {(relatedLoading || (related && related.length > 0)) && (
             <View style={{ marginTop: 24, paddingTop: 24, borderTopWidth: 1, borderTopColor: color.border }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: GUTTER, marginBottom: 14 }}>
-                <Text variant="heading">You may also like</Text>
+                <Text variant="heading">{inStock ? 'You may also like' : 'Similar items in stock'}</Text>
                 <TouchableOpacity
                   onPress={() =>
                     router.push(product.category_slug ? `/category/${product.category_slug}` : '/(tabs)/shop')
@@ -856,7 +885,7 @@ export default function ProductDetailScreen() {
         >
           <Animated.View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, ctaAnimatedStyle]}>
             <Ionicons
-              name={addedToCart ? 'checkmark-circle-outline' : needsSize || needsColor ? 'options-outline' : 'bag-add-outline'}
+              name={addedToCart ? 'checkmark-circle-outline' : atLimit ? 'bag-check-outline' : needsSize || needsColor ? 'options-outline' : 'bag-add-outline'}
               size={20}
               color={inStock ? '#fff' : color.inkBody}
             />

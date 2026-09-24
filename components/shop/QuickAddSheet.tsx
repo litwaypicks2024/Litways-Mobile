@@ -96,6 +96,18 @@ export function QuickAddSheetHost() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
+    // addItem silently caps at stock; don't celebrate an add that adds nothing.
+    const inCart = useCartStore.getState().items.reduce((n, i) => (i.productId === product.id ? n + i.quantity : n), 0);
+    if (inCart >= (product.stock ?? 0)) {
+      showToast({
+        title: 'Already in your cart',
+        detail: `All ${product.stock ?? 0} available units of ${product.name} are in your cart`,
+        tone: 'info',
+        action: { label: 'View cart', href: '/(tabs)/cart' },
+      });
+      close();
+      return;
+    }
     flyToCart(e.nativeEvent.pageX, e.nativeEvent.pageY);
     addItem({
       productId: product.id ?? '',
