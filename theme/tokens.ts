@@ -84,6 +84,9 @@ export const color = {
   ink: '#141414',
   /** Secondary text (subtitles, meta). */
   inkMuted: '#8a8a8a',
+  /** Body copy (descriptions, paragraphs) — passes AA contrast on white,
+   *  which inkMuted (#8a8a8a) does not. */
+  inkBody: '#4a4a4a',
   /** Tertiary text (placeholders, faint labels). Darkened from #b8b8b8 — still
    *  decorative-tier contrast, not a substitute for inkMuted on real content. */
   inkFaint: '#9a9a9a',
