@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   View,
+  AppState,
+  RefreshControl,
+  ScrollView,
   StatusBar,
   Platform,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import { FlashList } from '@/components/ui/List';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCartStore } from '@/store/cart';
 import { useAuthStore } from '@/store/auth';
 import { color, radius } from '@/theme/tokens';
@@ -25,6 +27,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CartItem } from '@/types';
 import { alertDialog } from '@/components/ui/Dialog';
 import { Text } from '@/components/ui/Text';
+
+// Background refreshes are throttled so flicking between tabs doesn't hammer
+// the server; pull-to-refresh always runs.
+const AUTO_REFRESH_MIN_INTERVAL_MS = 30_000;
 
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
@@ -49,9 +55,40 @@ export default function CartScreen() {
     if (userId) void retrySync(userId);
   }
 
-  function handleManualSync() {
-    if (userId) void manualSync(userId);
-  }
+  // Signed-in carts follow the server: quietly re-pull when the Cart tab gains
+  // focus and when the app returns to the foreground, so items added on the
+  // website just appear. Pending local edits are flushed first so the pull
+  // can't race them.
+  const lastAutoRefreshRef = useRef(0);
+  const autoRefresh = useCallback(async () => {
+    if (!userId) return;
+    const store = useCartStore.getState();
+    if (store.syncing) return;
+    if (Date.now() - lastAutoRefreshRef.current < AUTO_REFRESH_MIN_INTERVAL_MS) return;
+    lastAutoRefreshRef.current = Date.now();
+    await store.flushSync(userId);
+    await store.loadFromDb(userId, { silent: true });
+  }, [userId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void autoRefresh();
+      const sub = AppState.addEventListener('change', (state) => {
+        if (state === 'active') void autoRefresh();
+      });
+      return () => sub.remove();
+    }, [autoRefresh]),
+  );
+
+  // Pull-to-refresh is the manual fallback: same merge, plus a live stock
+  // check, and it reports its outcome through the sync notice.
+  const refreshControl = userId ? (
+    <RefreshControl
+      refreshing={syncing}
+      onRefresh={() => void manualSync(userId)}
+      tintColor={color.accent}
+    />
+  ) : undefined;
 
   function handleCheckout() {
     // Checkout gates the payment step itself (sign-in is required to place an
@@ -82,33 +119,6 @@ export default function CartScreen() {
           justifyContent: 'space-between',
         }}>
           <Text variant="title">My Cart</Text>
-          {/* An empty local cart is the MOST important sync case — items added
-              on the web are waiting on the server — so the control must exist
-              here too, not only in the non-empty header. */}
-          {userId && (
-            <TouchableOpacity
-              onPress={handleManualSync}
-              disabled={syncing}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Sync cart with your other devices"
-              style={{
-                flexDirection: 'row', alignItems: 'center', gap: 6,
-                paddingHorizontal: 12, paddingVertical: 7,
-                borderRadius: radius.full, backgroundColor: color.surfaceSunken,
-                opacity: syncing ? 0.6 : 1,
-              }}
-            >
-              {syncing ? (
-                <ActivityIndicator size="small" color={color.ink} />
-              ) : (
-                <Ionicons name="sync-outline" size={16} color={color.ink} />
-              )}
-              <Text variant="small">
-                {syncing ? 'Syncing…' : 'Sync'}
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
         {syncNotice && (
           <View style={{
@@ -123,15 +133,21 @@ export default function CartScreen() {
             </TouchableOpacity>
           </View>
         )}
-        <EmptyState
-          illustration={<EmptyBagIllustration />}
-          title="Your cart is empty"
-          description={userId
-            ? "Nothing here yet. Added items on the website? Tap sync to bring them over."
-            : "Looks like you haven't added anything yet. Start shopping!"}
-          actionLabel={userId ? 'Sync from my other devices' : 'Browse Shop'}
-          onAction={userId ? handleManualSync : () => router.push('/shop')}
-        />
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          refreshControl={refreshControl}
+          showsVerticalScrollIndicator={false}
+        >
+          <EmptyState
+            illustration={<EmptyBagIllustration />}
+            title="Your cart is empty"
+            description={userId
+              ? "Items you add on the website show up here automatically."
+              : "Looks like you haven't added anything yet. Start shopping!"}
+            actionLabel="Browse Shop"
+            onAction={() => router.push('/shop')}
+          />
+        </ScrollView>
       </View>
     );
   }
@@ -158,30 +174,6 @@ export default function CartScreen() {
           </Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
-          {userId && (
-            <TouchableOpacity
-              onPress={handleManualSync}
-              disabled={syncing}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Sync cart with your other devices"
-              style={{
-                flexDirection: 'row', alignItems: 'center', gap: 6,
-                paddingHorizontal: 12, paddingVertical: 7,
-                borderRadius: radius.full, backgroundColor: color.surfaceSunken,
-                opacity: syncing ? 0.6 : 1,
-              }}
-            >
-              {syncing ? (
-                <ActivityIndicator size="small" color={color.ink} />
-              ) : (
-                <Ionicons name="sync-outline" size={16} color={color.ink} />
-              )}
-              <Text variant="small">
-                {syncing ? 'Syncing…' : 'Sync'}
-              </Text>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity onPress={handleClearAll} hitSlop={8}>
             <Text variant="small" tone="danger">Clear all</Text>
           </TouchableOpacity>
@@ -259,6 +251,7 @@ export default function CartScreen() {
         data={items}
         estimatedItemSize={108}
         keyExtractor={(item) => `${item.productId}::${item.size}::${item.color}`}
+        refreshControl={refreshControl}
         contentContainerStyle={{ padding: 12, paddingBottom: tabBarClearance }}
         renderItem={({ item }) => (
           <CartItemRow item={item} onUpdate={updateQuantity} onRemove={removeItem} />
