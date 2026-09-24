@@ -40,6 +40,8 @@ const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11',
 const priceFieldStyle = {
   backgroundColor: color.surfaceSunken,
   borderRadius: radius.full,
+  borderWidth: 1.5,
+  borderColor: color.fieldBorder,
   paddingHorizontal: 16,
 } as const;
 

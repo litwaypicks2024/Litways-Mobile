@@ -187,6 +187,8 @@ export default function ShopScreen() {
             alignItems: 'center',
             backgroundColor: color.surfaceSunken,
             borderRadius: radius.full,
+            borderWidth: 1.5,
+            borderColor: color.fieldBorder,
             paddingHorizontal: 14,
             height: 46,
             gap: 8,

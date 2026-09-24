@@ -79,6 +79,8 @@ export const color = {
   surfaceSunken: '#e2e2e2',
   /** Hairline separators & card outlines — used sparingly now that most separation is elevation. */
   border: '#e6e6e6',
+  /** Resting outline of a text field — must read against both white cards and the grey canvas. */
+  fieldBorder: '#c4c4c4',
 
   /** Primary text (canonical name). */
   ink: '#141414',
