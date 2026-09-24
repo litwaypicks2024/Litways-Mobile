@@ -5,7 +5,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
@@ -17,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { InkHeader } from '@/components/auth/InkHeader';
 import { BrokenLinkIllustration } from '@/components/illustrations';
 import { BrandLoader } from '@/components/motion/BrandLoader';
+import { alertDialog } from '@/components/ui/Dialog';
 
 // Extract key=value pairs from BOTH the query string and the hash fragment of a
 // deep link. Implicit-flow recovery links (our default) put tokens after '#',
@@ -148,21 +148,21 @@ export default function NewPasswordScreen() {
 
   async function handleUpdate() {
     if (password.length < 8) {
-      Alert.alert('Weak password', 'Password must be at least 8 characters.');
+      alertDialog('Weak password', 'Password must be at least 8 characters.');
       return;
     }
     if (password !== confirm) {
-      Alert.alert('Passwords do not match', 'Please re-enter the same password.');
+      alertDialog('Passwords do not match', 'Please re-enter the same password.');
       return;
     }
     setSaving(true);
     const { error } = await supabase.auth.updateUser({ password });
     setSaving(false);
     if (error) {
-      Alert.alert('Could not update password', error.message);
+      alertDialog('Could not update password', error.message);
       return;
     }
-    Alert.alert('Password updated', 'You can now sign in with your new password.', [
+    alertDialog('Password updated', 'You can now sign in with your new password.', [
       {
         text: 'OK',
         onPress: async () => {

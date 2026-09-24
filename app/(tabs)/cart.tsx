@@ -5,7 +5,6 @@ import {
   StatusBar,
   Platform,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { FlashList } from '@/components/ui/List';
@@ -25,6 +24,7 @@ import { useTabBarClearance } from '@/components/navigation/TabBar';
 import { formatCurrency } from '@/lib/currency';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CartItem } from '@/types';
+import { alertDialog } from '@/components/ui/Dialog';
 
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
@@ -61,7 +61,7 @@ export default function CartScreen() {
   }
 
   function handleClearAll() {
-    Alert.alert('Clear cart?', 'Remove all items from your cart?', [
+    alertDialog('Clear cart?', 'Remove all items from your cart?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Clear', style: 'destructive', onPress: clearCart },
     ]);
@@ -376,7 +376,7 @@ const CartItemRow = React.memo(function CartItemRow({
             max={item.stock}
             onDecrement={() => {
               if (item.quantity === 1) {
-                Alert.alert('Remove item?', `Remove "${item.name}" from your cart?`, [
+                alertDialog('Remove item?', `Remove "${item.name}" from your cart?`, [
                   { text: 'Cancel', style: 'cancel' },
                   {
                     text: 'Remove',

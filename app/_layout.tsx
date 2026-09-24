@@ -1,6 +1,6 @@
 import '../global.css';
 import React, { useEffect, useRef, useState } from 'react';
-import { AppState, Alert } from 'react-native';
+import { AppState } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
@@ -20,6 +20,7 @@ import { FlyToCartOverlay } from '@/components/motion/FlyToCart';
 import { ToastHost } from '@/components/ui/Toast';
 import { QuickAddSheetHost } from '@/components/shop/QuickAddSheet';
 import { LoadingOverlay } from '@/components/motion/LoadingOverlay';
+import { alertDialog, DialogHost } from '@/components/ui/Dialog';
 
 // Hard cap on the post-sign-in hydration overlay (Moment 1 below) — clears
 // even if fetchProfile/loadFromDb/loadWishlistFromDb/syncPushTokenForUser
@@ -87,7 +88,7 @@ async function checkPendingPaymentOnStartup(
     await pendingPayment.clear();
     return;
   }
-  Alert.alert(
+  alertDialog(
     'Payment in progress',
     "You have a payment in progress — check its status?",
     [
@@ -191,7 +192,7 @@ function AppContent() {
   // Whether this launch is already routing to /confirmation on its own —
   // resolved once startup settles (success or fail-open), then acted on only
   // once the splash is actually gone (see the appReady effect below), so the
-  // native Alert never fires underneath/before it finishes fading.
+  // dialog never fires underneath/before it finishes fading.
   const pendingPaymentCheckRef = useRef<{ alreadyGoingToConfirmation: boolean } | null>(null);
   const pendingPaymentCheckedRef = useRef(false);
   useEffect(() => {
@@ -398,6 +399,7 @@ function AppContent() {
     />
     <FlyToCartOverlay />
     <ToastHost />
+    <DialogHost />
     <QuickAddSheetHost />
     {showSplash && <BrandSplash visible={!appReady} onHidden={() => setShowSplash(false)} />}
     </>

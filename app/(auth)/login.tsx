@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   TextInput,
   Dimensions,
 } from 'react-native';
@@ -22,6 +21,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { LogoMark } from '@/components/brand/LogoMark';
+import { alertDialog } from '@/components/ui/Dialog';
 
 type Mode = 'login' | 'signup';
 
@@ -93,7 +93,7 @@ export default function LoginScreen() {
     if (result.success) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) navigateAfterAuth();
-      else Alert.alert('Session expired', 'Please sign in with your email and password.');
+      else alertDialog('Session expired', 'Please sign in with your email and password.');
       return;
     }
     // User-initiated cancels are a platform convention — no alert needed.
@@ -104,12 +104,12 @@ export default function LoginScreen() {
     ) {
       return;
     }
-    Alert.alert("Couldn't verify", 'Please sign in with your email and password.');
+    alertDialog("Couldn't verify", 'Please sign in with your email and password.');
   }
 
   async function handleAuth() {
     if (!email || !password) {
-      Alert.alert('Missing fields', 'Please fill in all required fields.');
+      alertDialog('Missing fields', 'Please fill in all required fields.');
       return;
     }
     setLoading(true);
@@ -117,10 +117,10 @@ export default function LoginScreen() {
     if (mode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       setLoading(false);
-      if (error) { Alert.alert('Sign in failed', error.message); return; }
+      if (error) { alertDialog('Sign in failed', error.message); return; }
       navigateAfterAuth();
     } else {
-      if (!firstName) { Alert.alert('Missing fields', 'Please enter your first name.'); setLoading(false); return; }
+      if (!firstName) { alertDialog('Missing fields', 'Please enter your first name.'); setLoading(false); return; }
       // Pass the name via user metadata. A DB trigger on auth.users creates the
       // public.users profile row from this — the old client-side insert ran as the
       // anonymous role (no session yet, since email confirmation is on) and RLS
@@ -135,13 +135,13 @@ export default function LoginScreen() {
           },
         },
       });
-      if (error) { setLoading(false); Alert.alert('Sign up failed', error.message); return; }
+      if (error) { setLoading(false); alertDialog('Sign up failed', error.message); return; }
       setLoading(false);
       // Setting-agnostic: with email confirmation OFF, signUp returns a live
       // session — the user is signed in right now, so welcome them and move on.
       // With confirmation ON there's no session yet, so route them to their inbox.
       if (data.session) {
-        Alert.alert('Welcome to Litway Picks!', 'Your account is ready.');
+        alertDialog('Welcome to Litway Picks!', 'Your account is ready.');
         navigateAfterAuth();
         return;
       }
@@ -149,7 +149,7 @@ export default function LoginScreen() {
       // in checkout.tsx) — that order isn't blocked on verifying this new
       // account, so say so instead of just "check your email".
       const cameFromCheckout = next === '/checkout';
-      Alert.alert(
+      alertDialog(
         'Account Created',
         cameFromCheckout
           ? 'Check your email to verify, then sign in here to finish your order.'

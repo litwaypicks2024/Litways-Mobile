@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { submitContactForm } from '@/lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { alertDialog } from '@/components/ui/Dialog';
 
 export default function ContactScreen() {
   const router = useRouter();
@@ -16,16 +17,16 @@ export default function ContactScreen() {
 
   async function handleSubmit() {
     if (!form.name || !form.email || !form.message) {
-      Alert.alert('Missing fields', 'Please fill in all required fields.');
+      alertDialog('Missing fields', 'Please fill in all required fields.');
       return;
     }
     setLoading(true);
     try {
       await submitContactForm(form);
-      Alert.alert('Message Sent!', "We'll get back to you within 24 hours.");
+      alertDialog('Message Sent!', "We'll get back to you within 24 hours.");
       setForm({ name: '', email: '', subject: '', message: '' });
     } catch {
-      Alert.alert('Error', 'Failed to send message. Please try again.');
+      alertDialog('Error', 'Failed to send message. Please try again.');
     } finally {
       setLoading(false);
     }
