@@ -142,7 +142,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
               position: 'absolute',
               top: 8,
               left: 8,
-              backgroundColor: color.accent,
+              backgroundColor: color.accentFill,
               paddingHorizontal: 7,
               paddingVertical: 3,
               borderRadius: radius.sm,
@@ -199,7 +199,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
               position: 'absolute', bottom: 8, right: 8,
               minWidth: 36, height: 36, borderRadius: 18,
               paddingHorizontal: 6,
-              backgroundColor: justAdded ? color.success : inCart > 0 ? color.accent : 'rgba(255,255,255,0.97)',
+              backgroundColor: justAdded ? color.success : inCart > 0 ? color.accentFill : 'rgba(255,255,255,0.97)',
               alignItems: 'center', justifyContent: 'center',
               shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
               elevation: 3,
@@ -222,8 +222,8 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
         <Text variant="metaStrong" tone="muted" numberOfLines={1}>
           {product.brand ?? '—'}
         </Text>
-        {/* Two lines so names read in full; the fixed height keeps grid rows aligned */}
-        <Text variant="bodyStrong" numberOfLines={2} style={{ marginTop: 2, minHeight: 40 }}>
+        {/* One line with an ellipsis, always: a long name must never make one card taller than its neighbours */}
+        <Text variant="bodyStrong" numberOfLines={1} ellipsizeMode="tail" style={{ marginTop: 2 }}>
           {product.name}
         </Text>
         {rating > 0 && (

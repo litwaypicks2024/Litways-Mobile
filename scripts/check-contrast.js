@@ -36,6 +36,11 @@ const rules = [
 ];
 
 let bad = 0;
+// White text sits on the accent FILL (buttons, badges, active chips).
+for (const token of ['accentFill']) {
+  const r = ratio('#ffffff', hex(token));
+  if (r < 4.5) { console.log(`white on ${token}: ${r.toFixed(2)}:1 (needs 4.5:1)`); bad++; }
+}
 for (const [token, min, on] of rules) {
   for (const s of on) {
     const r = ratio(hex(token), surfaces[s]);

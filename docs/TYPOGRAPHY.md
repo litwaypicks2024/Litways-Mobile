@@ -21,6 +21,8 @@ Source of truth: the `type` scale in `theme/tokens.ts`. Render text with `<Text 
 Hard limits (enforced by `npm run check:type`):
 - **Contrast ≥ 4.5:1 on the surface the text is actually on** — white cards *and* the `#ececec` canvas (product captions sit on the canvas). `inkMuted` is `#5f5f5f` (5.4:1 canvas); `inkFaint` is not for content.
 - **Orange as text** uses `accentText` (`#b93a08`, 4.8:1), via `tone="accent"`. The bright `accent` (`#ea580c`, 3.0:1 on canvas) is for fills, icons and rings only.
+- **White text on orange** uses the `accentFill` fill (`#d2470b`, 4.5:1) and the CTA gradient (`#d2470b → #c2410c`); the brighter brand `#ea580c` (3.6:1 with white) is for icons, rings and borders.
+- **Product names are one line with an ellipsis**, always — a long name must never make one card taller than its neighbours.
 - **Small text is Medium (500) or heavier**; Regular is for 14 px and up. Thin small grey text is what reads as "scribbled in".
 - **Size floor:** nothing below 11 px; content below 12 px is not allowed.
 

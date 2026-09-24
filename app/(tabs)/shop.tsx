@@ -325,7 +325,7 @@ export default function ShopScreen() {
               borderRadius: radius.full,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: activeFilterCount > 0 ? color.accent : color.surfaceSunken,
+              backgroundColor: activeFilterCount > 0 ? color.accentFill : color.surfaceSunken,
             }}
           >
             <Ionicons name="options-outline" size={19} color={activeFilterCount > 0 ? '#fff' : color.inkMuted} />
@@ -368,8 +368,8 @@ export default function ShopScreen() {
             style={{
               flexDirection: 'row', alignItems: 'center', gap: 5,
               paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full,
-              backgroundColor: saleOnly ? color.accent : color.surface,
-              borderWidth: 1, borderColor: saleOnly ? color.accent : color.border,
+              backgroundColor: saleOnly ? color.accentFill : color.surface,
+              borderWidth: 1, borderColor: saleOnly ? color.accentFill : color.border,
             }}
           >
             <Ionicons name="pricetag" size={12} color={saleOnly ? color.onAccent : color.accent} />
@@ -383,9 +383,9 @@ export default function ShopScreen() {
                 paddingHorizontal: 14,
                 paddingVertical: 6,
                 borderRadius: radius.full,
-                backgroundColor: sort === opt.value ? color.accent : color.surface,
+                backgroundColor: sort === opt.value ? color.accentFill : color.surface,
                 borderWidth: 1,
-                borderColor: sort === opt.value ? color.accent : color.border,
+                borderColor: sort === opt.value ? color.accentFill : color.border,
               }}
             >
               <Text variant="metaStrong" style={{ color: sort === opt.value ? '#fff' : color.inkMuted }}>

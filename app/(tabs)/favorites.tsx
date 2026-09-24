@@ -161,9 +161,9 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
         paddingHorizontal: 14,
         paddingVertical: 7,
         borderRadius: radius.full,
-        backgroundColor: active ? color.accent : color.surface,
+        backgroundColor: active ? color.accentFill : color.surface,
         borderWidth: 1,
-        borderColor: active ? color.accent : color.fieldBorder,
+        borderColor: active ? color.accentFill : color.fieldBorder,
       }}
     >
       <Text variant="metaStrong" style={{ color: active ? color.onAccent : color.inkBody }}>{label}</Text>

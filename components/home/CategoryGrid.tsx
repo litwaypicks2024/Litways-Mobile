@@ -13,7 +13,8 @@ import type { Category } from '@/types';
  * search bar. Categories are how shoppers find things here, so they get the
  * most prominent spot instead of a scrolling strip. Categories the shopper
  * leans toward lead the grid and carry an accent ring; the last cell opens
- * the full catalog.
+ * the full catalog. The highlight lives on the tile's border and label only —
+ * nothing is drawn over the image.
  */
 
 const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -107,18 +108,8 @@ export function CategoryGrid({ categories, loading, forYou, onOpenCategory, onOp
                       <Ionicons name={iconFor(cat.slug ?? '', cat.name ?? '')} size={28} color={color.accent} />
                     </View>
                   )}
-                  {highlighted && (
-                    <View
-                      style={{
-                        position: 'absolute', top: 4, left: 4, paddingHorizontal: 6, height: 18, borderRadius: 9,
-                        backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      <Text variant="label" style={{ color: color.onAccent, letterSpacing: 0 }}>For you</Text>
-                    </View>
-                  )}
                 </View>
-                <Text variant="metaStrong" numberOfLines={2} style={{ textAlign: 'center', marginTop: 6 }}>
+                <Text variant="metaStrong" tone={highlighted ? 'accent' : 'default'} numberOfLines={2} style={{ textAlign: 'center', marginTop: 6 }}>
                   {cat.name}
                 </Text>
               </PressableScale>
