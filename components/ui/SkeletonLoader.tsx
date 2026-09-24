@@ -1,13 +1,15 @@
 import React, { useEffect } from 'react';
 import { View, type ViewStyle } from 'react-native';
 import Animated, {
-  useSharedValue,
+  makeMutable,
+  cancelAnimation,
   useAnimatedStyle,
+  interpolate,
   withRepeat,
   withTiming,
   Easing,
+  ReduceMotion,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 
 interface SkeletonProps {
   width?: number | `${number}%`;
@@ -16,43 +18,42 @@ interface SkeletonProps {
   style?: ViewStyle;
 }
 
-export function SkeletonBlock({ width = '100%', height, borderRadius = 8, style }: SkeletonProps) {
-  const translateX = useSharedValue(-1);
+/**
+ * One clock drives every skeleton on screen. Each block used to start its own
+ * repeating animation plus a gradient view, so a first load with dozens of
+ * blocks ran dozens of animations on the UI thread. Now a single timing loop
+ * runs while at least one block is mounted (reference-counted) and stops the
+ * moment the last one unmounts; each block just reads it into an opacity.
+ */
+const pulse = makeMutable(0);
+let mounted = 0;
 
+function usePulse() {
   useEffect(() => {
-    translateX.value = withRepeat(
-      withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      false
-    );
+    if (mounted++ === 0) {
+      pulse.value = withRepeat(
+        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease), reduceMotion: ReduceMotion.System }),
+        -1,
+        true
+      );
+    }
+    return () => {
+      if (--mounted === 0) {
+        cancelAnimation(pulse);
+        pulse.value = 0;
+      }
+    };
   }, []);
+}
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value * 200 }],
-  }));
+export function SkeletonBlock({ width = '100%', height, borderRadius = 8, style }: SkeletonProps) {
+  usePulse();
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: interpolate(pulse.value, [0, 1], [1, 0.55]) }));
 
   return (
-    <View
-      style={[
-        {
-          width: width as any,
-          height,
-          borderRadius,
-          backgroundColor: '#e2e2e2',
-          overflow: 'hidden',
-        },
-        style,
-      ]}
-    >
-      <Animated.View style={[{ position: 'absolute', top: 0, bottom: 0, left: -200, right: -200 }, animatedStyle]}>
-        <LinearGradient
-          colors={['#e2e2e2', '#ececec', '#e2e2e2']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ flex: 1 }}
-        />
-      </Animated.View>
-    </View>
+    <Animated.View
+      style={[{ width: width as any, height, borderRadius, backgroundColor: '#e2e2e2' }, style, animatedStyle]}
+    />
   );
 }
 

@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { rankedCategories, useTasteStore, type CategoryTaste } from '@/store/taste';
 import { useWishlistStore } from '@/store/wishlist';
 import { useCartStore } from '@/store/cart';
-import type { Product } from '@/types';
+import { CARD_COLUMNS, type CardProduct } from '@/lib/catalog';
 
 /** Categories the shopper leans toward, strongest first. Empty for a new shopper. */
 export function useTopCategories(limit = 3): CategoryTaste[] {
@@ -26,8 +26,8 @@ function useEngagedIds(): Set<string> {
 const SELECT_LIMIT = 36;
 
 /** Round-robin across categories, giving earlier (stronger) ones extra turns. */
-function interleave(groups: Product[][]): Product[] {
-  const out: Product[] = [];
+function interleave(groups: CardProduct[][]): CardProduct[] {
+  const out: CardProduct[] = [];
   const queues = groups.map((g) => [...g]);
   const turns = queues.map((_, i) => (i === 0 ? 2 : 1));
   while (queues.some((q) => q.length)) {
@@ -44,8 +44,10 @@ function interleave(groups: Product[][]): Product[] {
  * anything they've already viewed, saved or carted. `personalized` is false
  * for a shopper with no history — callers then title the rail honestly
  * ("Popular right now") and the products come from the featured list.
+ * Home only shows the rail for personalised shoppers, so it passes
+ * `onlyWhenPersonalized` and skips a request whose result it would discard.
  */
-export function usePickedForYou(limit = 10) {
+export function usePickedForYou(limit = 10, opts: { onlyWhenPersonalized?: boolean } = {}) {
   const top = useTopCategories(3);
   const engaged = useEngagedIds();
   const slugKey = top.map((c) => c.slug).join(',');
@@ -53,8 +55,9 @@ export function usePickedForYou(limit = 10) {
   const query = useQuery({
     queryKey: ['picked-for-you', slugKey],
     staleTime: 60_000,
-    queryFn: async (): Promise<Product[]> => {
-      let q = supabase.from('products_with_categories').select('*').gt('stock', 0);
+    enabled: !opts.onlyWhenPersonalized || top.length > 0,
+    queryFn: async (): Promise<CardProduct[]> => {
+      let q = supabase.from('products_with_categories').select(CARD_COLUMNS).gt('stock', 0);
       if (top.length) q = q.in('category_slug', top.map((c) => c.slug));
       else q = q.eq('featured', true);
       const { data, error } = await q
@@ -62,7 +65,7 @@ export function usePickedForYou(limit = 10) {
         .order('rating', { ascending: false, nullsFirst: false })
         .limit(SELECT_LIMIT);
       if (error) throw error;
-      const rows = (data ?? []) as Product[];
+      const rows = (data ?? []) as CardProduct[];
       if (!top.length) return rows;
       return interleave(top.map((c) => rows.filter((p) => p.category_slug === c.slug)));
     },
@@ -83,17 +86,17 @@ export function useCategoryRail(slug: string | undefined, limit = 10) {
     queryKey: ['category-rail', slug],
     enabled: !!slug,
     staleTime: 60_000,
-    queryFn: async (): Promise<Product[]> => {
+    queryFn: async (): Promise<CardProduct[]> => {
       const { data, error } = await supabase
         .from('products_with_categories')
-        .select('*')
+        .select(CARD_COLUMNS)
         .eq('category_slug', slug!)
         .gt('stock', 0)
         .order('featured', { ascending: false })
         .order('rating', { ascending: false, nullsFirst: false })
         .limit(SELECT_LIMIT);
       if (error) throw error;
-      return (data ?? []) as Product[];
+      return (data ?? []) as CardProduct[];
     },
   });
   const products = useMemo(

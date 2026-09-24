@@ -29,9 +29,9 @@ import { useQuery } from '@tanstack/react-query';
 import { FlashList } from '@/components/ui/List';
 import { supabase } from '@/lib/supabase';
 import { color, radius } from '@/theme/tokens';
-import { useCartStore } from '@/store/cart';
+import { useCartStore, useUnitsInCart, cartHasRoomFor, MAX_CART_LINES } from '@/store/cart';
 import { showToast } from '@/components/ui/Toast';
-import { useWishlistStore } from '@/store/wishlist';
+import { useWishlistStore, MAX_WISHLIST_ITEMS } from '@/store/wishlist';
 import { useTasteStore } from '@/store/taste';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { IconButton } from '@/components/ui/IconButton';
@@ -200,7 +200,7 @@ export default function ProductDetailScreen() {
   // Units of this product already in the cart, across every size/colour line.
   // What's left to add is stock minus that — the store caps silently, so without
   // this the button would say "Added" for a tap that added nothing.
-  const inCart = useCartStore((s) => s.items.reduce((n, i) => (i.productId === product?.id ? n + i.quantity : n), 0));
+  const inCart = useUnitsInCart(product?.id);
   const remaining = Math.max(0, (product?.stock ?? 0) - inCart);
   const atLimit = inStock && remaining === 0;
   const maxQty = Math.max(1, Math.min(remaining, 10));
@@ -246,6 +246,10 @@ export default function ProductDetailScreen() {
       size: selectedSize ?? undefined,
       color: selectedColor ?? undefined,
     };
+    if (!cartHasRoomFor(useCartStore.getState().items, line)) {
+      showToast({ title: 'Your cart is full', detail: `You can have up to ${MAX_CART_LINES} different items. Check out or remove one to add more.`, tone: 'info', action: { label: 'View cart', href: '/(tabs)/cart' } });
+      return;
+    }
     // addItem adds one unit per call and caps at stock; never ask for more than is left.
     const qty = Math.min(quantity, remaining);
     for (let i = 0; i < qty; i++) addItem(line);
@@ -258,7 +262,7 @@ export default function ProductDetailScreen() {
 
   function handleWishlist() {
     if (!product) return;
-    toggle({
+    const outcome = toggle({
       productId: product.id!,
       name: product.name!,
       brand: product.brand!,
@@ -270,6 +274,9 @@ export default function ProductDetailScreen() {
       categorySlug: product.category_slug ?? undefined,
       categoryName: product.category_name ?? undefined,
     });
+    if (outcome === 'full') {
+      showToast({ title: 'Favorites is full', detail: `You can save up to ${MAX_WISHLIST_ITEMS} items. Remove one to save another.`, tone: 'info' });
+    }
   }
 
   async function handleShare() {
@@ -427,10 +434,7 @@ export default function ProductDetailScreen() {
             }}
             renderItem={({ item, index }) =>
               index === 0 ? (
-                <Animated.View
-                  sharedTransitionTag={`product-image-${product?.id}`}
-                  style={{ width: SW, height: IMAGE_HEIGHT }}
-                >
+                <View style={{ width: SW, height: IMAGE_HEIGHT }}>
                   <Image
                     source={item !== 'placeholder' ? { uri: item } : undefined}
                     style={{ width: '100%', height: '100%' }}
@@ -438,7 +442,7 @@ export default function ProductDetailScreen() {
                     transition={200}
                     placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
                   />
-                </Animated.View>
+                </View>
               ) : (
                 <Image
                   source={{ uri: item }}

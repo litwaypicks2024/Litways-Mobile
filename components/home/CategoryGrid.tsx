@@ -6,6 +6,7 @@ import { Text } from '@/components/ui/Text';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { SkeletonBlock } from '@/components/ui/SkeletonLoader';
 import { color, gutter, radius, spacing } from '@/theme/tokens';
+import { thumb } from '@/lib/catalog';
 import type { Category } from '@/types';
 
 /**
@@ -102,7 +103,7 @@ export function CategoryGrid({ categories, loading, forYou, onOpenCategory, onOp
                   }}
                 >
                   {cat.image ? (
-                    <Image source={{ uri: cat.image }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
+                    <Image source={{ uri: thumb(cat.image, tile) }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
                   ) : (
                     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: color.accentSoft }}>
                       <Ionicons name={iconFor(cat.slug ?? '', cat.name ?? '')} size={28} color={color.accent} />

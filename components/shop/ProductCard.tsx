@@ -1,26 +1,25 @@
 import React, { memo, useEffect, useRef, useState } from 'react';
 import { View, TouchableOpacity, type GestureResponderEvent } from 'react-native';
 import { Image } from 'expo-image';
-import Animated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { color, radius, type } from '@/theme/tokens';
 import { PressableScale } from '@/components/ui/PressableScale';
-import { useWishlistStore } from '@/store/wishlist';
-import { useCartStore } from '@/store/cart';
+import { useWishlistStore, MAX_WISHLIST_ITEMS } from '@/store/wishlist';
+import { useCartStore, useUnitsInCart, cartHasRoomFor, MAX_CART_LINES } from '@/store/cart';
 import { flyToCart } from '@/components/motion/FlyToCart';
 import { showToast } from '@/components/ui/Toast';
 import { openQuickAdd } from '@/components/shop/QuickAddSheet';
 import { formatCurrency, discountPercent } from '@/lib/currency';
-import type { Product } from '@/types';
+import { thumb, type CardProduct } from '@/lib/catalog';
 import { Text } from '@/components/ui/Text';
 
 /** A touch of extra space between characters for the brand and name: semibold text this small sits tight on a grey canvas. */
 const CARD_TEXT_TRACKING = 0.3;
 
 interface Props {
-  product: Product;
+  product: CardProduct;
   width?: number;
   variant?: 'grid' | 'horizontal';
 }
@@ -32,9 +31,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
 
   const addItem = useCartStore((s) => s.addItem);
   // Units of this product already in the cart, across every size/colour line.
-  const inCart = useCartStore((s) =>
-    s.items.reduce((n, i) => (i.productId === product.id ? n + i.quantity : n), 0)
-  );
+  const inCart = useUnitsInCart(product.id);
   const [justAdded, setJustAdded] = useState(false);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (resetTimer.current) clearTimeout(resetTimer.current); }, []);
@@ -72,6 +69,10 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
       openQuickAdd(product);
       return;
     }
+    if (!cartHasRoomFor(useCartStore.getState().items, { productId: product.id ?? '', size: sizes[0], color: colors[0] })) {
+      showToast({ title: 'Your cart is full', detail: `You can have up to ${MAX_CART_LINES} different items. Check out or remove one to add more.`, tone: 'info', action: { label: 'View cart', href: '/(tabs)/cart' } });
+      return;
+    }
     flyToCart(e.nativeEvent.pageX, e.nativeEvent.pageY);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     addItem({
@@ -99,7 +100,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
   }
 
   function handleWishlist() {
-    toggle({
+    const outcome = toggle({
       productId: product.id ?? '',
       name: product.name ?? '',
       brand: product.brand ?? '',
@@ -111,6 +112,9 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
       categorySlug: product.category_slug ?? undefined,
       categoryName: product.category_name ?? undefined,
     });
+    if (outcome === 'full') {
+      showToast({ title: 'Favorites is full', detail: `You can save up to ${MAX_WISHLIST_ITEMS} items. Remove one to save another.`, tone: 'info' });
+    }
   }
 
   const imageHeight = isHorizontal ? 185 : 200;
@@ -126,12 +130,9 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
       }}
     >
       {/* Image — the card IS the image now, no enclosing box */}
-      <Animated.View
-        sharedTransitionTag={`product-image-${product.id}`}
-        style={{ position: 'relative', height: imageHeight, borderRadius: radius.lg, overflow: 'hidden' }}
-      >
+      <View style={{ position: 'relative', height: imageHeight, borderRadius: radius.lg, overflow: 'hidden' }}>
         <Image
-          source={{ uri: imageUrl ?? undefined }}
+          source={{ uri: thumb(imageUrl, width ?? 172) }}
           style={{ width: '100%', height: '100%' }}
           contentFit="cover"
           transition={200}
@@ -218,7 +219,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
             )}
           </TouchableOpacity>
         )}
-      </Animated.View>
+      </View>
 
       {/* Caption — sits directly on the grey canvas, no card box */}
       <View style={{ paddingTop: 8, paddingHorizontal: 2 }}>

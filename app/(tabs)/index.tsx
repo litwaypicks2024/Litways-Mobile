@@ -11,7 +11,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { FlashList } from '@/components/ui/List';
-import { supabase } from '@/lib/supabase';
 import { color, radius, spacing, gutter, shadow } from '@/theme/tokens';
 import { useAuthStore } from '@/store/auth';
 import { ProductCard } from '@/components/shop/ProductCard';
@@ -31,7 +30,9 @@ import { QuickLinks } from '@/components/home/QuickLinks';
 import { ActiveOrderCard } from '@/components/home/ActiveOrderCard';
 import { useTasteStore, rankedCategories } from '@/store/taste';
 import { usePickedForYou, useCategoryRail, likeSubtitle } from '@/lib/personalization';
-import type { Product, Category } from '@/types';
+import { homeFeedOptions, categoriesOptions } from '@/lib/homeFeed';
+import type { CardProduct } from '@/lib/catalog';
+import type { Category } from '@/types';
 import { Text } from '@/components/ui/Text';
 
 /** "Good morning" / "Good afternoon" / "Good evening" by device clock. */
@@ -41,6 +42,13 @@ function daypartGreeting(): string {
   if (h < 18) return 'Good afternoon';
   return 'Good evening';
 }
+
+const MARQUEE_PHRASES = ['New season drops', 'Pay with MTN MoMo', 'Delivering to all 15 counties', 'Monrovia & beyond'];
+
+// Module-level so the deals list gets stable references and skips re-renders.
+const renderDeal = ({ item }: { item: CardProduct }) => <ProductCard product={item} width={172} variant="horizontal" />;
+const dealKey = (item: CardProduct) => item.id ?? '';
+const DealSeparator = () => <View style={{ width: spacing.md }} />;
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -53,63 +61,29 @@ export default function HomeScreen() {
   const tasteCategories = useTasteStore((s) => s.categories);
   const recentlyViewed = useTasteStore((s) => s.recentlyViewed);
   const clearRecentlyViewed = useTasteStore((s) => s.clearRecentlyViewed);
-  const picked = usePickedForYou();
+  const picked = usePickedForYou(10, { onlyWhenPersonalized: true });
   const topCategory = picked.topCategories[0];
   const moreInTop = useCategoryRail(topCategory?.slug);
 
-  const {
-    data: featured,
-    isLoading: loadingFeatured,
-    isError: errorFeatured,
-    isFetching: fetchingFeatured,
-    refetch: refetchFeatured,
-  } = useQuery({
-    queryKey: ['featured-products'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('featured_products').select('*').limit(10);
-      if (error) throw error;
-      return data as Product[];
-    },
-  });
-
-  const {
-    data: newest,
-    isLoading: loadingNewest,
-    isError: errorNewest,
-    isFetching: fetchingNewest,
-    refetch: refetchNewest,
-  } = useQuery({
-    queryKey: ['newest-products'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('products_with_categories')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(6);
-      if (error) throw error;
-      return data as Product[];
-    },
-  });
-
-  const {
-    data: deals,
-    isLoading: loadingDeals,
-    isError: errorDeals,
-    isFetching: fetchingDeals,
-    refetch: refetchDeals,
-  } = useQuery({
-    queryKey: ['deal-products'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('products_with_categories')
-        .select('*')
-        .not('sale_price', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(8);
-      if (error) throw error;
-      return data as Product[];
-    },
-  });
+  // One query for the three shelves (see lib/homeFeed); it is also prefetched
+  // at boot and restored from disk, so on most launches this has data at once.
+  const { data: feed, isLoading: loadingFeed, isError: feedFailed, isFetching: fetchingFeed, refetch: refetchFeed } =
+    useQuery(homeFeedOptions);
+  const featured = feed?.featured;
+  const newest = feed?.newest;
+  const deals = feed?.deals;
+  const loadingFeatured = loadingFeed;
+  const loadingNewest = loadingFeed;
+  const loadingDeals = loadingFeed;
+  const errorFeatured = feedFailed || feed?.featured === null;
+  const errorNewest = feedFailed || feed?.newest === null;
+  const errorDeals = feedFailed || feed?.deals === null;
+  const fetchingFeatured = fetchingFeed;
+  const fetchingNewest = fetchingFeed;
+  const fetchingDeals = fetchingFeed;
+  const refetchFeatured = refetchFeed;
+  const refetchNewest = refetchFeed;
+  const refetchDeals = refetchFeed;
 
   const {
     data: categories,
@@ -117,17 +91,7 @@ export default function HomeScreen() {
     isError: errorCats,
     isFetching: fetchingCats,
     refetch: refetchCats,
-  } = useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('item_count', { ascending: false });
-      if (error) throw error;
-      return data as Category[];
-    },
-  });
+  } = useQuery(categoriesOptions);
 
   // Categories the shopper cares about lead the row, the rest keep their usual order.
   const orderedCategories = useMemo(() => {
@@ -140,9 +104,9 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchFeatured(), refetchCats(), refetchNewest(), refetchDeals()]);
+    await Promise.all([refetchFeed(), refetchCats()]);
     setRefreshing(false);
-  }, [refetchFeatured, refetchCats, refetchNewest, refetchDeals]);
+  }, [refetchFeed, refetchCats]);
 
   // Biggest genuine discount across the deal products — honest urgency, no fake timers.
   const maxDiscount = useMemo(
@@ -219,7 +183,7 @@ export default function HomeScreen() {
         {/* ─── Kinetic marquee — the brand's promises on a moving ink band ─── */}
         <Animated.View entering={FadeInDown.duration(300).delay(0 * 60).reduceMotion(ReduceMotion.System)}>
           <Marquee style={{ backgroundColor: color.ink, paddingVertical: 9 }}>
-            {['New season drops', 'Pay with MTN MoMo', 'Delivering to all 15 counties', 'Monrovia & beyond'].map(
+            {MARQUEE_PHRASES.map(
               (phrase) => (
                 <View key={phrase} style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text variant="label"
@@ -334,9 +298,9 @@ export default function HomeScreen() {
                 showsHorizontalScrollIndicator={false}
                 estimatedItemSize={172}
                 contentContainerStyle={{ paddingHorizontal: gutter }}
-                ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
-                renderItem={({ item }) => <ProductCard product={item} width={172} variant="horizontal" />}
-                keyExtractor={(item) => item.id ?? ''}
+                ItemSeparatorComponent={DealSeparator}
+                renderItem={renderDeal}
+                keyExtractor={dealKey}
               />
             </View>
           )}
@@ -345,7 +309,7 @@ export default function HomeScreen() {
         {/* ─── Personal shelves: pick up where you left off, then more of what you like ─── */}
         <ProductRail
           title="Pick up where you left off"
-          products={recentlyViewed as unknown as Product[]}
+          products={recentlyViewed}
           actionLabel="Clear"
           onAction={clearRecentlyViewed}
         />

@@ -5,6 +5,14 @@ import { storageAdapter } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useTasteStore } from '@/store/taste';
+import { chunk, IN_CHUNK } from '@/lib/chunk';
+
+/**
+ * Most saved items kept on this device. Bounds the persisted list and the
+ * product lookups on sign-in. Remote rows beyond it are left on the server
+ * untouched (never deleted), they just aren't mirrored locally.
+ */
+export const MAX_WISHLIST_ITEMS = 200;
 
 // `public.wishlists` landed on the backend (user_id, product_id, created_at —
 // PK (user_id, product_id), own-row RLS). Sync design (v1, kept deliberately
@@ -20,7 +28,8 @@ interface WishlistState {
   items: WishlistItem[];
   addItem: (item: WishlistItem) => void;
   removeItem: (productId: string) => void;
-  toggle: (item: WishlistItem) => void;
+  /** 'full' when adding would exceed MAX_WISHLIST_ITEMS; nothing changes then. */
+  toggle: (item: WishlistItem) => 'added' | 'removed' | 'full';
   isWishlisted: (productId: string) => boolean;
   clear: () => void;
   loadFromDb: (userId: string) => Promise<void>;
@@ -79,6 +88,7 @@ export const useWishlistStore = create<WishlistState>()(
       addItem: (item) =>
         set((state) => {
           if (idsFor(state.items).has(item.productId)) return state;
+          if (state.items.length >= MAX_WISHLIST_ITEMS) return state;
           syncAdd(item.productId);
           useTasteStore.getState().bump(item.categorySlug, item.categoryName, 'wishlist');
           return { items: [...state.items, item] };
@@ -95,9 +105,11 @@ export const useWishlistStore = create<WishlistState>()(
         const { isWishlisted, addItem, removeItem } = get();
         if (isWishlisted(item.productId)) {
           removeItem(item.productId);
-        } else {
-          addItem(item);
+          return 'removed';
         }
+        if (get().items.length >= MAX_WISHLIST_ITEMS) return 'full';
+        addItem(item);
+        return 'added';
       },
 
       isWishlisted: (productId) => idsFor(get().items).has(productId),
@@ -127,30 +139,40 @@ export const useWishlistStore = create<WishlistState>()(
         const localItems = get().items;
         const localIds = idsFor(localItems);
 
-        const missingIds = [...remoteIds].filter((id) => !localIds.has(id));
+        // Only mirror as many as there is room for; the rest stay on the server.
+        const room = Math.max(0, MAX_WISHLIST_ITEMS - localItems.length);
+        const missingIds = [...remoteIds].filter((id) => !localIds.has(id)).slice(0, room);
         let newItems: WishlistItem[] = [];
         if (missingIds.length > 0) {
-          const { data: products, error: productsError } = await supabase
-            .from('products')
-            .select('id, name, brand, price, sale_price, image_urls, slug, stock')
-            .in('id', missingIds);
-
-          if (productsError) {
-            console.warn(
-              'Wishlist loadFromDb: failed to fetch product details for remote items:',
-              productsError.message
-            );
-          } else {
-            newItems = (products ?? []).map((p) => ({
-              productId: p.id,
-              name: p.name,
-              brand: p.brand,
-              price: p.price,
-              salePrice: p.sale_price ?? undefined,
-              imageUrl: p.image_urls?.[0] ?? '',
-              slug: p.slug,
-              stock: p.stock,
-            }));
+          const results = await Promise.all(
+            chunk(missingIds, IN_CHUNK).map((ids) =>
+              supabase
+                .from('products')
+                .select('id, name, brand, price, sale_price, image_urls, slug, stock')
+                .in('id', ids)
+            )
+          );
+          // A failed chunk skips just those ids this pass; they're picked up on a later sync.
+          for (const { data: products, error: productsError } of results) {
+            if (productsError) {
+              console.warn(
+                'Wishlist loadFromDb: failed to fetch product details for remote items:',
+                productsError.message
+              );
+              continue;
+            }
+            for (const p of products ?? []) {
+              newItems.push({
+                productId: p.id,
+                name: p.name,
+                brand: p.brand,
+                price: p.price,
+                salePrice: p.sale_price ?? undefined,
+                imageUrl: p.image_urls?.[0] ?? '',
+                slug: p.slug,
+                stock: p.stock,
+              });
+            }
           }
         }
 

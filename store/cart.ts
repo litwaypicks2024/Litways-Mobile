@@ -9,6 +9,40 @@ function cartKey(item: Pick<CartItem, 'productId' | 'size' | 'color'>): string {
 }
 
 /**
+ * Most distinct lines a shopper can ADD on this device. Generous for a phone
+ * shop, but it keeps the persisted cart, the merge and the stock recheck
+ * (`.in('id', ids)`) bounded. It only gates adding: a cart that arrives from
+ * the server (the web app shares the table) is never truncated, because
+ * writing a shortened list back would delete the shopper's lines there.
+ */
+export const MAX_CART_LINES = 50;
+
+// One product can sit in several lines (sizes/colours), and every ProductCard
+// asks "how many of these are in the cart?" on each cart change. A reduce per
+// card is O(cards x lines); one Map per `items` array makes each lookup O(1).
+// Keyed on the array reference, which zustand replaces on every change.
+let unitsFor: CartItem[] | null = null;
+let unitsById = new Map<string, number>();
+
+/** Units of a product already in the cart, across all its size/colour lines. */
+export function unitsInCart(items: CartItem[], productId: string | null | undefined): number {
+  if (!productId) return 0;
+  if (unitsFor !== items) {
+    unitsFor = items;
+    unitsById = new Map();
+    for (const i of items) unitsById.set(i.productId, (unitsById.get(i.productId) ?? 0) + i.quantity);
+  }
+  return unitsById.get(productId) ?? 0;
+}
+
+/** True if this line is already in the cart (it will just gain a unit) or there is a free line. */
+export function cartHasRoomFor(items: CartItem[], line: Pick<CartItem, 'productId' | 'size' | 'color'>): boolean {
+  if (items.length < MAX_CART_LINES) return true;
+  const key = cartKey(line);
+  return items.some((i) => cartKey(i) === key);
+}
+
+/**
  * The `carts` table (`{ user_id, items: jsonb[] }`) is shared with the web
  * app. Both apps write the CANONICAL v1 shape now (see docs/CART_CONTRACT.md
  * for the full spec):
@@ -425,6 +459,8 @@ export const useCartStore = create<CartState>()(
 
       addItem: (newItem) => {
         set((state) => {
+          // Callers check cartHasRoomFor first to tell the shopper; this is the backstop.
+          if (!cartHasRoomFor(state.items, newItem)) return state;
           const key = cartKey(newItem);
           const existing = state.items.find((i) => cartKey(i) === key);
           if (existing) {
@@ -681,3 +717,7 @@ export const useCartStore = create<CartState>()(
     }
   )
 );
+
+/** Live units of a product in the cart; re-renders only when that one number changes. */
+export const useUnitsInCart = (productId: string | null | undefined) =>
+  useCartStore((s) => unitsInCart(s.items, productId));
