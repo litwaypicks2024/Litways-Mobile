@@ -104,6 +104,8 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
       imageUrl: imageUrl ?? '',
       slug: product.slug ?? '',
       stock: product.stock ?? 0,
+      categorySlug: product.category_slug ?? undefined,
+      categoryName: product.category_name ?? undefined,
     });
   }
 

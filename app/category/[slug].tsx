@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, Platform, ActivityIndicator, RefreshControl } from 'react-native';
 import { FlashList } from '@/components/ui/List';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -12,6 +12,7 @@ import type { Product } from '@/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/ui/IconButton';
 import { color, font } from '@/theme/tokens';
+import { useTasteStore } from '@/store/taste';
 import { BrandLoader } from '@/components/motion/BrandLoader';
 import Animated, { FadeIn, ReduceMotion } from 'react-native-reanimated';
 
@@ -50,6 +51,16 @@ export default function CategoryScreen() {
 
   const products = useMemo(() => data?.pages.flatMap((p) => p) ?? [], [data]);
   const categoryName = products[0]?.category_name ?? slug;
+
+  // Opening a category is a deliberate interest signal — count it once the
+  // name has resolved (or with the slug if the category is empty).
+  const resolvedName = products[0]?.category_name;
+  useEffect(() => {
+    if (slug && (resolvedName || (!isLoading && !products.length))) {
+      useTasteStore.getState().bump(slug, resolvedName ?? slug, 'category');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, resolvedName, isLoading]);
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bg }}>

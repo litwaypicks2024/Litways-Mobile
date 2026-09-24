@@ -36,6 +36,9 @@ import { MotifOverlay } from '@/components/brand/Motif';
 import { LogoMark } from '@/components/brand/LogoMark';
 import { Marquee } from '@/components/brand/Marquee';
 import { RotatingBadge } from '@/components/brand/RotatingBadge';
+import { ProductRail } from '@/components/shop/ProductRail';
+import { useTasteStore, rankedCategories } from '@/store/taste';
+import { usePickedForYou, useCategoryRail } from '@/lib/personalization';
 import type { Product, Category } from '@/types';
 
 /* Bundled brand campaign shot — subjects right, quiet left half for the copy. */
@@ -75,6 +78,14 @@ export default function HomeScreen() {
   const firstName = useAuthStore((s) => s.profile?.first_name);
   const [refreshing, setRefreshing] = useState(false);
   const tabBarClearance = useTabBarClearance();
+
+  /* Personalisation: learned on-device from what the shopper views, saves and searches. */
+  const tasteCategories = useTasteStore((s) => s.categories);
+  const recentlyViewed = useTasteStore((s) => s.recentlyViewed);
+  const clearRecentlyViewed = useTasteStore((s) => s.clearRecentlyViewed);
+  const picked = usePickedForYou();
+  const topCategory = picked.topCategories[0];
+  const moreInTop = useCategoryRail(topCategory?.slug);
 
   /* Scroll-driven parallax: the photo drifts inside its arch as you scroll. */
   const scrollY = useSharedValue(0);
@@ -160,6 +171,13 @@ export default function HomeScreen() {
       return data as Category[];
     },
   });
+
+  // Categories the shopper cares about lead the row, the rest keep their usual order.
+  const orderedCategories = useMemo(() => {
+    if (!categories) return categories;
+    const rank = new Map(rankedCategories(tasteCategories).map((c, i) => [c.slug, i]));
+    return [...categories].sort((a, b) => (rank.get(a.slug) ?? Infinity) - (rank.get(b.slug) ?? Infinity));
+  }, [categories, tasteCategories]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -355,7 +373,7 @@ export default function HomeScreen() {
                     <SkeletonBlock width={52} height={10} borderRadius={5} />
                   </View>
                 ))
-              : categories?.map((cat) => (
+              : orderedCategories?.map((cat) => (
                   <PressableScale
                     key={cat.id}
                     haptic
@@ -447,6 +465,34 @@ export default function HomeScreen() {
             </View>
           )}
         </Animated.View>
+
+        {/* ─── Personal shelves: pick up where you left off, then more of what you like ─── */}
+        <ProductRail
+          title="Pick up where you left off"
+          products={recentlyViewed as unknown as Product[]}
+          actionLabel="Clear"
+          onAction={clearRecentlyViewed}
+        />
+        {picked.personalized && (
+          <ProductRail
+            title="Picked for you"
+            subtitle={`Because you like ${picked.topCategories.map((c) => c.name).slice(0, 2).join(' & ')}`}
+            products={picked.products}
+            loading={picked.isLoading}
+            actionLabel="Browse"
+            onAction={() => router.push('/(tabs)/shop')}
+          />
+        )}
+        {topCategory && (
+          <ProductRail
+            title={`More ${topCategory.name}`}
+            subtitle="Your most-browsed category"
+            products={moreInTop.products}
+            loading={moreInTop.isLoading}
+            actionLabel="See all"
+            onAction={() => router.push(`/category/${topCategory.slug}`)}
+          />
+        )}
 
         {/* ─── Popular right now ─── */}
         <Animated.View

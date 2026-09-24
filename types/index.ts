@@ -42,6 +42,9 @@ export interface WishlistItem {
   imageUrl: string;
   slug: string;
   stock: number;
+  /** Set when saved from a screen that knows the category; feeds Favorites grouping and taste. */
+  categorySlug?: string;
+  categoryName?: string;
 }
 
 export interface OrderItem {
