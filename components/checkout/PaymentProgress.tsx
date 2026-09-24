@@ -11,6 +11,8 @@ type Phase = 'processing' | 'checking' | 'polling';
 interface Props {
   phase: Phase | null;
   phone: string;
+  /** Status checks are failing: say so, and that the payment itself is unaffected. */
+  offline?: boolean;
 }
 
 const STEPS = ['Order created', 'Approve on your phone', 'Payment confirmed'] as const;
@@ -21,7 +23,7 @@ const STEPS = ['Order created', 'Approve on your phone', 'Payment confirmed'] as
  * approval happens in a USSD prompt outside the app, so "look at your phone"
  * is the instruction that matters.
  */
-export function PaymentProgress({ phase, phone }: Props) {
+export function PaymentProgress({ phase, phone, offline }: Props) {
   if (!phase) return null;
   // 0 = creating the order (or, when 'checking', confirming it reached us), 1 = waiting for approval.
   const active = phase === 'polling' ? 1 : 0;
@@ -46,6 +48,18 @@ export function PaymentProgress({ phase, phone }: Props) {
           ? 'This only takes a moment.'
           : `We sent a MoMo prompt to ${phone || 'your phone'}. Enter your PIN to finish — we'll confirm automatically.`}
       </Text>
+
+      {offline && phase !== 'checking' && (
+        <View
+          accessibilityRole="alert"
+          style={{ alignSelf: 'stretch', maxWidth: 340, marginTop: spacing.lg, flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start', backgroundColor: color.accentSoft, borderRadius: radius.md, padding: spacing.md }}
+        >
+          <Ionicons name="cloud-offline-outline" size={20} color={color.accent} />
+          <Text variant="caption" tone="body" style={{ flex: 1 }}>
+            You're offline. Your payment is safe: approving the prompt on your phone still works, and we'll confirm as soon as you're back online.
+          </Text>
+        </View>
+      )}
 
       <View style={{ alignSelf: 'stretch', maxWidth: 340, marginTop: spacing['2xl'], backgroundColor: color.surface, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md }}>
         {STEPS.map((label, i) => {

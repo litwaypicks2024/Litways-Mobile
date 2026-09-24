@@ -95,6 +95,8 @@ export default function CheckoutScreen() {
   // Y of the delivery block, so a failed validation can scroll straight to it.
   const deliveryY = useRef(0);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
+  // True while status checks are failing (offline / server unreachable) during the wait.
+  const [connectionLost, setConnectionLost] = useState(false);
   const [referenceId, setReferenceId] = useState<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -200,11 +202,11 @@ export default function CheckoutScreen() {
     // an order history to point at. The "Check status" action goes straight
     // to confirmation.tsx, which knows how to poll/refresh a still-pending
     // order (see its "Check again" affordance).
-    function showPaymentNotice(title: string, base: string) {
+    function showPaymentNotice(title: string, lines: string[], tone: 'error' | 'warning' = 'error') {
       setNotice({
-        tone: 'error',
+        tone,
         title,
-        lines: [`${base} If you approved the prompt, check the order status before paying again.`],
+        lines,
         action: {
           label: 'Check order status',
           onPress: () => router.push({ pathname: '/confirmation', params: { referenceId } }),
@@ -230,7 +232,10 @@ export default function CheckoutScreen() {
         cleanup();
         void pendingPayment.clear();
         setPaymentStatus('failed');
-        showPaymentNotice('Payment failed', 'Your payment was declined.');
+        showPaymentNotice('Payment failed', [
+          'Your payment was declined, so nothing was charged.',
+          'You can try again, or use a different MTN number.',
+        ]);
       }
     }
 
@@ -264,14 +269,24 @@ export default function CheckoutScreen() {
 
     // Fallback poll — covers a dropped realtime socket or a wrong realtime
     // filter (see B-02): the backend resolves the reference itself.
+    const check = () =>
+      momoAPI
+        .checkStatus(referenceId)
+        .then((r) => {
+          if (mountedRef.current) setConnectionLost(false);
+          finalize(r.status);
+        })
+        .catch(() => {
+          if (mountedRef.current) setConnectionLost(true);
+        });
     const pollId = setInterval(() => {
-      momoAPI.checkStatus(referenceId).then((r) => finalize(r.status)).catch(() => {});
+      void check();
     }, 6000);
 
     // Re-check immediately when the app returns to the foreground.
     const appStateSub = AppState.addEventListener('change', (s) => {
       if (s === 'active') {
-        momoAPI.checkStatus(referenceId).then((r) => finalize(r.status)).catch(() => {});
+        void check();
       }
     });
 
@@ -286,7 +301,15 @@ export default function CheckoutScreen() {
       if (resolved) return;
       cleanup();
       setPaymentStatus('failed');
-      showPaymentNotice('Payment timed out', 'We didn\'t get a confirmation from MoMo in time.');
+      // Not a failure: the shopper may well have approved it and the confirmation is just slow.
+      showPaymentNotice(
+        'Still waiting for confirmation',
+        [
+          "We haven't heard back from MoMo yet. If you approved the prompt, your order will appear in Orders as soon as it's confirmed. There's no need to pay again.",
+          'If you did not approve it, nothing was charged.',
+        ],
+        'warning'
+      );
     }, PAYMENT_TIMEOUT_MS);
 
     return () => cleanup();
@@ -763,7 +786,7 @@ export default function CheckoutScreen() {
       )}
     </KeyboardAvoidingView>
 
-    <PaymentProgress phase={paymentStatus === 'processing' || paymentStatus === 'checking' || paymentStatus === 'polling' ? paymentStatus : null} phone={form.phone} />
+    <PaymentProgress phase={paymentStatus === 'processing' || paymentStatus === 'checking' || paymentStatus === 'polling' ? paymentStatus : null} phone={form.phone} offline={connectionLost} />
     </>
   );
 }
