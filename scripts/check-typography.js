@@ -37,6 +37,9 @@ for (const file of ROOTS.flatMap((r) => walk(r))) {
     if (/className="[^"]*\b(text-(4xl|5xl|6xl)|font-(extrabold|black|thin|light))\b/.test(line)) {
       console.log(`${file}:${i + 1}  off-scale Tailwind text class`); bad++;
     }
+    if (/<Text\b[^>]*className="[^"]*\btext-(xs|sm|base|lg|xl|2xl|3xl)\b/.test(line)) {
+      console.log(`${file}:${i + 1}  Tailwind text size on <Text> — use <Text variant>`); bad++;
+    }
   });
 }
 console.log(bad ? `\n${bad} typography issue(s)` : 'Typography scale: OK');

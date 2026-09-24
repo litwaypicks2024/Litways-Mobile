@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { LIBERIAN_COUNTIES } from '@/constants/counties';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text } from '@/components/ui/Text';
 
 export default function ShippingScreen() {
   const router = useRouter();
@@ -15,14 +16,14 @@ export default function ShippingScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={22} color={Colors.gray[800]} />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900">Shipping Info</Text>
+        <Text variant="heading">Shipping Info</Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <View className="bg-primary-50 rounded-2xl p-5 mb-5 flex-row items-start gap-3">
           <Ionicons name="car" size={24} color={Colors.primary[600]} />
           <View className="flex-1">
-            <Text className="text-base font-bold text-primary-800 mb-1">Nationwide Delivery</Text>
-            <Text className="text-sm text-primary-700 leading-5">We deliver to all 15 Liberian counties. Delivery fees are calculated at checkout based on your location.</Text>
+            <Text variant="heading" tone="accent" style={{ marginBottom: 4 }}>Nationwide Delivery</Text>
+            <Text variant="body" tone="accent">We deliver to all 15 Liberian counties. Delivery fees are calculated at checkout based on your location.</Text>
           </View>
         </View>
         {[
@@ -33,17 +34,17 @@ export default function ShippingScreen() {
           <View key={item.title} className="bg-white rounded-2xl p-5 shadow-sm mb-4">
             <View className="flex-row items-center gap-2 mb-3">
               <Ionicons name={item.icon as any} size={20} color={Colors.primary[600]} />
-              <Text className="text-base font-bold text-gray-900">{item.title}</Text>
+              <Text variant="heading">{item.title}</Text>
             </View>
-            <Text className="text-sm text-gray-600 leading-6">{item.body}</Text>
+            <Text variant="bodyLg" tone="body">{item.body}</Text>
           </View>
         ))}
         <View className="bg-white rounded-2xl p-5 shadow-sm">
-          <Text className="text-base font-bold text-gray-900 mb-3">Coverage — All 15 Counties</Text>
+          <Text variant="heading" style={{ marginBottom: 12 }}>Coverage — All 15 Counties</Text>
           <View className="flex-row flex-wrap gap-2">
             {LIBERIAN_COUNTIES.map((county) => (
               <View key={county} className="bg-primary-50 px-3 py-1.5 rounded-full">
-                <Text className="text-xs font-medium text-primary-700">{county}</Text>
+                <Text variant="metaStrong" tone="accent">{county}</Text>
               </View>
             ))}
           </View>

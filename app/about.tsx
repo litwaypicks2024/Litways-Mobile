@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text } from '@/components/ui/Text';
 
 export default function AboutScreen() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function AboutScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={22} color={Colors.gray[800]} />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900">About Us</Text>
+        <Text variant="heading">About Us</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -30,8 +31,8 @@ export default function AboutScreen() {
           <View className="w-20 h-20 bg-white/20 rounded-2xl items-center justify-center mb-4">
             <Ionicons name="bag" size={40} color="#fff" />
           </View>
-          <Text className="text-white text-3xl font-bold mb-2">Litway Picks</Text>
-          <Text className="text-white/80 text-sm text-center">Liberia's Premier Online Shopping Destination</Text>
+          <Text variant="display" tone="onAccent" style={{ marginBottom: 8 }}>Litway Picks</Text>
+          <Text variant="body" style={{ color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>Liberia's Premier Online Shopping Destination</Text>
         </LinearGradient>
 
         {/* Stats */}
@@ -39,8 +40,8 @@ export default function AboutScreen() {
           <View className="flex-row justify-around">
             {stats.map((s) => (
               <View key={s.label} className="items-center">
-                <Text className="text-2xl font-bold text-primary-600">{s.value}</Text>
-                <Text className="text-xs text-gray-500 mt-1">{s.label}</Text>
+                <Text variant="priceLg" tone="accent">{s.value}</Text>
+                <Text variant="meta" tone="muted" style={{ marginTop: 4 }}>{s.label}</Text>
               </View>
             ))}
           </View>
@@ -63,7 +64,7 @@ export default function AboutScreen() {
             ].map((item) => (
               <View key={item} className="flex-row items-start gap-2 mb-2">
                 <Ionicons name="checkmark-circle" size={16} color={Colors.primary[600]} style={{ marginTop: 1 }} />
-                <Text className="text-sm text-gray-600 flex-1">{item}</Text>
+                <Text variant="body" tone="body" style={{ flex: 1 }}>{item}</Text>
               </View>
             ))}
           </Section>
@@ -76,9 +77,9 @@ export default function AboutScreen() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View className="bg-white rounded-2xl p-5 shadow-sm">
-      <Text className="text-base font-bold text-gray-900 mb-3">{title}</Text>
+      <Text variant="heading" style={{ marginBottom: 12 }}>{title}</Text>
       {typeof children === 'string' ? (
-        <Text className="text-sm text-gray-600 leading-6">{children}</Text>
+        <Text variant="bodyLg" tone="body">{children}</Text>
       ) : (
         children
       )}

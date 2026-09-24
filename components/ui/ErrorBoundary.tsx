@@ -1,7 +1,8 @@
 import React, { Component, type ReactNode } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
+import { Text } from '@/components/ui/Text';
 
 interface Props {
   children: ReactNode;
@@ -37,17 +38,17 @@ export class ErrorBoundary extends Component<Props, State> {
           <View className="w-20 h-20 bg-red-50 rounded-full items-center justify-center mb-5">
             <Ionicons name="alert-circle-outline" size={36} color={Colors.error} />
           </View>
-          <Text className="text-xl font-bold text-gray-900 text-center mb-2">
+          <Text variant="title" style={{ textAlign: 'center', marginBottom: 8 }}>
             Something went wrong
           </Text>
-          <Text className="text-sm text-gray-500 text-center leading-5 mb-8">
+          <Text variant="body" tone="muted" style={{ textAlign: 'center', marginBottom: 32 }}>
             {this.state.error?.message ?? 'An unexpected error occurred.'}
           </Text>
           <TouchableOpacity
             onPress={this.retry}
             className="bg-primary-600 px-8 py-3 rounded-xl"
           >
-            <Text className="text-white font-semibold">Try Again</Text>
+            <Text variant="button" tone="onAccent">Try Again</Text>
           </TouchableOpacity>
         </View>
       );

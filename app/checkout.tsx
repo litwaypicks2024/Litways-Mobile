@@ -537,7 +537,7 @@ export default function CheckoutScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="small">Sign in to place your order</Text>
-                  <Text style={{ fontSize: 12, color: signInNudge ? color.danger : color.inkBody, fontWeight: signInNudge ? '700' : '400', marginTop: 1 }}>
+                  <Text variant={signInNudge ? 'metaStrong' : 'meta'} tone={signInNudge ? 'danger' : 'body'} style={{ marginTop: 1 }}>
                     {signInNudge ? 'Sign in to continue to payment. Your details are saved.' : 'Takes seconds, and lets you track this order'}
                   </Text>
                 </View>
@@ -663,7 +663,7 @@ export default function CheckoutScreen() {
                           onPress={() => { setField('county', county); setShowCountyPicker(false); }}
                           style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: color.border, backgroundColor: form.county === county ? color.accentSoft : color.surface }}
                         >
-                          <Text style={{ fontSize: 14, fontWeight: form.county === county ? '700' : '400', color: form.county === county ? color.accent : color.ink }}>
+                          <Text variant={form.county === county ? 'bodyStrong' : 'body'} tone={form.county === county ? 'accent' : 'default'}>
                             {county}
                           </Text>
                         </TouchableOpacity>

@@ -276,7 +276,7 @@ export default function CartScreen() {
               </View>
               <View style={{ height: 1, backgroundColor: color.border, marginVertical: 4 }} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: color.ink }}>Total</Text>
+                <Text variant="heading">Total</Text>
                 <Text variant="price" tone="accent">{formatCurrency(total)}</Text>
               </View>
             </View>

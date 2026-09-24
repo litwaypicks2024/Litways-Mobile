@@ -572,7 +572,7 @@ export default function ProductDetailScreen() {
               <View style={{ marginBottom: 24 }} onLayout={(e) => { sectionY.current.size = e.nativeEvent.layout.y; }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                   <Text variant="button">
-                    Size{selectedSize ? <Text style={{ color: color.accent }}>  {selectedSize}</Text> : ''}
+                    Size{selectedSize ? <Text tone="accent">  {selectedSize}</Text> : ''}
                   </Text>
                   {!selectedSize && (
                     <Text variant="metaStrong" style={{ color: missing === 'size' ? color.danger : color.accentPressed }}>
@@ -614,7 +614,7 @@ export default function ProductDetailScreen() {
               <View style={{ marginBottom: 24 }} onLayout={(e) => { sectionY.current.color = e.nativeEvent.layout.y; }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                   <Text variant="button">
-                    Color{selectedColor ? <Text style={{ color: color.accent }}>  {selectedColor}</Text> : ''}
+                    Color{selectedColor ? <Text tone="accent">  {selectedColor}</Text> : ''}
                   </Text>
                   {!selectedColor && (
                     <Text variant="metaStrong" style={{ color: missing === 'color' ? color.danger : color.accentPressed }}>
@@ -665,7 +665,7 @@ export default function ProductDetailScreen() {
                   >
                     <Ionicons name="remove" size={20} color={color.ink} />
                   </TouchableOpacity>
-                  <Text style={{ minWidth: 32, textAlign: 'center', fontSize: 16, fontWeight: '700', color: color.ink }} accessibilityLabel={`Quantity ${quantity}`}>
+                  <Text variant="heading" style={{ minWidth: 32, textAlign: 'center' }} accessibilityLabel={`Quantity ${quantity}`}>
                     {quantity}
                   </Text>
                   <TouchableOpacity
@@ -719,7 +719,7 @@ export default function ProductDetailScreen() {
                 >
                   <Ionicons name={row.icon as any} size={22} color={color.ink} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: color.ink }}>{row.title}</Text>
+                    <Text variant="bodyLg" style={{ fontWeight: '600' }}>{row.title}</Text>
                     <Text variant="caption" tone="body" style={{ marginTop: 1 }}>{row.sub}</Text>
                   </View>
                 </View>
@@ -860,7 +860,7 @@ export default function ProductDetailScreen() {
               size={20}
               color={inStock ? '#fff' : color.inkBody}
             />
-            <Text style={{ color: inStock ? '#fff' : color.inkBody, fontSize: 16, fontWeight: '700' }}>
+            <Text variant="button" style={{ color: inStock ? '#fff' : color.inkBody, fontSize: 16 }}>
               {ctaLabel}
             </Text>
           </Animated.View>

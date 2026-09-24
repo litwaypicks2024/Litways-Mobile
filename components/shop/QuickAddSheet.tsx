@@ -144,7 +144,7 @@ export function QuickAddSheetHost() {
       <View style={{ marginBottom: 20 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <Text variant="button">
-            {title}{selected ? <Text style={{ color: color.accent }}>  {selected}</Text> : ''}
+            {title}{selected ? <Text tone="accent">  {selected}</Text> : ''}
           </Text>
           {!selected && (
             <Text variant="metaStrong" style={{ color: isMissing ? color.danger : color.accentPressed }}>

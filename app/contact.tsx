@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { submitContactForm } from '@/lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { alertDialog } from '@/components/ui/Dialog';
+import { Text } from '@/components/ui/Text';
 
 export default function ContactScreen() {
   const router = useRouter();
@@ -51,7 +52,7 @@ export default function ContactScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={22} color={Colors.gray[800]} />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900">Contact Us</Text>
+        <Text variant="heading">Contact Us</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
@@ -63,15 +64,15 @@ export default function ContactScreen() {
                 <Ionicons name={c.icon as any} size={18} color={Colors.primary[600]} />
               </View>
               <View>
-                <Text className="text-xs text-gray-400 font-medium">{c.label}</Text>
-                <Text className="text-sm font-semibold text-gray-800">{c.value}</Text>
+                <Text variant="metaStrong" tone="muted">{c.label}</Text>
+                <Text variant="bodyStrong">{c.value}</Text>
               </View>
             </View>
           ))}
         </View>
 
         {/* Contact form */}
-        <Text className="text-base font-bold text-gray-900 mb-4">Send a Message</Text>
+        <Text variant="heading" style={{ marginBottom: 16 }}>Send a Message</Text>
         <View className="bg-white rounded-2xl p-5 shadow-sm mb-5">
           <Input label="Name *" leftIcon="person-outline" value={form.name} onChangeText={(v) => setForm((s) => ({ ...s, name: v }))} />
           <Input label="Email *" leftIcon="mail-outline" value={form.email} onChangeText={(v) => setForm((s) => ({ ...s, email: v }))} keyboardType="email-address" autoCapitalize="none" />
@@ -81,15 +82,15 @@ export default function ContactScreen() {
         </View>
 
         {/* FAQs */}
-        <Text className="text-base font-bold text-gray-900 mb-4">Frequently Asked Questions</Text>
+        <Text variant="heading" style={{ marginBottom: 16 }}>Frequently Asked Questions</Text>
         <View className="gap-3">
           {faqs.map((faq) => (
             <View key={faq.q} className="bg-white rounded-2xl p-4 shadow-sm">
               <View className="flex-row gap-2 mb-2">
                 <Ionicons name="help-circle" size={18} color={Colors.primary[600]} style={{ marginTop: 1 }} />
-                <Text className="text-sm font-semibold text-gray-900 flex-1">{faq.q}</Text>
+                <Text variant="bodyStrong" style={{ flex: 1 }}>{faq.q}</Text>
               </View>
-              <Text className="text-sm text-gray-600 leading-5 ml-6">{faq.a}</Text>
+              <Text variant="body" tone="body" style={{ marginLeft: 24 }}>{faq.a}</Text>
             </View>
           ))}
         </View>

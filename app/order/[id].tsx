@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   View,
-  Text,
   ScrollView,
   TouchableOpacity,
   Platform,
@@ -19,6 +18,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { formatCurrency } from '@/lib/currency';
 import type { Order } from '@/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text } from '@/components/ui/Text';
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -50,9 +50,9 @@ export default function OrderDetailScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.gray[800]} />
         </TouchableOpacity>
         <View className="flex-1">
-          <Text className="text-lg font-bold text-gray-900">Order Details</Text>
+          <Text variant="heading">Order Details</Text>
           {order?.external_id && (
-            <Text className="text-xs text-gray-400 font-medium">{order.external_id}</Text>
+            <Text variant="metaStrong" tone="muted">{order.external_id}</Text>
           )}
         </View>
         {order && <Badge label={order.payment_status} status={order.payment_status} />}
@@ -71,14 +71,14 @@ export default function OrderDetailScreen() {
       ) : !order ? (
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="receipt-outline" size={48} color={Colors.gray[300]} />
-          <Text className="text-base font-bold text-gray-700 mt-4 text-center">Order not found</Text>
+          <Text variant="heading" tone="body" style={{ marginTop: 16, textAlign: 'center' }}>Order not found</Text>
           <Button title="Go Back" variant="outline" onPress={() => router.back()} style={{ marginTop: 16 }} />
         </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           {/* Date + status */}
           <View className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-            <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Order Info</Text>
+            <Text variant="overline" tone="muted" style={{ marginBottom: 12 }}>Order Info</Text>
             <InfoRow label="Date" value={new Date(order.created_at!).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })} />
             <InfoRow label="Status" value={order.payment_status ?? '—'} highlight />
             <InfoRow label="Total" value={formatCurrency(order.final_total)} highlight />
@@ -86,7 +86,7 @@ export default function OrderDetailScreen() {
 
           {/* Delivery */}
           <View className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-            <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Delivery Details</Text>
+            <Text variant="overline" tone="muted" style={{ marginBottom: 12 }}>Delivery Details</Text>
             <InfoRow label="Name" value={`${order.customer_first_name ?? ''} ${order.customer_last_name ?? ''}`.trim()} />
             <InfoRow label="Phone" value={order.customer_phone ?? '—'} />
             <InfoRow label="Email" value={order.customer_email ?? '—'} />
@@ -98,7 +98,7 @@ export default function OrderDetailScreen() {
 
           {/* Items */}
           <View className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-            <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+            <Text variant="overline" tone="muted" style={{ marginBottom: 12 }}>
               Items ({(order.items as any[])?.length ?? 0})
             </Text>
             {((order.items as any[]) ?? []).map((item: any, i: number) => (
@@ -118,21 +118,21 @@ export default function OrderDetailScreen() {
                   </View>
                 )}
                 <View className="flex-1">
-                  <Text className="text-sm font-semibold text-gray-900" numberOfLines={2}>{item.name}</Text>
+                  <Text variant="bodyStrong" numberOfLines={2}>{item.name}</Text>
                   {(item.size || item.color) && (
-                    <Text className="text-xs text-gray-400 mt-0.5">
+                    <Text variant="meta" tone="muted" style={{ marginTop: 2 }}>
                       {[item.size && `Size: ${item.size}`, item.color && `Color: ${item.color}`].filter(Boolean).join(' · ')}
                     </Text>
                   )}
-                  <Text className="text-xs text-gray-500 mt-1">Qty: {item.quantity}</Text>
+                  <Text variant="meta" tone="muted" style={{ marginTop: 4 }}>Qty: {item.quantity}</Text>
                 </View>
-                <Text className="text-sm font-bold text-primary-600">{formatCurrency(item.price * item.quantity)}</Text>
+                <Text variant="bodyStrong" tone="accent">{formatCurrency(item.price * item.quantity)}</Text>
               </TouchableOpacity>
             ))}
 
             <View className="flex-row justify-between items-center pt-3">
-              <Text className="text-sm font-bold text-gray-900">Total</Text>
-              <Text className="text-base font-bold text-primary-600">{formatCurrency(order.final_total)}</Text>
+              <Text variant="bodyStrong">Total</Text>
+              <Text variant="price" tone="accent">{formatCurrency(order.final_total)}</Text>
             </View>
           </View>
 
@@ -151,8 +151,8 @@ export default function OrderDetailScreen() {
 function InfoRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <View className="flex-row justify-between items-start py-2 border-b border-gray-50">
-      <Text className="text-sm text-gray-500 flex-shrink-0 mr-4">{label}</Text>
-      <Text className={`text-sm font-semibold flex-1 text-right ${highlight ? 'text-primary-600' : 'text-gray-800'}`}>
+      <Text variant="body" tone="muted" style={{ flexShrink: 0, marginRight: 16 }}>{label}</Text>
+      <Text variant="bodyStrong" tone={highlight ? 'accent' : 'default'} style={{ flex: 1, textAlign: 'right' }}>
         {value}
       </Text>
     </View>
