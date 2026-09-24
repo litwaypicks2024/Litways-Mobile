@@ -441,7 +441,7 @@ export default function ShopScreen() {
                     accessibilityRole="button"
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.full, backgroundColor: color.surface, borderWidth: 1.5, borderColor: forYouSlugs.has(c.slug) ? color.accent : color.fieldBorder }}
                   >
-                    {forYouSlugs.has(c.slug) && <Ionicons name="sparkles" size={12} color={color.accent} />}
+                    {forYouSlugs.has(c.slug) && <Ionicons name="thumbs-up" size={12} color={color.accent} />}
                     <Text variant="small">{c.name}</Text>
                   </TouchableOpacity>
                 ))}
@@ -627,7 +627,7 @@ function CategoryChip({ label, active, forYou, onPress }: { label: string; activ
         borderColor: active ? color.ink : forYou ? color.accent : color.fieldBorder,
       }}
     >
-      {forYou && !active && <Ionicons name="sparkles" size={11} color={color.accent} />}
+      {forYou && !active && <Ionicons name="thumbs-up" size={11} color={color.accent} />}
       <Text variant="metaStrong" style={{ color: active ? color.onInk : color.ink }}>{label}</Text>
     </TouchableOpacity>
   );

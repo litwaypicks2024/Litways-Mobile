@@ -51,7 +51,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "check:type": "node scripts/check-typography.js"
+    "check:type": "node scripts/check-typography.js && node scripts/check-contrast.js"
   },
   "private": true
 }

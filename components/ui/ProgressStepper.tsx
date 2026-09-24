@@ -40,7 +40,7 @@ export function ProgressStepper({ steps, currentStep }: Props) {
                   color={active ? color.onAccent : done ? color.ink : color.inkFaint}
                 />
               </View>
-              <Text variant="label" style={{ color: active || done ? color.ink : color.inkFaint }}>
+              <Text variant="label" style={{ color: active || done ? color.ink : color.inkMuted }}>
                 {step.label}
               </Text>
             </View>

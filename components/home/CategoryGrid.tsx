@@ -20,7 +20,7 @@ const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   clothing: 'shirt-outline',
   shoes: 'footsteps-outline',
   electronics: 'phone-portrait-outline',
-  beauty: 'sparkles-outline',
+  beauty: 'flower-outline',
   home: 'home-outline',
   sports: 'football-outline',
   bags: 'bag-handle-outline',
@@ -110,11 +110,11 @@ export function CategoryGrid({ categories, loading, forYou, onOpenCategory, onOp
                   {highlighted && (
                     <View
                       style={{
-                        position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10,
+                        position: 'absolute', top: 4, left: 4, paddingHorizontal: 6, height: 18, borderRadius: 9,
                         backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center',
                       }}
                     >
-                      <Ionicons name="sparkles" size={11} color={color.onAccent} />
+                      <Text variant="label" style={{ color: color.onAccent, letterSpacing: 0 }}>For you</Text>
                     </View>
                   )}
                 </View>

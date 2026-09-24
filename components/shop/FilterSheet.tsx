@@ -178,7 +178,7 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
               <View className="flex-1">
                 <Text variant="meta" tone="muted" style={{ marginBottom: 4 }}>Min</Text>
                 <View className="flex-row items-center h-11" style={priceFieldStyle}>
-                  <Text tone="faint" style={{ marginRight: 4 }}>$</Text>
+                  <Text tone="muted" style={{ marginRight: 4 }}>$</Text>
                   <TextInput
                     value={local.minPrice?.toString() ?? ''}
                     onChangeText={(v) => setLocal((s) => ({ ...s, minPrice: v ? Number(v) : undefined }))}
@@ -192,7 +192,7 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
               <View className="flex-1">
                 <Text variant="meta" tone="muted" style={{ marginBottom: 4 }}>Max</Text>
                 <View className="flex-row items-center h-11" style={priceFieldStyle}>
-                  <Text tone="faint" style={{ marginRight: 4 }}>$</Text>
+                  <Text tone="muted" style={{ marginRight: 4 }}>$</Text>
                   <TextInput
                     value={local.maxPrice?.toString() ?? ''}
                     onChangeText={(v) => setLocal((s) => ({ ...s, maxPrice: v ? Number(v) : undefined }))}

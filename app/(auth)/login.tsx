@@ -317,7 +317,7 @@ export default function LoginScreen() {
             />
 
             {/* Legal note — belongs to the button ("by continuing"), not the screen edge */}
-            <Text variant="label" tone="faint" style={{ textAlign: 'center', marginTop: 12 }}>
+            <Text variant="label" tone="muted" style={{ textAlign: 'center', marginTop: 12 }}>
               By continuing, you agree to our{' '}
               <Text weight="semibold" tone="muted" onPress={() => router.push('/terms')}>
                 Terms of Service

@@ -338,7 +338,7 @@ const CartItemRow = React.memo(function CartItemRow({
       </PressableScale>
 
       <View style={{ flex: 1 }}>
-        <Text variant="label" tone="faint" style={{ textTransform: 'uppercase', marginBottom: 2 }}>
+        <Text variant="label" tone="muted" style={{ textTransform: 'uppercase', marginBottom: 2 }}>
           {item.brand}
         </Text>
         <Text variant="small" style={{ marginBottom: 5 }} numberOfLines={2}>
@@ -366,7 +366,7 @@ const CartItemRow = React.memo(function CartItemRow({
               {formatCurrency(item.price * item.quantity)}
             </Text>
             {item.listPrice != null && item.listPrice > item.price && (
-              <Text variant="meta" tone="faint" style={{ textDecorationLine: 'line-through' }}>
+              <Text variant="meta" tone="muted" style={{ textDecorationLine: 'line-through' }}>
                 {formatCurrency(item.listPrice * item.quantity)}
               </Text>
             )}

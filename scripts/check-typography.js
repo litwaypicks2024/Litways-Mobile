@@ -10,7 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SIZES = new Set([10, 11, 12, 13, 14, 15, 16, 17, 20, 24, 26, 32]);
+const SIZES = new Set([11, 12, 13, 14, 15, 16, 17, 20, 24, 26, 32]);
 // Artwork that renders before the fonts load (splash) may use system weights.
 const WEIGHT_EXEMPT = ['components/BrandSplash.tsx'];
 const ROOTS = ['app', 'components'];
@@ -36,6 +36,12 @@ for (const file of ROOTS.flatMap((r) => walk(r))) {
     }
     if (/className="[^"]*\b(text-(4xl|5xl|6xl)|font-(bold|semibold|medium|extrabold|black|thin|light))\b/.test(line)) {
       console.log(`${file}:${i + 1}  off-scale Tailwind text class`); bad++;
+    }
+    if (/tone="faint"/.test(line)) {
+      console.log(`${file}:${i + 1}  tone="faint" no longer exists — use muted`); bad++;
+    }
+    if (/<Text\b[^>]*color: color\.accent\b/.test(line)) {
+      console.log(`${file}:${i + 1}  accent orange as text fails contrast — use tone="accent" (accentText)`); bad++;
     }
     if (/<Text\b[^>]*className="[^"]*\btext-(xs|sm|base|lg|xl|2xl|3xl)\b/.test(line)) {
       console.log(`${file}:${i + 1}  Tailwind text size on <Text> — use <Text variant>`); bad++;

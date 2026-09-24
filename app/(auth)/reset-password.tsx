@@ -93,7 +93,7 @@ export default function ResetPasswordScreen() {
                   size="lg"
                   icon={<Ionicons name="arrow-back" size={18} color={color.onAccent} />}
                 />
-                <Text variant="meta" tone="faint" style={{ marginTop: 16, textAlign: 'center' }}>
+                <Text variant="meta" tone="muted" style={{ marginTop: 16, textAlign: 'center' }}>
                   Didn't get it? Check your spam folder or try again.
                 </Text>
               </View>

@@ -274,7 +274,7 @@ export default function HomeScreen() {
           <QuickLinks
             links={[
               { key: 'deals', label: 'Deals', icon: 'pricetag-outline', onPress: () => router.push({ pathname: '/(tabs)/shop', params: { sale: '1' } }) },
-              { key: 'new', label: 'New in', icon: 'sparkles-outline', onPress: () => router.push({ pathname: '/(tabs)/shop', params: { sort: 'newest' } }) },
+              { key: 'new', label: 'New in', icon: 'time-outline', onPress: () => router.push({ pathname: '/(tabs)/shop', params: { sort: 'newest' } }) },
               { key: 'saved', label: 'Favorites', icon: 'heart-outline', onPress: () => router.push('/(tabs)/favorites') },
               { key: 'orders', label: 'My orders', icon: 'receipt-outline', onPress: () => router.push({ pathname: '/(tabs)/account', params: { tab: 'orders' } }) },
             ]}

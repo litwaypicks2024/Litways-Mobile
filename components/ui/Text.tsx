@@ -13,8 +13,8 @@ const TONES = {
   default: color.ink,
   body: color.inkBody,
   muted: color.inkMuted,
-  faint: color.inkFaint,
-  accent: color.accent,
+  // Accent as TEXT uses the darker accentText (AA on the canvas); accent stays for fills/icons.
+  accent: color.accentText,
   onAccent: color.onAccent,
   danger: color.danger,
   success: color.success,
@@ -37,7 +37,7 @@ const SCALE_CAP: Partial<Record<TypeVariant, number>> = {
 
 /* Inter ships as separate static files, so weight is a font family. This is
    how a nested span (a bold word, a link) changes weight. */
-const WEIGHTS = { regular: font.sans, semibold: font.sansSemibold, bold: font.sansBold } as const;
+const WEIGHTS = { regular: font.sans, medium: font.sansMedium, semibold: font.sansSemibold, bold: font.sansBold } as const;
 export type TextWeight = keyof typeof WEIGHTS;
 
 interface Props extends TextProps {

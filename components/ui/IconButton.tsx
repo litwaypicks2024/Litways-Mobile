@@ -67,7 +67,7 @@ export function IconButton({ icon, onPress, size = 42, iconSize = 19, variant = 
             borderColor: color.bg,
           }}
         >
-          <Text variant="overline" style={{ color: '#fff' }}>{badge > 99 ? '99+' : badge}</Text>
+          <Text variant="overline" style={{ color: '#fff', letterSpacing: 0 }}>{badge > 99 ? '99+' : badge}</Text>
         </View>
       )}
     </PressableScale>
