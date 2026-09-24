@@ -83,4 +83,15 @@ export const recentSearches = {
       await AsyncStorage.setItem(SEARCH_RECENT_KEY, JSON.stringify(updated));
     } catch {}
   },
+  remove: async (term: string): Promise<void> => {
+    try {
+      const current = await recentSearches.get();
+      await AsyncStorage.setItem(SEARCH_RECENT_KEY, JSON.stringify(current.filter((s) => s !== term)));
+    } catch {}
+  },
+  clear: async (): Promise<void> => {
+    try {
+      await AsyncStorage.removeItem(SEARCH_RECENT_KEY);
+    } catch {}
+  },
 };

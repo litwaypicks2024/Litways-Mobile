@@ -32,6 +32,7 @@ import { supabase } from '@/lib/supabase';
 import { color, font, radius } from '@/theme/tokens';
 import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
+import { useTasteStore } from '@/store/taste';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { IconButton } from '@/components/ui/IconButton';
 import { SkeletonBlock, ProductCardSkeleton } from '@/components/ui/SkeletonLoader';
@@ -128,6 +129,14 @@ export default function ProductDetailScreen() {
     },
     enabled: !!slug,
   });
+
+  // Feed the shopper's taste profile (recently viewed + category interest)
+  // once per product opened, not on every refetch.
+  const viewedId = product?.id;
+  useEffect(() => {
+    if (product && viewedId) useTasteStore.getState().recordView(product);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewedId]);
 
   const {
     data: reviews,
@@ -239,6 +248,8 @@ export default function ProductDetailScreen() {
       imageUrl: images[0] ?? '',
       slug: product.slug!,
       stock: product.stock!,
+      categorySlug: product.category_slug ?? undefined,
+      categoryName: product.category_name ?? undefined,
     });
   }
 

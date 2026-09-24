@@ -21,7 +21,7 @@ import { TAB_BAR_HEIGHT } from '@/components/navigation/TabBar';
  * overlay lives once at the app root.
  *
  * The landing point is computed, not measured: the tab bar's geometry is fixed
- * (left/right 16, paddingHorizontal 6, four equal cells, Cart is cell 3).
+ * (full width, five equal cells, Cart is the last one).
  */
 
 type Listener = (x: number, y: number) => void;
@@ -35,10 +35,10 @@ const CHIP = 34;
 
 function cartTabCenter(insetsBottom: number) {
   const { width: SW, height: SH } = Dimensions.get('window');
-  const cellW = (SW - 32 - 12) / 4;
+  const cellW = SW / 5;
   return {
-    x: 16 + 6 + cellW * 2.5,
-    y: SH - (insetsBottom + 12) - TAB_BAR_HEIGHT / 2,
+    x: cellW * 4.5,
+    y: SH - insetsBottom - TAB_BAR_HEIGHT / 2,
   };
 }
 

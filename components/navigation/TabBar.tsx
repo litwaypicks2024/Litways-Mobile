@@ -1,35 +1,29 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Pressable, type View as RNView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { TabTriggerSlotProps } from 'expo-router/ui';
 import Animated, {
-  Easing,
-  Keyframe,
   ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
   withSpring,
 } from 'react-native-reanimated';
-import { color, shadow } from '@/theme/tokens';
+import { color } from '@/theme/tokens';
 import { useCartStore } from '@/store/cart';
 
-export const TAB_BAR_HEIGHT = 64;
-export const TAB_BAR_FAB_SIZE = 56;
-/** Gap between the pill and the bottom safe-area edge. Kept small so the bar
- *  sits low and doesn't compete with page content. */
-export const TAB_BAR_BOTTOM_GAP = 6;
+/** Height of the bar's content, above the bottom safe-area inset. */
+export const TAB_BAR_HEIGHT = 56;
 
 const INACTIVE = '#767676';
 
-/** Space kept clear above the bar: the active tab's circle rises past the
- *  pill's top edge, and the last row of content needs air beyond that. */
-export const TAB_BAR_CONTENT_GAP = 28;
-
+/**
+ * The bar sits in the layout under the screens (it doesn't float over them),
+ * so scrolling content already ends above it. This is just breathing room for
+ * the last row.
+ */
 export function useTabBarClearance(): number {
-  const insets = useSafeAreaInsets();
-  return insets.bottom + TAB_BAR_BOTTOM_GAP + TAB_BAR_HEIGHT + TAB_BAR_CONTENT_GAP;
+  return 16;
 }
 
 interface TabButtonProps extends TabTriggerSlotProps {
@@ -41,17 +35,7 @@ interface TabButtonProps extends TabTriggerSlotProps {
 
 const BADGE_POP_SPRING = { damping: 12, stiffness: 220, reduceMotion: ReduceMotion.System } as const;
 
-/* The active circle rises out of the bar and overshoots slightly, like it
-   physically landed there. */
-const CIRCLE_RISE = new Keyframe({
-  0: { opacity: 0, transform: [{ translateY: 16 }, { scale: 0.55 }] },
-  55: { opacity: 1, transform: [{ translateY: -3 }, { scale: 1.04 }], easing: Easing.out(Easing.quad) },
-  100: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }], easing: Easing.inOut(Easing.quad) },
-})
-  .duration(300)
-  .reduceMotion(ReduceMotion.System);
-
-function IconBadge({ count, ringColor, onAccent = false }: { count: number; ringColor: string; onAccent?: boolean }) {
+function IconBadge({ count }: { count: number }) {
   const scale = useSharedValue(1);
   const hasMounted = useRef(false);
 
@@ -72,96 +56,55 @@ function IconBadge({ count, ringColor, onAccent = false }: { count: number; ring
       style={[
         {
           position: 'absolute',
-          top: -4,
-          right: -8,
-          minWidth: 16,
-          height: 16,
-          borderRadius: 8,
-          backgroundColor: onAccent ? color.surface : color.accent,
+          top: -5,
+          right: -10,
+          minWidth: 17,
+          height: 17,
+          borderRadius: 9,
+          backgroundColor: color.accent,
           alignItems: 'center',
           justifyContent: 'center',
-          paddingHorizontal: 3,
+          paddingHorizontal: 4,
           borderWidth: 1.5,
-          borderColor: ringColor,
+          borderColor: color.surface,
         },
         animatedStyle,
       ]}
     >
-      <Text style={{ color: onAccent ? color.accent : '#fff', fontSize: 9, fontWeight: '700' }}>{count > 99 ? '99+' : count}</Text>
+      <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>{count > 99 ? '99+' : count}</Text>
     </Animated.View>
   );
 }
 
-/* The raised circle is the ACTIVE-tab indicator: whichever tab is focused pops
-   up as the accent circle; the rest render flat. Because the circle only ever
-   marks the already-active tab, taps on it are a no-op, so its slight overhang
-   above the bar's touch bounds (Android drops touches outside a parent's
-   layout box) can't cost a navigation — every navigable target is a flat,
-   fully-in-bounds cell. */
+/* One cell of the bottom bar: outline icon + label at rest, filled icon in the
+   accent colour when active. */
 export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabButton(
   { isFocused, iconOn, iconOff, label, badge = 0, ...props },
   ref
 ) {
+  const tint = isFocused ? color.accent : INACTIVE;
   const accessibilityLabel = badge > 0 ? `${label}, ${badge} item${badge === 1 ? '' : 's'}` : label;
 
-  if (!isFocused) {
-    return (
-      <Pressable
-        ref={ref}
-        {...props}
-        accessibilityRole="tab"
-        accessibilityLabel={accessibilityLabel}
-        accessibilityState={{ selected: false }}
-        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, height: TAB_BAR_HEIGHT }}
-      >
-        <View>
-          <Ionicons name={iconOff} size={22} color={INACTIVE} />
-          <IconBadge count={badge} ringColor={color.surface} />
-        </View>
-        <Text style={{ fontSize: 10, fontWeight: '600', color: INACTIVE }}>{label}</Text>
-      </Pressable>
-    );
-  }
   return (
     <Pressable
       ref={ref}
       {...props}
       accessibilityRole="tab"
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ selected: true }}
-      style={{ flex: 1, alignItems: 'center', height: TAB_BAR_HEIGHT }}
+      accessibilityState={{ selected: !!isFocused }}
+      android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: false }}
+      style={{ flex: 1, height: TAB_BAR_HEIGHT, alignItems: 'center', justifyContent: 'center', gap: 3 }}
     >
-      <Animated.View
-        entering={CIRCLE_RISE}
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          bottom: TAB_BAR_HEIGHT - TAB_BAR_FAB_SIZE / 2 - 4,
-          width: TAB_BAR_FAB_SIZE,
-          height: TAB_BAR_FAB_SIZE,
-          borderRadius: TAB_BAR_FAB_SIZE / 2,
-          backgroundColor: color.accent,
-          borderWidth: 4,
-          borderColor: color.surface,
-          alignItems: 'center',
-          justifyContent: 'center',
-          ...shadow.card,
-        }}
-      >
-        <View>
-          <Ionicons name={iconOn} size={22} color={color.onAccent} />
-          <IconBadge count={badge} ringColor={color.accent} onAccent />
-        </View>
-      </Animated.View>
-      <Text style={{ position: 'absolute', bottom: 6, fontSize: 10, fontWeight: '700', color: color.accent }}>
-        {label}
-      </Text>
+      <View>
+        <Ionicons name={isFocused ? iconOn : iconOff} size={23} color={tint} />
+        <IconBadge count={badge} />
+      </View>
+      <Text style={{ fontSize: 10.5, fontWeight: isFocused ? '700' : '600', color: tint }}>{label}</Text>
     </Pressable>
   );
 });
 
-/* Cart is a plain tab like the others now — it just carries the live item-count
-   badge in both states. */
+/* Cart is a plain tab like the others — it just carries the live item-count badge. */
 export const CartTabButton = React.forwardRef<RNView, TabTriggerSlotProps>(function CartTabButton(
   props,
   ref

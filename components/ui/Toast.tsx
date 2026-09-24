@@ -6,7 +6,7 @@ import Animated, { FadeInDown, FadeOutDown, ReduceMotion } from 'react-native-re
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, palette, radius, shadow } from '@/theme/tokens';
-import { TAB_BAR_HEIGHT, TAB_BAR_BOTTOM_GAP } from '@/components/navigation/TabBar';
+import { TAB_BAR_HEIGHT } from '@/components/navigation/TabBar';
 
 /**
  * App-wide toast. Call showToast() from anywhere; <ToastHost /> lives once at
@@ -67,7 +67,7 @@ export function ToastHost() {
         position: 'absolute',
         left: 16,
         right: 16,
-        bottom: insets.bottom + TAB_BAR_BOTTOM_GAP + TAB_BAR_HEIGHT + 12,
+        bottom: insets.bottom + TAB_BAR_HEIGHT + 12,
         zIndex: 100,
         flexDirection: 'row',
         alignItems: 'center',

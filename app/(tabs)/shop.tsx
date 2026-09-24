@@ -9,14 +9,15 @@ import {
   Platform,
   ScrollView,
   RefreshControl,
+  Keyboard,
 } from 'react-native';
 import { FlashList } from '@/components/ui/List';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { recentSearches as searchStorage } from '@/lib/storage';
-import { color, radius, shadow } from '@/theme/tokens';
+import { color, font, radius, shadow } from '@/theme/tokens';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { FilterSheet } from '@/components/shop/FilterSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -27,7 +28,10 @@ import { BrandLoader } from '@/components/motion/BrandLoader';
 import Animated, { FadeIn, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
-import type { Product, ProductFilters, SortOption } from '@/types';
+import { ProductRail } from '@/components/shop/ProductRail';
+import { useTasteStore, rankedCategories } from '@/store/taste';
+import { usePickedForYou } from '@/lib/personalization';
+import type { Product, ProductFilters, SortOption, Category } from '@/types';
 
 const SORT_OPTIONS: { label: string; value: SortOption }[] = [
   { label: 'Featured', value: 'featured' },
@@ -55,10 +59,38 @@ export default function ShopScreen() {
   const [sort, setSort] = useState<SortOption>('featured');
   const [filters, setFilters] = useState<ProductFilters>({});
   const [filterVisible, setFilterVisible] = useState(false);
-  const [showRecent, setShowRecent] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [category, setCategory] = useState<string | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tabBarClearance = useTabBarClearance();
+  const inputRef = useRef<TextInput>(null);
+
+  const tasteCategories = useTasteStore((s) => s.categories);
+  const recentlyViewed = useTasteStore((s) => s.recentlyViewed);
+  const clearRecentlyViewed = useTasteStore((s) => s.clearRecentlyViewed);
+  const picked = usePickedForYou();
+
+  const { data: allCategories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('categories').select('*').order('item_count', { ascending: false });
+      if (error) throw error;
+      return data as Category[];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  // The shopper's categories first (strongest interest leading), the rest by size.
+  const orderedCategories = useMemo(() => {
+    const rank = new Map(rankedCategories(tasteCategories).map((c, i) => [c.slug, i]));
+    return [...allCategories].sort((a, b) => {
+      const ra = rank.get(a.slug) ?? Infinity;
+      const rb = rank.get(b.slug) ?? Infinity;
+      return ra !== rb ? ra - rb : b.item_count - a.item_count;
+    });
+  }, [allCategories, tasteCategories]);
+  const forYouSlugs = useMemo(() => new Set(rankedCategories(tasteCategories).slice(0, 3).map((c) => c.slug)), [tasteCategories]);
 
   const activeFilterCount = [
     filters.brands?.length ?? 0,
@@ -95,7 +127,7 @@ export default function ShopScreen() {
     hasNextPage,
     fetchNextPage,
   } = useInfiniteQuery({
-    queryKey: ['products', query, sort, filters],
+    queryKey: ['products', query, sort, filters, category],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       if (query) {
@@ -108,7 +140,8 @@ export default function ShopScreen() {
         const raw = (data ?? []) as Product[];
         // rawLen tracks the *server* page size so pagination doesn't stop early
         // when client-side filters shrink the visible list.
-        return { items: applyClientFilters(raw, filters, sort), rawLen: raw.length };
+        const scoped = category ? raw.filter((p) => p.category_slug === category) : raw;
+        return { items: applyClientFilters(scoped, filters, sort), rawLen: raw.length };
       }
 
       let q = supabase
@@ -119,6 +152,7 @@ export default function ShopScreen() {
       if (filters.minPrice != null) q = q.gte('price', filters.minPrice);
       if (filters.maxPrice != null) q = q.lte('price', filters.maxPrice);
       if (filters.brands?.length) q = q.in('brand', filters.brands);
+      if (category) q = q.eq('category_slug', category);
 
       switch (sort) {
         case 'price_asc': q = q.order('price', { ascending: true }); break;
@@ -144,24 +178,75 @@ export default function ShopScreen() {
 
   const products = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data]);
 
+  // A committed search tells us which category the shopper is really after:
+  // credit the one that dominates its results (once per distinct search).
+  const bumpedQuery = useRef<string | null>(null);
+  useEffect(() => {
+    if (!query || isFetching || !products.length || bumpedQuery.current === query) return;
+    bumpedQuery.current = query;
+    const counts = new Map<string, { name: string; n: number }>();
+    for (const p of products) {
+      if (!p.category_slug) continue;
+      const c = counts.get(p.category_slug);
+      counts.set(p.category_slug, { name: p.category_name ?? p.category_slug, n: (c?.n ?? 0) + 1 });
+    }
+    const top = [...counts.entries()].sort((a, b) => b[1].n - a[1].n)[0];
+    if (top && top[1].n / products.length >= 0.4) useTasteStore.getState().bump(top[0], top[1].name, 'search');
+  }, [query, isFetching, products]);
+
+  // While searching, the category chips describe the results (with counts) so
+  // a broad query like "black" can be narrowed to shoes / bags / tops.
+  const resultCategories = useMemo(() => {
+    if (!query) return [] as { slug: string; name: string; n: number }[];
+    const counts = new Map<string, { slug: string; name: string; n: number }>();
+    for (const p of data?.pages.flatMap((pg) => pg.items) ?? []) {
+      if (!p.category_slug) continue;
+      const c = counts.get(p.category_slug);
+      counts.set(p.category_slug, { slug: p.category_slug, name: p.category_name ?? p.category_slug, n: (c?.n ?? 0) + 1 });
+    }
+    return [...counts.values()].sort((a, b) => b.n - a.n);
+  }, [data, query]);
+
   function handleCommitSearch(term = inputValue.trim()) {
     if (!term) return;
     searchStorage.save(term).then(() => searchStorage.get().then(setRecentSearches));
-    setShowRecent(false);
+    setFocused(false);
+    Keyboard.dismiss();
     setInputValue(term);
     setQuery(term);
+    setCategory(null);
   }
 
   function handleClear() {
     setInputValue('');
     setQuery('');
-    setShowRecent(false);
+    setCategory(null);
+  }
+
+  function handleCancel() {
+    Keyboard.dismiss();
+    setFocused(false);
+    handleClear();
   }
 
   function handleFocus() {
     searchStorage.get().then(setRecentSearches);
-    setShowRecent(true);
+    setFocused(true);
   }
+
+  function removeRecent(term: string) {
+    setRecentSearches((r) => r.filter((t) => t !== term));
+    searchStorage.remove(term);
+  }
+
+  function clearRecent() {
+    setRecentSearches([]);
+    searchStorage.clear();
+  }
+
+  // Personal rails only belong on the plain catalog — not once the shopper has
+  // narrowed by search, category, filter or a non-default sort.
+  const showRails = !query && !category && activeFilterCount === 0 && sort === 'featured';
 
   function handleApplyFilters(f: ProductFilters) {
     setFilters(f);
@@ -195,10 +280,10 @@ export default function ShopScreen() {
           }}>
             <Ionicons name="search-outline" size={17} color={color.inkFaint} />
             <TextInput
+              ref={inputRef}
               value={inputValue}
               onChangeText={setInputValue}
               onFocus={handleFocus}
-              onBlur={() => setTimeout(() => setShowRecent(false), 150)}
               onSubmitEditing={() => handleCommitSearch()}
               returnKeyType="search"
               placeholder="Search products, brands..."
@@ -212,7 +297,11 @@ export default function ShopScreen() {
             )}
           </View>
 
-          {/* Filter button */}
+          {focused ? (
+            <TouchableOpacity onPress={handleCancel} hitSlop={8} accessibilityRole="button" style={{ paddingHorizontal: 4 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: color.accent }}>Cancel</Text>
+            </TouchableOpacity>
+          ) : (
           <TouchableOpacity
             onPress={() => setFilterVisible(true)}
             accessibilityRole="button"
@@ -238,9 +327,25 @@ export default function ShopScreen() {
               </View>
             )}
           </TouchableOpacity>
+          )}
         </View>
 
+        {/* Category chips: browse all, or narrow the current results */}
+        {!focused && (query ? resultCategories.length > 1 : orderedCategories.length > 0) && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 6 }}>
+            <CategoryChip label="All" active={!category} onPress={() => setCategory(null)} />
+            {query
+              ? resultCategories.map((c) => (
+                  <CategoryChip key={c.slug} label={`${c.name} · ${c.n}`} active={category === c.slug} onPress={() => setCategory(category === c.slug ? null : c.slug)} />
+                ))
+              : orderedCategories.map((c) => (
+                  <CategoryChip key={c.slug} label={c.name} forYou={forYouSlugs.has(c.slug)} active={category === c.slug} onPress={() => setCategory(category === c.slug ? null : c.slug)} />
+                ))}
+          </ScrollView>
+        )}
+
         {/* Sort pills */}
+        {!focused && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 6 }}>
           {SORT_OPTIONS.map((opt) => (
             <TouchableOpacity
@@ -265,30 +370,65 @@ export default function ShopScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+        )}
       </View>
 
-      {/* Recent searches dropdown */}
-      {showRecent && recentSearches.length > 0 && !inputValue && (
-        <View style={{ backgroundColor: color.surface, borderBottomWidth: 1, borderBottomColor: color.border, paddingHorizontal: 16, paddingVertical: 8, zIndex: 10 }}>
-          <Text style={{ fontSize: 11, color: color.inkFaint, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-            Recent searches
-          </Text>
-          {recentSearches.map((term) => (
-            <TouchableOpacity
-              key={term}
-              onPress={() => handleCommitSearch(term)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 }}
-            >
-              <Ionicons name="time-outline" size={15} color={color.inkFaint} />
-              <Text style={{ fontSize: 14, color: color.ink, flex: 1 }}>{term}</Text>
-              <Ionicons name="arrow-up-outline" size={14} color={color.inkFaint} style={{ transform: [{ rotate: '45deg' }] }} />
-            </TouchableOpacity>
-          ))}
-        </View>
+      {/* Discovery: what you searched, what you looked at, where to go next */}
+      {focused && !inputValue && (
+        <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: tabBarClearance }}>
+          {recentSearches.length > 0 && (
+            <View style={{ backgroundColor: color.surface, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                <Text style={{ fontSize: 12, color: color.inkMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 }}>Recent searches</Text>
+                <TouchableOpacity onPress={clearRecent} hitSlop={8} accessibilityRole="button">
+                  <Text style={{ fontSize: 12.5, color: color.accent, fontWeight: '700' }}>Clear all</Text>
+                </TouchableOpacity>
+              </View>
+              {recentSearches.map((term) => (
+                <View key={term} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TouchableOpacity onPress={() => handleCommitSearch(term)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11 }}>
+                    <Ionicons name="time-outline" size={16} color={color.inkFaint} />
+                    <Text style={{ fontSize: 14.5, color: color.ink, flex: 1 }} numberOfLines={1}>{term}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => removeRecent(term)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Remove ${term} from recent searches`}>
+                    <Ionicons name="close" size={16} color={color.inkFaint} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <ProductRail
+            compact
+            title="Recently viewed"
+            products={recentlyViewed as unknown as Product[]}
+            actionLabel="Clear"
+            onAction={clearRecentlyViewed}
+          />
+
+          {orderedCategories.length > 0 && (
+            <View style={{ marginTop: 22, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 17, fontFamily: font.display, color: color.ink, letterSpacing: -0.3, marginBottom: 12 }}>Browse by category</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {orderedCategories.map((c) => (
+                  <TouchableOpacity
+                    key={c.slug}
+                    onPress={() => { Keyboard.dismiss(); setFocused(false); setCategory(c.slug); }}
+                    accessibilityRole="button"
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.full, backgroundColor: color.surface, borderWidth: 1.5, borderColor: forYouSlugs.has(c.slug) ? color.accent : color.fieldBorder }}
+                  >
+                    {forYouSlugs.has(c.slug) && <Ionicons name="sparkles" size={12} color={color.accent} />}
+                    <Text style={{ fontSize: 13.5, fontWeight: '700', color: color.ink }}>{c.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+        </ScrollView>
       )}
 
       {/* Active filter chips */}
-      {activeFilterCount > 0 && (
+      {!(focused && !inputValue) && activeFilterCount > 0 && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -336,7 +476,7 @@ export default function ShopScreen() {
       )}
 
       {/* Result count bar */}
-      {!isLoading && products.length > 0 && (
+      {!(focused && !inputValue) && !isLoading && products.length > 0 && (
         <View style={{ backgroundColor: color.surface, paddingHorizontal: 14, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: color.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ fontSize: 12, color: color.inkMuted, fontWeight: '500' }}>
             {query ? (
@@ -350,7 +490,7 @@ export default function ShopScreen() {
       )}
 
       {/* Results */}
-      {isLoading ? (
+      {focused && !inputValue ? null : isLoading ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 10 }}>
           <ProductGridSkeleton count={6} />
         </View>
@@ -379,6 +519,25 @@ export default function ShopScreen() {
           estimatedItemSize={290}
           keyExtractor={(item) => item.id ?? ''}
           contentContainerStyle={{ padding: 10, paddingBottom: tabBarClearance }}
+          ListHeaderComponent={showRails ? (
+            <View style={{ marginHorizontal: -10, marginBottom: 6 }}>
+              <ProductRail
+                compact
+                title={picked.personalized ? 'Picked for you' : 'Popular right now'}
+                subtitle={picked.personalized ? `Because you like ${picked.topCategories.map((c) => c.name).slice(0, 2).join(' & ')}` : undefined}
+                products={picked.products}
+                loading={picked.isLoading}
+              />
+              <ProductRail
+                compact
+                title="Recently viewed"
+                products={recentlyViewed as unknown as Product[]}
+                actionLabel="Clear"
+                onAction={clearRecentlyViewed}
+              />
+              <Text style={{ fontSize: 17, fontFamily: font.display, color: color.ink, letterSpacing: -0.3, marginTop: 22, marginBottom: 4, paddingHorizontal: 16 }}>All products</Text>
+            </View>
+          ) : null}
           refreshControl={
             <RefreshControl
               refreshing={isFetching && !isFetchingNextPage}
@@ -424,4 +583,28 @@ function applyClientFilters(data: Product[], filters: ProductFilters, sort: Sort
   if (sort === 'price_desc') result.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
   if (sort === 'rating') result.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
   return result;
+}
+
+function CategoryChip({ label, active, forYou, onPress }: { label: string; active: boolean; forYou?: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        borderRadius: radius.full,
+        backgroundColor: active ? color.ink : color.surface,
+        borderWidth: 1.5,
+        borderColor: active ? color.ink : forYou ? color.accent : color.fieldBorder,
+      }}
+    >
+      {forYou && !active && <Ionicons name="sparkles" size={11} color={color.accent} />}
+      <Text style={{ fontSize: 12.5, fontWeight: '700', color: active ? color.onInk : color.ink }}>{label}</Text>
+    </TouchableOpacity>
+  );
 }

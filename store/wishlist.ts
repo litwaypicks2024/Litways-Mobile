@@ -4,6 +4,7 @@ import type { WishlistItem } from '@/types';
 import { storageAdapter } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { useTasteStore } from '@/store/taste';
 
 // `public.wishlists` landed on the backend (user_id, product_id, created_at —
 // PK (user_id, product_id), own-row RLS). Sync design (v1, kept deliberately
@@ -79,6 +80,7 @@ export const useWishlistStore = create<WishlistState>()(
         set((state) => {
           if (idsFor(state.items).has(item.productId)) return state;
           syncAdd(item.productId);
+          useTasteStore.getState().bump(item.categorySlug, item.categoryName, 'wishlist');
           return { items: [...state.items, item] };
         }),
 
