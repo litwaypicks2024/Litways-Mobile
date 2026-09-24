@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Pressable, type View as RNView } from 'react-native';
+import { View, Pressable, type View as RNView } from 'react-native';
+import { Text } from '@/components/ui/Text';
 import { Ionicons } from '@expo/vector-icons';
 import type { TabTriggerSlotProps } from 'expo-router/ui';
 import Animated, {
@@ -71,7 +72,7 @@ function IconBadge({ count }: { count: number }) {
         animatedStyle,
       ]}
     >
-      <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>{count > 99 ? '99+' : count}</Text>
+      <Text variant="overline" style={{ color: '#fff', textTransform: 'none', letterSpacing: 0 }}>{count > 99 ? '99+' : count}</Text>
     </Animated.View>
   );
 }
@@ -99,7 +100,7 @@ export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabBu
         <Ionicons name={isFocused ? iconOn : iconOff} size={23} color={tint} />
         <IconBadge count={badge} />
       </View>
-      <Text style={{ fontSize: 10.5, fontWeight: isFocused ? '700' : '600', color: tint }}>{label}</Text>
+      <Text variant="label" style={{ fontWeight: isFocused ? '700' : '600', color: tint, letterSpacing: 0 }}>{label}</Text>
     </Pressable>
   );
 });

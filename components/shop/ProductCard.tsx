@@ -208,7 +208,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
             {justAdded ? (
               <Ionicons name="checkmark" size={20} color="#fff" />
             ) : inCart > 0 ? (
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>{inCart}</Text>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>{inCart}</Text>
             ) : (
               <Ionicons name="add" size={22} color={color.ink} />
             )}
@@ -236,7 +236,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
         <Text style={{ fontSize: 16, fontFamily: font.displayHeavy, color: color.accent, letterSpacing: -0.2 }}>
           {formatCurrency(displayPrice)}
           {hasDiscount && (
-            <Text style={{ fontSize: 12, fontWeight: '500', color: color.inkFaint, textDecorationLine: 'line-through' }}>
+            <Text style={{ fontSize: 12, fontWeight: '400', color: color.inkFaint, textDecorationLine: 'line-through' }}>
               {'  '}{formatCurrency(product.price!)}
             </Text>
           )}

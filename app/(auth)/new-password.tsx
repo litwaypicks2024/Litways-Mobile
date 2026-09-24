@@ -214,7 +214,7 @@ export default function NewPasswordScreen() {
             {phase === 'invalid' && (
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 8 }}>
                 <BrokenLinkIllustration />
-                <Text style={{ fontSize: 18, fontFamily: font.display, color: color.ink, textAlign: 'center' }}>
+                <Text style={{ fontSize: 17, fontFamily: font.display, color: color.ink, textAlign: 'center' }}>
                   Reset link invalid or expired
                 </Text>
                 <Text style={{ fontSize: 14, color: color.inkMuted, textAlign: 'center', lineHeight: 20 }}>

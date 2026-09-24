@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '@/components/ui/Text';
 import { Ionicons } from '@expo/vector-icons';
 import { color, font } from '@/theme/tokens';
 import { Button } from './Button';
@@ -29,9 +30,9 @@ export function EmptyState({ icon = 'cube-outline', illustration, title, descrip
           <Ionicons name={icon} size={36} color={color.accent} />
         </View>
       )}
-      <Text style={{ fontSize: 19, fontFamily: font.display, color: color.ink, textAlign: 'center', marginBottom: 8 }}>{title}</Text>
+      <Text variant="title" style={{ textAlign: 'center', marginBottom: 8 }}>{title}</Text>
       {description && (
-        <Text style={{ fontSize: 14, color: color.inkMuted, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>{description}</Text>
+        <Text tone="muted" style={{ textAlign: 'center', marginBottom: 24 }}>{description}</Text>
       )}
       {actionLabel && onAction && <Button title={actionLabel} onPress={onAction} size="md" loading={actionLoading} />}
     </View>

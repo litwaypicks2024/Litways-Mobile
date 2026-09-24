@@ -79,7 +79,7 @@ export default function ResetPasswordScreen() {
                 >
                   <Ionicons name="mail-outline" size={38} color={color.accent} />
                 </View>
-                <Text style={{ fontSize: 22, fontFamily: font.display, color: color.ink, marginBottom: 8, textAlign: 'center' }}>
+                <Text style={{ fontSize: 20, fontFamily: font.display, color: color.ink, marginBottom: 8, textAlign: 'center' }}>
                   Check your inbox
                 </Text>
                 <Text style={{ fontSize: 14, color: color.inkMuted, textAlign: 'center', lineHeight: 21, marginBottom: 32 }}>
@@ -129,7 +129,7 @@ export default function ResetPasswordScreen() {
                   onPress={() => router.back()}
                   style={{ marginTop: 16, alignItems: 'center', paddingVertical: 10 }}
                 >
-                  <Text style={{ fontSize: 14, color: color.inkMuted, fontWeight: '500' }}>
+                  <Text style={{ fontSize: 14, color: color.inkMuted, fontWeight: '400' }}>
                     ← Back to Sign In
                   </Text>
                 </TouchableOpacity>

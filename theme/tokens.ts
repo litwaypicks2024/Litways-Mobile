@@ -166,17 +166,44 @@ export const weight = {
 } as const satisfies Record<string, TextStyle['fontWeight']>;
 
 /** Reusable text presets. Spread into a Text style. */
+/* ── Typography ────────────────────────────────────────────────────────── */
+/* Two fonts: Bricolage Grotesque for headings, prices and totals (its weight is
+   baked into the font file, so never add fontWeight to it); the system font for
+   everything else, using only weights 400 / 600 / 700.
+   Fourteen roles and no other sizes, each with its line height. Render text with
+   <Text variant="…"> (components/ui/Text.tsx) rather than raw fontSize.
+   `npm run check:type` flags sizes/weights outside this scale. */
 export const type = {
-  display: { fontSize: 26, lineHeight: 34, fontFamily: font.display, letterSpacing: -0.2, color: color.text },
-  h1: { fontSize: 20, lineHeight: 26, fontFamily: font.display, letterSpacing: -0.1, color: color.text },
-  h2: { fontSize: 17, lineHeight: 22, fontFamily: font.display, letterSpacing: 0, color: color.text },
-  h3: { fontSize: 15, lineHeight: 20, fontWeight: weight.semibold, color: color.text },
+  /** Brand moments only: home greeting, splash wordmark, auth header. */
+  hero: { fontSize: 34, lineHeight: 40, fontFamily: font.displayHeavy, letterSpacing: -0.8, color: color.text },
+  /** Page titles. */
+  display: { fontSize: 28, lineHeight: 34, fontFamily: font.displayHeavy, letterSpacing: -0.3, color: color.text },
+  /** Section and screen headings, dialog and empty-state titles. */
+  title: { fontSize: 20, lineHeight: 26, fontFamily: font.display, letterSpacing: -0.3, color: color.text },
+  /** Card, sheet and compact-rail titles. */
+  heading: { fontSize: 17, lineHeight: 22, fontFamily: font.display, letterSpacing: -0.2, color: color.text },
+  /** Order totals. */
+  priceLg: { fontSize: 24, lineHeight: 30, fontFamily: font.displayHeavy, letterSpacing: -0.3, color: color.text },
+  /** Prices. */
+  price: { fontSize: 16, lineHeight: 20, fontFamily: font.displayHeavy, color: color.text },
+  /** Descriptions, dialog messages. */
+  bodyLg: { fontSize: 15, lineHeight: 22, fontWeight: weight.regular, color: color.text },
+  /** Default UI text, inputs, list rows. */
   body: { fontSize: 14, lineHeight: 20, fontWeight: weight.regular, color: color.text },
   bodyStrong: { fontSize: 14, lineHeight: 20, fontWeight: weight.semibold, color: color.text },
+  /** Product names, chips, secondary lines. */
+  small: { fontSize: 13, lineHeight: 18, fontWeight: weight.semibold, color: color.text },
+  /** Counts, dates, helper and error text. */
   meta: { fontSize: 12, lineHeight: 16, fontWeight: weight.regular, color: color.textMuted },
+  /** Field labels, tab labels, captions. */
   label: { fontSize: 11, lineHeight: 14, fontWeight: weight.semibold, letterSpacing: 0.3, color: color.textMuted },
+  /** Badges and eyebrows. */
   overline: { fontSize: 10, lineHeight: 12, fontWeight: weight.bold, letterSpacing: 0.8, textTransform: 'uppercase', color: color.textFaint },
+  /** Button labels (sizes follow Button's sm / md / lg: 13 / 15 / 16). */
+  button: { fontSize: 15, lineHeight: 20, fontWeight: weight.bold, color: color.text },
 } as const satisfies Record<string, TextStyle>;
+
+export type TypeVariant = keyof typeof type;
 
 export const theme = { spacing, gutter, radius, palette, color, shadow, type, weight, font } as const;
 export default theme;

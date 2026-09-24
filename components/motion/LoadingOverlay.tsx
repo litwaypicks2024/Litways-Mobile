@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   },
   center: { alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
   title: {
-    fontSize: 19,
+    fontSize: 20,
     fontFamily: font.displayHeavy,
     color: color.ink,
     textAlign: 'center',

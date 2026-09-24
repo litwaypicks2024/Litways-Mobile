@@ -248,7 +248,7 @@ export default function ConfirmationScreen() {
                   </View>
                 </Animated.View>
               </View>
-              <Text style={{ fontSize: 22, fontFamily: font.displayHeavy, color: color.ink }}>Thank you!</Text>
+              <Text style={{ fontSize: 20, fontFamily: font.displayHeavy, color: color.ink }}>Thank you!</Text>
               <Text style={{ fontSize: 17, fontFamily: font.display, color: color.accent, marginTop: 2 }}>Your order is confirmed</Text>
               <Text style={{ fontSize: 13, color: color.inkMuted, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
                 We received your order and it's now being processed.
@@ -362,7 +362,7 @@ export default function ConfirmationScreen() {
                 <Ionicons name="document-text-outline" size={22} color={color.accentPressed} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 11, color: color.accentPressed, fontWeight: '700', marginBottom: 2 }}>ORDER ID</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: color.ink }}>{order.external_id}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: color.ink }}>{order.external_id}</Text>
                 </View>
               </View>
               {/* Clay-render rider; container matches the artwork's own bg (#e9e8e7)

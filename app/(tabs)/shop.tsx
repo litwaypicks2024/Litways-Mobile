@@ -323,7 +323,7 @@ export default function ShopScreen() {
                 borderRadius: 7,
                 alignItems: 'center', justifyContent: 'center',
               }}>
-                <Text style={{ color: color.accent, fontSize: 8, fontWeight: '800' }}>{activeFilterCount}</Text>
+                <Text style={{ color: color.accent, fontSize: 10, fontWeight: '700' }}>{activeFilterCount}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -379,16 +379,16 @@ export default function ShopScreen() {
           {recentSearches.length > 0 && (
             <View style={{ backgroundColor: color.surface, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <Text style={{ fontSize: 12, color: color.inkMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 }}>Recent searches</Text>
+                <Text style={{ fontSize: 12, color: color.inkMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 }}>Recent searches</Text>
                 <TouchableOpacity onPress={clearRecent} hitSlop={8} accessibilityRole="button">
-                  <Text style={{ fontSize: 12.5, color: color.accent, fontWeight: '700' }}>Clear all</Text>
+                  <Text style={{ fontSize: 12, color: color.accent, fontWeight: '700' }}>Clear all</Text>
                 </TouchableOpacity>
               </View>
               {recentSearches.map((term) => (
                 <View key={term} style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <TouchableOpacity onPress={() => handleCommitSearch(term)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11 }}>
                     <Ionicons name="time-outline" size={16} color={color.inkFaint} />
-                    <Text style={{ fontSize: 14.5, color: color.ink, flex: 1 }} numberOfLines={1}>{term}</Text>
+                    <Text style={{ fontSize: 14, color: color.ink, flex: 1 }} numberOfLines={1}>{term}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => removeRecent(term)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Remove ${term} from recent searches`}>
                     <Ionicons name="close" size={16} color={color.inkFaint} />
@@ -418,7 +418,7 @@ export default function ShopScreen() {
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.full, backgroundColor: color.surface, borderWidth: 1.5, borderColor: forYouSlugs.has(c.slug) ? color.accent : color.fieldBorder }}
                   >
                     {forYouSlugs.has(c.slug) && <Ionicons name="sparkles" size={12} color={color.accent} />}
-                    <Text style={{ fontSize: 13.5, fontWeight: '700', color: color.ink }}>{c.name}</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: color.ink }}>{c.name}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -478,7 +478,7 @@ export default function ShopScreen() {
       {/* Result count bar */}
       {!(focused && !inputValue) && !isLoading && products.length > 0 && (
         <View style={{ backgroundColor: color.surface, paddingHorizontal: 14, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: color.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 12, color: color.inkMuted, fontWeight: '500' }}>
+          <Text style={{ fontSize: 12, color: color.inkMuted, fontWeight: '400' }}>
             {query ? (
               <Text><Text style={{ fontWeight: '700', color: color.ink }}>{products.length}</Text> results for "<Text style={{ fontWeight: '700', color: color.accent }}>{query}</Text>"</Text>
             ) : (
@@ -604,7 +604,7 @@ function CategoryChip({ label, active, forYou, onPress }: { label: string; activ
       }}
     >
       {forYou && !active && <Ionicons name="sparkles" size={11} color={color.accent} />}
-      <Text style={{ fontSize: 12.5, fontWeight: '700', color: active ? color.onInk : color.ink }}>{label}</Text>
+      <Text style={{ fontSize: 12, fontWeight: '700', color: active ? color.onInk : color.ink }}>{label}</Text>
     </TouchableOpacity>
   );
 }

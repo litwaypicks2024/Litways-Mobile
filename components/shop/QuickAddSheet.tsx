@@ -192,10 +192,10 @@ export function QuickAddSheetHost() {
           <Image source={{ uri: imageUrl ?? undefined }} style={{ width: 72, height: 72, borderRadius: 12, backgroundColor: color.surfaceSunken }} contentFit="cover" />
           <View style={{ flex: 1 }}>
             <Text numberOfLines={2} style={{ fontSize: 15, fontWeight: '700', color: color.ink, lineHeight: 20 }}>{product.name}</Text>
-            <Text style={{ marginTop: 4, fontSize: 18, fontFamily: font.displayHeavy, color: color.accent }}>
+            <Text style={{ marginTop: 4, fontSize: 17, fontFamily: font.displayHeavy, color: color.accent }}>
               {formatCurrency(price)}
               {hasDiscount && (
-                <Text style={{ fontSize: 13, fontWeight: '500', color: color.inkBody, textDecorationLine: 'line-through' }}>
+                <Text style={{ fontSize: 13, fontWeight: '400', color: color.inkBody, textDecorationLine: 'line-through' }}>
                   {'  '}{formatCurrency(product.price!)}
                 </Text>
               )}

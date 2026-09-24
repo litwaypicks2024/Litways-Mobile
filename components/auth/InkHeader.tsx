@@ -47,7 +47,7 @@ export function InkHeader({ icon, onIconPress, iconAccessibilityLabel, title, su
       />
       <View style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <LogoMark size={30} variant="onInk" />
-        <Text style={{ color: color.onInk, fontSize: 13, fontWeight: '800', letterSpacing: 2 }}>
+        <Text style={{ color: color.onInk, fontSize: 13, fontWeight: '700', letterSpacing: 2 }}>
           LITWAY <Text style={{ color: color.accent }}>PICKS</Text>
         </Text>
       </View>
