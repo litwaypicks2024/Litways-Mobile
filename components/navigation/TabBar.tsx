@@ -18,9 +18,13 @@ import { useCartStore } from '@/store/cart';
 export const TAB_BAR_HEIGHT = 64;
 export const TAB_BAR_FAB_SIZE = 56;
 
+/** Space kept clear above the bar: the active tab's circle rises past the
+ *  pill's top edge, and the last row of content needs air beyond that. */
+export const TAB_BAR_CONTENT_GAP = 28;
+
 export function useTabBarClearance(): number {
   const insets = useSafeAreaInsets();
-  return insets.bottom + 12 + TAB_BAR_HEIGHT;
+  return insets.bottom + 12 + TAB_BAR_HEIGHT + TAB_BAR_CONTENT_GAP;
 }
 
 interface TabButtonProps extends TabTriggerSlotProps {

@@ -32,7 +32,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/ui/IconButton';
 import { useTabBarClearance } from '@/components/navigation/TabBar';
 import { MotifOverlay } from '@/components/brand/Motif';
-import { LogoLockup } from '@/components/brand/LogoMark';
+import { LogoMark } from '@/components/brand/LogoMark';
 import { Marquee } from '@/components/brand/Marquee';
 import { RotatingBadge } from '@/components/brand/RotatingBadge';
 import type { Product, Category } from '@/types';
@@ -192,10 +192,11 @@ export default function HomeScreen() {
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <LogoLockup variant="onLight" markSize={36} />
+          {/* Mark only — the full lockup's wordmark clipped and the bag already carries the brand */}
+          <LogoMark size={44} variant="onLight" />
 
-          {/* Help — a visible safety net for first-time shoppers */}
-          <IconButton icon="help-circle-outline" onPress={() => router.push('/contact')} accessibilityLabel="Help" />
+          {/* Contact us — headset reads as "talk to a person" */}
+          <IconButton icon="headset-outline" onPress={() => router.push('/contact')} accessibilityLabel="Contact us" />
         </View>
 
         {/* Search */}
