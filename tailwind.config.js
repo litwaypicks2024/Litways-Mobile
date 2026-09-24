@@ -8,7 +8,7 @@ module.exports = {
   theme: {
     extend: {
       // Snap NativeWind's text classes to the type scale (theme/tokens.ts) so
-      // text-sm / text-base / font-medium etc. can't drift from it.
+      // text-sm / text-base etc. can't drift from it.
       fontSize: {
         xs: ['12px', { lineHeight: '16px' }],
         sm: ['14px', { lineHeight: '20px' }],
@@ -16,9 +16,13 @@ module.exports = {
         lg: ['17px', { lineHeight: '22px' }],
         xl: ['20px', { lineHeight: '26px' }],
         '2xl': ['24px', { lineHeight: '30px' }],
-        '3xl': ['28px', { lineHeight: '34px' }],
+        '3xl': ['26px', { lineHeight: '34px' }],
       },
-      fontWeight: { medium: '600', extrabold: '700', black: '700' },
+      // Static font files: weight is a family, so these classes only pick the family.
+      fontFamily: {
+        sans: ['Inter_400Regular'],
+        serif: ['Merriweather_700Bold'],
+      },
       colors: {
         primary: {
           50: '#fff7ed',

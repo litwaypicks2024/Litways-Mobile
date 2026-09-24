@@ -21,7 +21,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { FlashList } from '@/components/ui/List';
 import { supabase } from '@/lib/supabase';
-import { color, radius, spacing, gutter, shadow, type as t } from '@/theme/tokens';
+import { color, radius, spacing, gutter, shadow } from '@/theme/tokens';
 import { useAuthStore } from '@/store/auth';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { PressableScale } from '@/components/ui/PressableScale';

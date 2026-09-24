@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '@/components/ui/Text';
-import { color, radius } from '@/theme/tokens';
+import { color, font, radius } from '@/theme/tokens';
 
 interface Props extends TextInputProps {
   label?: string;
@@ -73,7 +73,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
         )}
         <TextInput
           ref={ref}
-          style={[{ flex: 1, fontSize: 14, lineHeight: 20, color: color.ink, paddingVertical: 12 }, style]}
+          style={[{ flex: 1, fontSize: 14, lineHeight: 20, fontFamily: font.sans, color: color.ink, paddingVertical: 12 }, style]}
           placeholderTextColor={color.inkFaint}
           secureTextEntry={isPassword && !showPassword}
           onFocus={() => setFocused(true)}

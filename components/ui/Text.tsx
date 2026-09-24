@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text as RNText, type TextProps } from 'react-native';
-import { color, type, type TypeVariant } from '@/theme/tokens';
+import { color, font, type, type TypeVariant } from '@/theme/tokens';
 
 /**
  * The one way to render text. `variant` picks a role from the type scale in
@@ -35,17 +35,23 @@ const SCALE_CAP: Partial<Record<TypeVariant, number>> = {
   overline: 1.3,
 };
 
+/* Inter ships as separate static files, so weight is a font family. This is
+   how a nested span (a bold word, a link) changes weight — never fontWeight. */
+const WEIGHTS = { regular: font.sans, semibold: font.sansSemibold, bold: font.sansBold } as const;
+export type TextWeight = keyof typeof WEIGHTS;
+
 interface Props extends TextProps {
+  weight?: TextWeight;
   /** Omit for plain RN text (only while a screen is mid-migration). */
   variant?: TypeVariant;
   tone?: TextTone;
 }
 
-export function Text({ variant, tone, style, maxFontSizeMultiplier, ...rest }: Props) {
+export function Text({ variant, tone, weight, style, maxFontSizeMultiplier, ...rest }: Props) {
   return (
     <RNText
       maxFontSizeMultiplier={maxFontSizeMultiplier ?? (variant ? SCALE_CAP[variant] : undefined)}
-      style={[variant && type[variant], tone && { color: TONES[tone] }, style]}
+      style={[variant && type[variant], weight && { fontFamily: WEIGHTS[weight] }, tone && { color: TONES[tone] }, style]}
       {...rest}
     />
   );

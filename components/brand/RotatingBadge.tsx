@@ -60,7 +60,7 @@ export function RotatingBadge({
           <Defs>
             <Path id="badge-ring" d="M 39 10 A 29 29 0 1 1 38.99 10" fill="none" />
           </Defs>
-          <SvgText fill="#ffffff" fontSize="9" fontWeight="700" letterSpacing="1.2">
+          <SvgText fill="#ffffff" fontSize="9" fontFamily="Inter_700Bold" letterSpacing="1.2">
             <TextPath href="#badge-ring">{text}</TextPath>
           </SvgText>
         </Svg>

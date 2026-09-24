@@ -222,7 +222,7 @@ export const ProductCard = memo(function ProductCard({ product, width, variant =
         <Text variant="overline" tone="muted" numberOfLines={1} style={{ marginBottom: 3 }}>
           {product.brand ?? '—'}
         </Text>
-        <Text variant="small" numberOfLines={2} style={{ marginBottom: 4 }}>
+        <Text variant="small" numberOfLines={1} style={{ marginBottom: 4 }}>
           {product.name}
         </Text>
         {rating > 0 && (

@@ -100,7 +100,7 @@ export const TabButton = React.forwardRef<RNView, TabButtonProps>(function TabBu
         <Ionicons name={isFocused ? iconOn : iconOff} size={23} color={tint} />
         <IconBadge count={badge} />
       </View>
-      <Text variant="label" style={{ fontWeight: isFocused ? '700' : '600', color: tint, letterSpacing: 0 }}>{label}</Text>
+      <Text variant="label" weight={isFocused ? 'bold' : 'semibold'} style={{ color: tint, letterSpacing: 0 }}>{label}</Text>
     </Pressable>
   );
 });
