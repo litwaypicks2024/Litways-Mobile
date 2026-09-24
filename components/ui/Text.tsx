@@ -36,7 +36,7 @@ const SCALE_CAP: Partial<Record<TypeVariant, number>> = {
 };
 
 /* Inter ships as separate static files, so weight is a font family. This is
-   how a nested span (a bold word, a link) changes weight — never fontWeight. */
+   how a nested span (a bold word, a link) changes weight. */
 const WEIGHTS = { regular: font.sans, semibold: font.sansSemibold, bold: font.sansBold } as const;
 export type TextWeight = keyof typeof WEIGHTS;
 
