@@ -308,7 +308,7 @@ export default function HomeScreen() {
           </Animated.View>
           <Animated.View entering={FadeInDown.duration(320).delay(3 * 60).reduceMotion(ReduceMotion.System)}>
             <Text variant="hero">
-              need, <Text style={{ color: color.accent }}>delivered.</Text>
+              need, <Text tone="accent">delivered.</Text>
             </Text>
           </Animated.View>
 

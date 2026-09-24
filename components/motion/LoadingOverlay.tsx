@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text } from '@/components/ui/Text';
 import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
 import { color, font } from '@/theme/tokens';
 import { BrandLoader } from '@/components/motion/BrandLoader';
@@ -34,8 +35,8 @@ export function LoadingOverlay({
     >
       <View style={styles.center}>
         <BrandLoader size={76} />
-        <Text style={styles.title}>{title}</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        <Text variant="title" style={styles.title}>{title}</Text>
+        {subtitle ? <Text variant="caption" tone="muted" style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
     </Animated.View>
   );
@@ -50,17 +51,6 @@ const styles = StyleSheet.create({
     elevation: 500,
   },
   center: { alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
-  title: {
-    fontSize: 20,
-    fontFamily: font.displayHeavy,
-    color: color.ink,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 13,
-    color: color.inkMuted,
-    textAlign: 'center',
-    lineHeight: 19,
-    maxWidth: 280,
-  },
+  title: { textAlign: 'center' },
+  subtitle: { textAlign: 'center', maxWidth: 280 },
 });

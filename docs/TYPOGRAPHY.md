@@ -30,3 +30,7 @@ Source of truth: the `type` scale in `theme/tokens.ts`. Render text with `<Text 
 | label | 11 / 14 | System 600 | Field labels, tab labels, captions |
 | overline | 10 / 12 | System 700, caps | Badges, eyebrows |
 | button | 15 / 20 | System 700 | Button labels (13 / 15 / 16 by size) |
+
+## Exceptions
+- **Nested spans** inside a sentence (a bold word, a tappable link) may set only weight and colour, and inherit size from the parent.
+- **Brand artwork** — the logo lockup (`components/brand/LogoMark.tsx`) and the splash (`components/BrandSplash.tsx`) — sizes its type to the artwork, not the scale.

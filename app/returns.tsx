@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text } from '@/components/ui/Text';
 
 export default function ReturnsScreen() {
   const router = useRouter();
@@ -16,33 +17,33 @@ export default function ReturnsScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={22} color={Colors.gray[800]} />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900">Returns Policy</Text>
+        <Text variant="heading">Returns Policy</Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <View className="bg-white rounded-2xl p-5 shadow-sm mb-4">
           <View className="w-14 h-14 bg-primary-50 rounded-2xl items-center justify-center mb-3">
             <Ionicons name="refresh" size={28} color={Colors.primary[600]} />
           </View>
-          <Text className="text-xl font-bold text-gray-900 mb-2">7-Day Return Policy</Text>
-          <Text className="text-sm text-gray-600 leading-6">Not satisfied? We make returns simple and hassle-free. Return eligible items within 7 days of delivery.</Text>
+          <Text variant="title" style={{ marginBottom: 8 }}>7-Day Return Policy</Text>
+          <Text variant="bodyLg" tone="body">Not satisfied? We make returns simple and hassle-free. Return eligible items within 7 days of delivery.</Text>
         </View>
         <View className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-          <Text className="text-base font-bold text-gray-900 mb-3">Return Process</Text>
+          <Text variant="heading" style={{ marginBottom: 12 }}>Return Process</Text>
           {steps.map((step, i) => (
             <View key={i} className="flex-row gap-3 mb-3">
               <View className="w-6 h-6 bg-primary-600 rounded-full items-center justify-center flex-shrink-0">
-                <Text className="text-white text-xs font-bold">{i + 1}</Text>
+                <Text variant="metaStrong" tone="onAccent">{i + 1}</Text>
               </View>
-              <Text className="text-sm text-gray-600 flex-1 leading-5">{step}</Text>
+              <Text variant="body" tone="body" style={{ flex: 1 }}>{step}</Text>
             </View>
           ))}
         </View>
         <View className="bg-white rounded-2xl p-5 shadow-sm">
-          <Text className="text-base font-bold text-gray-900 mb-3">Return Conditions</Text>
+          <Text variant="heading" style={{ marginBottom: 12 }}>Return Conditions</Text>
           {conditions.map((c) => (
             <View key={c} className="flex-row items-start gap-2 mb-2">
               <Ionicons name="checkmark-circle" size={16} color={Colors.primary[600]} style={{ marginTop: 1 }} />
-              <Text className="text-sm text-gray-600 flex-1 leading-5">{c}</Text>
+              <Text variant="body" tone="body" style={{ flex: 1 }}>{c}</Text>
             </View>
           ))}
         </View>

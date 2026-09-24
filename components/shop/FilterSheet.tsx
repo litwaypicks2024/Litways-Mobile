@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
-  Text,
   Modal,
   TouchableOpacity,
   ScrollView,
@@ -22,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { color, radius } from '@/theme/tokens';
 import { Button } from '@/components/ui/Button';
 import type { ProductFilters } from '@/types';
+import { Text } from '@/components/ui/Text';
 
 interface Props {
   visible: boolean;
@@ -152,12 +152,12 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
 
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 py-3 border-b border-gray-100">
-          <Text className="text-lg font-bold" style={{ color: color.ink }}>
-            Filters {activeCount > 0 && <Text className="text-primary-600">({activeCount})</Text>}
+          <Text variant="heading">
+            Filters {activeCount > 0 && <Text tone="accent">({activeCount})</Text>}
           </Text>
           <View className="flex-row gap-3">
             <TouchableOpacity onPress={handleReset}>
-              <Text className="text-sm font-medium" style={{ color: color.inkMuted }}>Reset</Text>
+              <Text variant="bodyStrong" tone="muted">Reset</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={onClose}
@@ -173,12 +173,12 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, gap: 24 }}>
           {/* Price Range */}
           <View>
-            <Text className="text-sm font-bold mb-3" style={{ color: color.ink }}>Price Range (USD)</Text>
+            <Text variant="bodyStrong" style={{ marginBottom: 12 }}>Price Range (USD)</Text>
             <View className="flex-row gap-3">
               <View className="flex-1">
-                <Text className="text-xs mb-1" style={{ color: color.inkMuted }}>Min</Text>
+                <Text variant="meta" tone="muted" style={{ marginBottom: 4 }}>Min</Text>
                 <View className="flex-row items-center h-11" style={priceFieldStyle}>
-                  <Text className="mr-1" style={{ color: color.inkFaint }}>$</Text>
+                  <Text tone="faint" style={{ marginRight: 4 }}>$</Text>
                   <TextInput
                     value={local.minPrice?.toString() ?? ''}
                     onChangeText={(v) => setLocal((s) => ({ ...s, minPrice: v ? Number(v) : undefined }))}
@@ -191,9 +191,9 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
                 </View>
               </View>
               <View className="flex-1">
-                <Text className="text-xs mb-1" style={{ color: color.inkMuted }}>Max</Text>
+                <Text variant="meta" tone="muted" style={{ marginBottom: 4 }}>Max</Text>
                 <View className="flex-row items-center h-11" style={priceFieldStyle}>
-                  <Text className="mr-1" style={{ color: color.inkFaint }}>$</Text>
+                  <Text tone="faint" style={{ marginRight: 4 }}>$</Text>
                   <TextInput
                     value={local.maxPrice?.toString() ?? ''}
                     onChangeText={(v) => setLocal((s) => ({ ...s, maxPrice: v ? Number(v) : undefined }))}
@@ -211,8 +211,8 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
           {/* Brands */}
           {brands && brands.length > 0 && (
             <View>
-              <Text className="text-sm font-bold mb-3" style={{ color: color.ink }}>
-                Brand {local.brands?.length ? <Text className="text-primary-600">({local.brands.length} selected)</Text> : ''}
+              <Text variant="bodyStrong" style={{ marginBottom: 12 }}>
+                Brand {local.brands?.length ? <Text tone="accent">({local.brands.length} selected)</Text> : ''}
               </Text>
               <View className="flex-row flex-wrap gap-2">
                 {brands.map((brand: string) => {
@@ -223,7 +223,7 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
                       onPress={() => toggleBrand(brand)}
                       className={`px-4 py-2 rounded-full border-2 ${selected ? 'bg-primary-600 border-primary-600' : 'bg-white border-gray-200'}`}
                     >
-                      <Text className="text-sm font-medium" style={{ color: selected ? color.onAccent : color.ink }}>
+                      <Text variant="bodyStrong" style={{ color: selected ? color.onAccent : color.ink }}>
                         {brand}
                       </Text>
                     </TouchableOpacity>
@@ -235,8 +235,8 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
 
           {/* Sizes */}
           <View>
-            <Text className="text-sm font-bold mb-3" style={{ color: color.ink }}>
-              Size {local.sizes?.length ? <Text className="text-primary-600">({local.sizes.length} selected)</Text> : ''}
+            <Text variant="bodyStrong" style={{ marginBottom: 12 }}>
+              Size {local.sizes?.length ? <Text tone="accent">({local.sizes.length} selected)</Text> : ''}
             </Text>
             <View className="flex-row flex-wrap gap-2">
               {SIZES.map((size) => {
@@ -247,7 +247,7 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
                     onPress={() => toggleSize(size)}
                     className={`w-14 h-10 rounded-full border-2 items-center justify-center ${selected ? 'bg-primary-600 border-primary-600' : 'bg-white border-gray-200'}`}
                   >
-                    <Text className="text-sm font-semibold" style={{ color: selected ? color.onAccent : color.ink }}>
+                    <Text variant="bodyStrong" style={{ color: selected ? color.onAccent : color.ink }}>
                       {size}
                     </Text>
                   </TouchableOpacity>

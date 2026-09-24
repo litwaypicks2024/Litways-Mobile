@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '@/components/ui/Text';
 import { color, radius } from '@/theme/tokens';
 
 type Variant = 'success' | 'error' | 'warning' | 'info' | 'primary' | 'secondary';
@@ -42,7 +43,7 @@ export function Badge({ label, variant, status, size = 'sm' }: Props) {
         paddingVertical: size === 'sm' ? 3 : 5,
       }}
     >
-      <Text style={{ fontWeight: '600', color: s.text, fontSize: size === 'sm' ? 11 : 13 }}>{label}</Text>
+      <Text variant={size === 'sm' ? 'label' : 'small'} style={{ color: s.text, letterSpacing: 0 }}>{label}</Text>
     </View>
   );
 }

@@ -235,13 +235,7 @@ export default function LoginScreen() {
                     ...(mode === m ? shadow.header : {}),
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: mode === m ? '800' : '600',
-                      color: mode === m ? color.ink : color.inkMuted,
-                    }}
-                  >
+                  <Text variant="bodyStrong" tone={mode === m ? 'default' : 'muted'}>
                     {m === 'login' ? 'Sign In' : 'Sign Up'}
                   </Text>
                 </TouchableOpacity>
