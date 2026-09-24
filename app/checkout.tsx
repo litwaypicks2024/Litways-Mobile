@@ -20,6 +20,8 @@ import { CountyField } from '@/components/checkout/CountyField';
 import { OrderSummary, SecureNote } from '@/components/checkout/OrderSummary';
 import { PayBar } from '@/components/checkout/PayBar';
 import { PaymentProgress } from '@/components/checkout/PaymentProgress';
+import { AvailabilityBanner } from '@/components/cart/AvailabilityBanner';
+import { useCartAvailability } from '@/lib/cartAvailability';
 import { color, gutter, radius, spacing } from '@/theme/tokens';
 import { momoAPI } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
@@ -69,6 +71,8 @@ export default function CheckoutScreen() {
   // below can also collapse it later (signing in mid-checkout), but a tap on
   // "Edit" latches detailsExpandedByUserRef so it's never auto-collapsed
   // back out from under someone actively editing.
+  // Rechecked on entry so a sold-out line is dealt with before the shopper fills in the form.
+  const availability = useCartAvailability();
   const [detailsExpanded, setDetailsExpanded] = useState(
     () => !(form.firstName && form.email && form.phone && form.address)
   );
@@ -432,6 +436,8 @@ export default function CheckoutScreen() {
         contentContainerStyle={{ padding: gutter, paddingBottom: spacing.lg }}
         keyboardShouldPersistTaps="handled"
       >
+        <AvailabilityBanner report={availability.report} onDismiss={availability.dismiss} />
+
         {notice && (
           <View
             accessibilityRole="alert"
