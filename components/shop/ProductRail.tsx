@@ -5,12 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { color, gutter, spacing } from '@/theme/tokens';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { ProductCardSkeleton } from '@/components/ui/SkeletonLoader';
-import type { Product } from '@/types';
+import type { CardProduct } from '@/lib/catalog';
 
 interface Props {
   title: string;
   subtitle?: string;
-  products: Product[];
+  products: CardProduct[];
   loading?: boolean;
   /** Text-only action on the right of the header ("See all", "Clear"). */
   actionLabel?: string;
@@ -18,6 +18,9 @@ interface Props {
   /** Tighter header for use inside the Shop tab's discovery view. */
   compact?: boolean;
 }
+
+const keyOf = (item: CardProduct) => item.id ?? item.slug ?? '';
+const renderCard = ({ item }: { item: CardProduct }) => <ProductCard product={item} width={160} variant="horizontal" />;
 
 /** Titled horizontal shelf of product cards — the one shelf used across Home, Shop and Favorites. */
 export function ProductRail({ title, subtitle, products, loading, actionLabel, onAction, compact }: Props) {
@@ -47,8 +50,10 @@ export function ProductRail({ title, subtitle, products, loading, actionLabel, o
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: gutter, gap: spacing.md }}
-          keyExtractor={(item) => item.id ?? item.slug ?? ''}
-          renderItem={({ item }) => <ProductCard product={item} width={160} variant="horizontal" />}
+          keyExtractor={keyOf}
+          renderItem={renderCard}
+          initialNumToRender={3}
+          windowSize={5}
         />
       )}
     </View>

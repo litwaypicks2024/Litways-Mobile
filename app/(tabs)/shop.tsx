@@ -425,7 +425,7 @@ export default function ShopScreen() {
           <ProductRail
             compact
             title="Recently viewed"
-            products={recentlyViewed as unknown as Product[]}
+            products={recentlyViewed}
             actionLabel="Clear"
             onAction={clearRecentlyViewed}
           />
@@ -555,7 +555,7 @@ export default function ShopScreen() {
               <ProductRail
                 compact
                 title="Recently viewed"
-                products={recentlyViewed as unknown as Product[]}
+                products={recentlyViewed}
                 actionLabel="Clear"
                 onAction={clearRecentlyViewed}
               />

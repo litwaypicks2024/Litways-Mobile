@@ -13,13 +13,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, radius } from '@/theme/tokens';
-import { useCartStore } from '@/store/cart';
+import { useCartStore, unitsInCart, cartHasRoomFor, MAX_CART_LINES } from '@/store/cart';
 import { Button } from '@/components/ui/Button';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { flyToCart } from '@/components/motion/FlyToCart';
 import { showToast } from '@/components/ui/Toast';
 import { formatCurrency } from '@/lib/currency';
-import type { Product } from '@/types';
+import type { CardProduct } from '@/lib/catalog';
 import { Text } from '@/components/ui/Text';
 
 /**
@@ -28,9 +28,9 @@ import { Text } from '@/components/ui/Text';
  * One instance lives at the root (like the toast); call openQuickAdd(product).
  */
 
-let opener: ((p: Product) => void) | null = null;
+let opener: ((p: CardProduct) => void) | null = null;
 
-export function openQuickAdd(product: Product) {
+export function openQuickAdd(product: CardProduct) {
   opener?.(product);
 }
 
@@ -41,7 +41,7 @@ export function QuickAddSheetHost() {
   const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
 
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<CardProduct | null>(null);
   const [mounted, setMounted] = useState(false);
   const [size, setSize] = useState<string | null>(null);
   const [colorChoice, setColorChoice] = useState<string | null>(null);
@@ -97,7 +97,7 @@ export function QuickAddSheetHost() {
       return;
     }
     // addItem silently caps at stock; don't celebrate an add that adds nothing.
-    const inCart = useCartStore.getState().items.reduce((n, i) => (i.productId === product.id ? n + i.quantity : n), 0);
+    const inCart = unitsInCart(useCartStore.getState().items, product.id);
     if (inCart >= (product.stock ?? 0)) {
       showToast({
         title: 'Already in your cart',
@@ -105,6 +105,11 @@ export function QuickAddSheetHost() {
         tone: 'info',
         action: { label: 'View cart', href: '/(tabs)/cart' },
       });
+      close();
+      return;
+    }
+    if (!cartHasRoomFor(useCartStore.getState().items, { productId: product.id ?? '', size: size ?? undefined, color: colorChoice ?? undefined })) {
+      showToast({ title: 'Your cart is full', detail: `You can have up to ${MAX_CART_LINES} different items. Check out or remove one to add more.`, tone: 'info', action: { label: 'View cart', href: '/(tabs)/cart' } });
       close();
       return;
     }

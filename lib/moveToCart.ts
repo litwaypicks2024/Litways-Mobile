@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import { useCartStore } from '@/store/cart';
+import { useCartStore, unitsInCart, cartHasRoomFor } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
+import { chunk, IN_CHUNK } from '@/lib/chunk';
 import type { WishlistItem } from '@/types';
 
 export interface MoveResult {
@@ -23,13 +24,18 @@ export async function moveFavoritesToCart(items: WishlistItem[]): Promise<MoveRe
   const result: MoveResult = { moved: [], needsChoice: [], unavailable: [], atLimit: [] };
   if (!items.length) return result;
 
-  const { data, error } = await supabase
-    .from('products')
-    .select('id, name, brand, price, sale_price, image_urls, slug, stock, sizes, colors')
-    .in('id', items.map((i) => i.productId));
-  if (error) throw error;
+  const results = await Promise.all(
+    chunk(items.map((i) => i.productId), IN_CHUNK).map((ids) =>
+      supabase
+        .from('products')
+        .select('id, name, brand, price, sale_price, image_urls, slug, stock, sizes, colors')
+        .in('id', ids)
+    )
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw failed.error;
 
-  const fresh = new Map((data ?? []).map((p) => [p.id, p]));
+  const fresh = new Map(results.flatMap((r) => r.data ?? []).map((p) => [p.id, p]));
   const cart = useCartStore.getState();
   const wishlist = useWishlistStore.getState();
 
@@ -40,8 +46,12 @@ export async function moveFavoritesToCart(items: WishlistItem[]): Promise<MoveRe
     const colors = p.colors ?? [];
     if (sizes.length > 1 || colors.length > 1) { result.needsChoice.push(item); continue; }
 
-    const inCart = useCartStore.getState().items.reduce((n, i) => (i.productId === p.id ? n + i.quantity : n), 0);
-    if (inCart >= p.stock) { result.atLimit.push(item); continue; }
+    const cartItems = useCartStore.getState().items;
+    // A full cart is reported the same way as a stock limit: "couldn't add this one".
+    if (unitsInCart(cartItems, p.id) >= p.stock || !cartHasRoomFor(cartItems, { productId: p.id, size: sizes[0], color: colors[0] })) {
+      result.atLimit.push(item);
+      continue;
+    }
 
     const onSale = p.sale_price != null && p.sale_price < p.price;
     cart.addItem({
@@ -101,9 +111,12 @@ export async function buyAgain(items: BuyAgainItem[]): Promise<BuyAgainResult> {
     const colors = p.colors ?? [];
     if (sizes.length > 1 || colors.length > 1) { result.needsChoice.push(item); continue; }
 
-    const inCart = useCartStore.getState().items.reduce((n, i) => (i.productId === p.id ? n + i.quantity : n), 0);
-    const room = p.stock - inCart;
-    if (room <= 0) { result.atLimit.push(item); continue; }
+    const cartItems = useCartStore.getState().items;
+    const room = p.stock - unitsInCart(cartItems, p.id);
+    if (room <= 0 || !cartHasRoomFor(cartItems, { productId: p.id, size: sizes[0], color: colors[0] })) {
+      result.atLimit.push(item);
+      continue;
+    }
 
     const onSale = p.sale_price != null && p.sale_price < p.price;
     const times = Math.min(Math.max(item.quantity ?? 1, 1), room);

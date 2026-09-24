@@ -17,6 +17,8 @@ import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
 import { onboarding } from '@/lib/storage';
 import { resolvePendingPayment } from '@/lib/paymentRecovery';
+import { restoreQueryCache, persistQueryCache } from '@/lib/queryPersist';
+import { prefetchHome } from '@/lib/homeFeed';
 import { registerForPushNotifications, savePushToken, syncPushTokenForUser, useNotificationListener, getLastNotificationResponse } from '@/lib/notifications';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { BrandSplash } from '@/components/BrandSplash';
@@ -289,6 +291,16 @@ function AppContent() {
       }
     }
 
+    // Paint the last-seen shelves straight away: restore the saved catalogue
+    // cache (a few KB) behind the splash, then start Home's requests without
+    // waiting for Home to mount. Persisting starts only after the restore so
+    // an empty cache can never overwrite the saved one.
+    let stopPersisting: (() => void) | undefined;
+    const cacheReady = restoreQueryCache(queryClient).then(() => {
+      stopPersisting = persistQueryCache(queryClient);
+      prefetchHome(queryClient);
+    });
+
     // Resolve startup state first (session, onboarding, and whether we were
     // cold-started via a deep link) before deciding where to navigate — a
     // deep link and the onboarding redirect both want to run router.replace
@@ -296,6 +308,7 @@ function AppContent() {
     // promise resolved first (wave2 round1 finding: deep-link vs onboarding
     // race). RULING: deep-linked content wins over onboarding this launch.
     Promise.all([
+      cacheReady,
       supabase.auth.getSession(),
       onboarding.hasSeen(),
       Linking.getInitialURL(),
@@ -306,7 +319,7 @@ function AppContent() {
       // response until cleared, so reading it twice is safe.
       getLastNotificationResponse(),
     ])
-      .then(([{ data: { session } }, seenOnboarding, initialUrl, notifResponse]) => {
+      .then(([, { data: { session } }, seenOnboarding, initialUrl, notifResponse]) => {
         hydrate(session);
         const initialDeepLink = initialUrl ? parseDeepLink(initialUrl) : null;
         if (initialDeepLink) {
@@ -349,6 +362,7 @@ function AppContent() {
     });
 
     return () => {
+      stopPersisting?.();
       listener.subscription.unsubscribe();
       if (hydrationCapTimerRef.current) clearTimeout(hydrationCapTimerRef.current);
     };
