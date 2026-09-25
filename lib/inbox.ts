@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useMemo, useMemo as useMemoReact } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { shortOrderId } from '@/lib/orderStatus';
 import { formatCurrency } from '@/lib/currency';
@@ -49,6 +49,58 @@ export function orderEvent(o: OrderRow): InboxItem | null {
 }
 
 export const INBOX_ORDERS_KEY = 'inbox-orders';
+export const INBOX_SERVER_KEY = 'inbox-server';
+
+/* ── Server inbox (public.notifications), when the migration is applied ───────── */
+
+interface ServerRow {
+  id: string;
+  kind: InboxItem['kind'];
+  title: string;
+  body: string;
+  href: string | null;
+  image_url: string | null;
+  created_at: string;
+  read_at: string | null;
+}
+
+/** Server ids are prefixed so they can't collide with local ones and are easy to route. */
+export const SERVER_PREFIX = 'srv:';
+const isServerId = (id: string) => id.startsWith(SERVER_PREFIX);
+const rawId = (id: string) => id.slice(SERVER_PREFIX.length);
+
+/** "The table isn't there yet" (migration not applied) as opposed to a real failure. */
+function isMissingTable(error: { code?: string; message?: string }): boolean {
+  return error.code === '42P01' || error.code === 'PGRST205' || /schema cache|does not exist/i.test(error.message ?? '');
+}
+
+/**
+ * The shopper's server-side notifications. `undefined` while loading, `null`
+ * when the table doesn't exist yet (the app then derives order updates itself),
+ * otherwise the rows. Failures other than a missing table are treated like a
+ * missing table for display so the inbox never goes blank because of a hiccup.
+ */
+function useServerRows() {
+  const userId = useAuthStore((s) => s.user?.id);
+  return useQuery({
+    queryKey: [INBOX_SERVER_KEY, userId],
+    enabled: !!userId,
+    staleTime: 30_000,
+    retry: false,
+    queryFn: async (): Promise<ServerRow[] | null> => {
+      const { data, error } = await supabase
+        .from('notifications' as any)
+        .select('id, kind, title, body, href, image_url, created_at, read_at')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) {
+        if (isMissingTable(error)) return null;
+        throw error;
+      }
+      return (data ?? []) as unknown as ServerRow[];
+    },
+  });
+}
 
 function useOrderEvents(): InboxItem[] {
   const userId = useAuthStore((s) => s.user?.id);
@@ -77,21 +129,114 @@ export interface InboxEntry extends InboxItem {
 }
 
 export function useInbox() {
-  const orderItems = useOrderEvents();
+  const derivedOrders = useOrderEvents();
+  const server = useServerRows();
   const local = useInboxStore((s) => s.items);
   const read = useInboxStore((s) => s.read);
   const deleted = useInboxStore((s) => s.deleted);
 
-  const entries = useMemo<InboxEntry[]>(
-    () =>
-      [...orderItems, ...local]
-        .filter((i) => !deleted[i.id])
-        .sort((a, b) => b.at - a.at)
-        .map((i) => ({ ...i, unread: !read[i.id] })),
-    [orderItems, local, read, deleted]
+  const serverRows = server.data ?? null;
+  // Once the table exists it is the source of truth for order updates, so the
+  // ones derived from `orders` step aside (they'd be duplicates). While the
+  // table is missing (or failed), the derived ones keep the inbox working.
+  const serverActive = Array.isArray(serverRows);
+  const orderItems = serverActive ? [] : derivedOrders;
+
+  const entries = useMemoReact<InboxEntry[]>(() => {
+    const fromServer: InboxEntry[] = (serverRows ?? []).map((r) => ({
+      id: SERVER_PREFIX + r.id,
+      kind: r.kind,
+      title: r.title,
+      body: r.body,
+      at: Date.parse(r.created_at),
+      href: r.href ?? undefined,
+      imageUrl: r.image_url ?? undefined,
+      unread: !r.read_at,
+    }));
+    const fromDevice: InboxEntry[] = [...orderItems, ...local]
+      .filter((i) => !deleted[i.id])
+      .map((i) => ({ ...i, unread: !read[i.id] }));
+    return [...fromServer, ...fromDevice].sort((a, b) => b.at - a.at);
+  }, [serverRows, orderItems, local, read, deleted]);
+
+  const unreadCount = useMemoReact(() => entries.filter((e) => e.unread).length, [entries]);
+  return { entries, unreadCount, derivedOrderIds: derivedOrders.map((o) => o.id) };
+}
+
+/**
+ * Read / unread / delete for an entry, routed to wherever it lives: server rows
+ * are updated in the database (optimistically, and put back if that fails);
+ * device rows in the local store.
+ */
+export function useInboxActions() {
+  const queryClient = useQueryClient();
+  const userId = useAuthStore((s) => s.user?.id);
+  const key = useMemoReact(() => [INBOX_SERVER_KEY, userId], [userId]);
+
+  const patchCache = useCallback(
+    (fn: (rows: ServerRow[]) => ServerRow[]) => {
+      queryClient.setQueryData<ServerRow[] | null>(key, (rows) => (rows ? fn(rows) : rows));
+    },
+    [queryClient, key]
   );
-  const unreadCount = useMemo(() => entries.filter((e) => e.unread).length, [entries]);
-  return { entries, unreadCount, orderIds: orderItems.map((o) => o.id) };
+  const resync = useCallback(() => void queryClient.invalidateQueries({ queryKey: [INBOX_SERVER_KEY] }), [queryClient]);
+
+  const setRead = useCallback(
+    (ids: string[], read: boolean) => {
+      const local = ids.filter((i) => !isServerId(i));
+      const server = ids.filter(isServerId).map(rawId);
+      if (local.length) {
+        const store = useInboxStore.getState();
+        if (read) store.markRead(local);
+        else local.forEach((id) => store.markUnread(id));
+      }
+      if (server.length) {
+        const at = read ? new Date().toISOString() : null;
+        patchCache((rows) => rows.map((r) => (server.includes(r.id) ? { ...r, read_at: at } : r)));
+        void supabase
+          .from('notifications' as any)
+          .update({ read_at: at })
+          .in('id', server)
+          .then(({ error }) => { if (error) resync(); });
+      }
+    },
+    [patchCache, resync]
+  );
+
+  const remove = useCallback(
+    (id: string) => {
+      if (!isServerId(id)) return useInboxStore.getState().remove(id);
+      const uuid = rawId(id);
+      patchCache((rows) => rows.filter((r) => r.id !== uuid));
+      void supabase
+        .from('notifications' as any)
+        .delete()
+        .eq('id', uuid)
+        .then(({ error }) => { if (error) resync(); });
+    },
+    [patchCache, resync]
+  );
+
+  const clearAll = useCallback(
+    (derivedOrderIds: string[]) => {
+      useInboxStore.getState().clearAll(derivedOrderIds);
+      if (!userId) return;
+      patchCache(() => []);
+      void supabase
+        .from('notifications' as any)
+        .delete()
+        .eq('user_id', userId)
+        .then(({ error }) => { if (error) resync(); });
+    },
+    [patchCache, resync, userId]
+  );
+
+  return {
+    markRead: (ids: string[]) => setRead(ids, true),
+    markUnread: (id: string) => setRead([id], false),
+    remove,
+    clearAll,
+  };
 }
 
 export function useUnreadCount(): number {

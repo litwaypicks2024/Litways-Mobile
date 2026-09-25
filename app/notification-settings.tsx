@@ -9,7 +9,7 @@ import { Text } from '@/components/ui/Text';
 import { alertDialog } from '@/components/ui/Dialog';
 import { showToast } from '@/components/ui/Toast';
 import { ListGroup, ListRow } from '@/components/account/ListRow';
-import { useInbox } from '@/lib/inbox';
+import { useInbox, useInboxActions } from '@/lib/inbox';
 import { getPermissionState, registerForPushNotifications, type PermissionState } from '@/lib/notifications';
 import { useInboxStore } from '@/store/inbox';
 import { color, gutter, spacing } from '@/theme/tokens';
@@ -24,7 +24,8 @@ const STATUS: Record<PermissionState, { title: string; body: string }> = {
 export default function NotificationSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { orderIds } = useInbox();
+  const { derivedOrderIds } = useInbox();
+  const { clearAll: clearInbox } = useInboxActions();
   const alertsEnabled = useInboxStore((s) => s.alertsEnabled);
   const [perm, setPerm] = useState<PermissionState>('unavailable');
 
@@ -45,7 +46,7 @@ export default function NotificationSettingsScreen() {
 
   function clearAll() {
     alertDialog('Clear all notifications?', 'This empties your inbox. New updates will still arrive.', [
-      { text: 'Clear all', style: 'destructive', onPress: () => { useInboxStore.getState().clearAll(orderIds); showToast({ title: 'Inbox cleared', tone: 'success' }); } },
+      { text: 'Clear all', style: 'destructive', onPress: () => { clearInbox(derivedOrderIds); showToast({ title: 'Inbox cleared', tone: 'success' }); } },
       { text: 'Cancel', style: 'cancel' },
     ]);
   }
