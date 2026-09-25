@@ -142,3 +142,48 @@ export function useNotificationListener(
     } catch {}
   }, []);
 }
+
+export type PermissionState = 'granted' | 'denied' | 'undetermined' | 'unavailable';
+
+/** Whether the OS lets us send pushes. 'unavailable' in Expo Go and on simulators without support. */
+export async function getPermissionState(): Promise<PermissionState> {
+  if (IS_EXPO_GO) return 'unavailable';
+  try {
+    const { status } = await getNotifications().getPermissionsAsync();
+    return status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'undetermined';
+  } catch {
+    return 'unavailable';
+  }
+}
+
+/** A push arrived while the app was open. Returns an unsubscribe. */
+export function addReceivedListener(cb: (n: any) => void): () => void {
+  if (IS_EXPO_GO) return () => {};
+  try {
+    const sub = getNotifications().addNotificationReceivedListener(cb);
+    return () => sub.remove();
+  } catch {
+    return () => {};
+  }
+}
+
+/** The shopper tapped a push. Returns an unsubscribe. */
+export function addResponseListener(cb: (r: any) => void): () => void {
+  if (IS_EXPO_GO) return () => {};
+  try {
+    const sub = getNotifications().addNotificationResponseReceivedListener(cb);
+    return () => sub.remove();
+  } catch {
+    return () => {};
+  }
+}
+
+/** Pushes still sitting in the tray: these arrived while the app was closed, so JS never saw them. */
+export async function getPresentedNotifications(): Promise<any[]> {
+  if (IS_EXPO_GO) return [];
+  try {
+    return await getNotifications().getPresentedNotificationsAsync();
+  } catch {
+    return [];
+  }
+}

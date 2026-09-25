@@ -15,6 +15,7 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { alertDialog } from '@/components/ui/Dialog';
 import { ListGroup, ListRow } from '@/components/account/ListRow';
 import { ActiveOrderCard } from '@/components/home/ActiveOrderCard';
+import { useUnreadCount } from '@/lib/inbox';
 import { ProfileAvatar } from '@/components/account/ProfileAvatar';
 
 /**
@@ -32,6 +33,7 @@ export default function AccountScreen() {
   const signOut = useAuthStore((s) => s.signOut);
   const syncFailed = useCartStore((s) => s.syncFailed);
   const favoriteCount = useWishlistStore((s) => s.items.length);
+  const unread = useUnreadCount();
 
   // Older deep links (confirmation → "Track your order", Home shortcut) land here with ?tab=orders.
   const { tab } = useLocalSearchParams<{ tab?: string }>();
@@ -139,6 +141,12 @@ export default function AccountScreen() {
               onPress={() => router.push('/edit-profile')}
             />
             <ListRow icon="receipt-outline" label="My orders" subtitle="Track, review and reorder" onPress={() => router.push('/orders')} />
+            <ListRow
+              icon="notifications-outline"
+              label="Notifications"
+              subtitle={unread > 0 ? `${unread} unread` : 'Order updates, price drops and offers'}
+              onPress={() => router.push('/notifications')}
+            />
             <ListRow icon="lock-closed-outline" label="Change password" onPress={() => router.push('/change-password')} />
           </ListGroup>
         )}

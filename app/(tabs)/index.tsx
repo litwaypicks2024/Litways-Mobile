@@ -34,6 +34,7 @@ import { homeFeedOptions, categoriesOptions } from '@/lib/homeFeed';
 import type { CardProduct } from '@/lib/catalog';
 import type { Category } from '@/types';
 import { Text } from '@/components/ui/Text';
+import { useUnreadCount } from '@/lib/inbox';
 
 /** "Good morning" / "Good afternoon" / "Good evening" by device clock. */
 function daypartGreeting(): string {
@@ -54,6 +55,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const firstName = useAuthStore((s) => s.profile?.first_name);
+  const unread = useUnreadCount();
   const [refreshing, setRefreshing] = useState(false);
   const tabBarClearance = useTabBarClearance();
 
@@ -149,8 +151,16 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          {/* Contact us — headset reads as "talk to a person" */}
-          <IconButton icon="headset-outline" onPress={() => router.push('/contact')} accessibilityLabel="Contact us" />
+          {/* Inbox (order updates, price drops, offers) and contact — headset reads as "talk to a person" */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <IconButton
+              icon="notifications-outline"
+              badge={unread}
+              onPress={() => router.push('/notifications')}
+              accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+            />
+            <IconButton icon="headset-outline" onPress={() => router.push('/contact')} accessibilityLabel="Contact us" />
+          </View>
         </View>
 
         {/* Search */}

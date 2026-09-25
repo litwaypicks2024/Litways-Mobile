@@ -24,6 +24,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { BrandSplash } from '@/components/BrandSplash';
 import { FlyToCartOverlay } from '@/components/motion/FlyToCart';
 import { ToastHost, showToast } from '@/components/ui/Toast';
+import { InboxSync } from '@/components/notifications/InboxSync';
 import { QuickAddSheetHost } from '@/components/shop/QuickAddSheet';
 import { LoadingOverlay } from '@/components/motion/LoadingOverlay';
 import { alertDialog, DialogHost } from '@/components/ui/Dialog';
@@ -440,6 +441,7 @@ function AppContent() {
     />
     <FlyToCartOverlay />
     <ToastHost />
+    <InboxSync />
     <DialogHost />
     <QuickAddSheetHost />
     {showSplash && <BrandSplash visible={!appReady} onHidden={() => setShowSplash(false)} />}
