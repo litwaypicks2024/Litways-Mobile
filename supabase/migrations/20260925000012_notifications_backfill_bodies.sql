@@ -1,4 +1,4 @@
--- The backfill in ..._000003 inserted order notifications with an empty body. Fill them with the
+-- The backfill in ..._000010 inserted order notifications with an empty body. Fill them with the
 -- same wording the order trigger uses so old items show their detail, not just a title.
 update public.notifications n
 set body = case o.payment_status

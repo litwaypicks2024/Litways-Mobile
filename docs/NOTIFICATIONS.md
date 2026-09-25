@@ -8,7 +8,7 @@ The app's inbox merges three sources on the device: order updates derived from t
 
 | Finding | Consequence |
 |---|---|
-| `supabase_realtime` publication has **no tables** | Every realtime subscription (checkout's live payment tracking, the inbox refresh) receives nothing. Only the 6-second polling fallback works. Fixed by migration `…000004`. |
+| `supabase_realtime` publication has **no tables** | Every realtime subscription (checkout's live payment tracking, the inbox refresh) receives nothing. Only the 6-second polling fallback works. Fixed by migration `…000011`. |
 | `push_tokens` has **0 rows** | No device has ever registered for pushes. Registration only ran after sign-in, on dev/production builds. The onboarding pre-prompt now asks guests too. |
 | No edge functions; `pg_net` not enabled | Nothing in the project sends pushes. Whatever sends them lives outside it (or nothing does). |
 | `orders.payment_status` values in use: PENDING, SUCCESSFUL, COMPLETED, FAILED, REFUNDED | The trigger covers these plus DISPUTED. |
@@ -41,7 +41,7 @@ the app's inbox (read / unread / delete write back to the row)
 
 ## Rollout checklist
 
-1. ~~**Review, then apply**~~ (done) `20260925000003_notifications_inbox.sql` and `20260925000004_realtime_orders_notifications.sql` (Supabase SQL editor or `supabase db push`). Tested on a throwaway Postgres 17; see `supabase/tests/README.md`. Enabling realtime on `orders` also switches on checkout's live payment tracking, which has been running on polling alone.
+1. ~~**Review, then apply**~~ (done) `20260925000010_notifications_inbox.sql` and `20260925000011_realtime_orders_notifications.sql` (Supabase SQL editor or `supabase db push`). Tested on a throwaway Postgres 17; see `supabase/tests/README.md`. Enabling realtime on `orders` also switches on checkout's live payment tracking, which has been running on polling alone.
 2. ~~**Regenerate types**~~ (done; `notifications` is typed in `types/database.types.ts`).
 3. **Deploy the sender**: `supabase secrets set PUSH_WEBHOOK_SECRET=<random>` then `supabase functions deploy send-push --no-verify-jwt`.
 4. **Create the webhook**: Dashboard → Database → Webhooks → table `notifications`, event `INSERT`, HTTP POST to the function URL, header `Authorization: Bearer <PUSH_WEBHOOK_SECRET>`.
