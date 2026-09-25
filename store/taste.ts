@@ -14,9 +14,10 @@ import type { Product } from '@/types';
  * this week's (see rankedCategories).
  */
 
-export type TasteSignal = 'view' | 'wishlist' | 'search' | 'category';
+export type TasteSignal = 'view' | 'wishlist' | 'search' | 'category' | 'interest';
 
-const WEIGHTS: Record<TasteSignal, number> = { view: 3, wishlist: 4, search: 2, category: 2 };
+// 'interest' = a category the shopper picked during onboarding: a strong head start that behaviour then overtakes.
+const WEIGHTS: Record<TasteSignal, number> = { view: 3, wishlist: 4, search: 2, category: 2, interest: 6 };
 const HALF_LIFE_DAYS = 14;
 const MAX_RECENT = 12;
 const MAX_CATEGORIES = 30;
@@ -40,6 +41,8 @@ interface TasteState {
   recentlyViewed: RecentProduct[];
   bump: (slug: string | null | undefined, name: string | null | undefined, signal: TasteSignal) => void;
   recordView: (product: Product) => void;
+  /** Onboarding picks: seed these categories so the first Home already leans their way. */
+  seedInterests: (items: { slug: string; name: string }[]) => void;
   clearRecentlyViewed: () => void;
 }
 
@@ -74,6 +77,10 @@ export const useTasteStore = create<TasteState>()(
             .forEach((k) => delete all[k]);
         }
         set({ categories: all });
+      },
+
+      seedInterests: (items) => {
+        items.forEach((c) => get().bump(c.slug, c.name, 'interest'));
       },
 
       recordView: (product) => {
