@@ -71,7 +71,7 @@ function parseDeepLink(url: string): { pathname: string; params?: Record<string,
 // Prefixes a notification's `data.screen` must match before we'll navigate —
 // a push payload is server/attacker-influenced, so route it like any other
 // untrusted deep link rather than pushing it blindly.
-const NOTIFICATION_SCREEN_ALLOWLIST = ['/product/', '/category/', '/confirmation', '/(tabs)'];
+const NOTIFICATION_SCREEN_ALLOWLIST = ['/product/', '/category/', '/confirmation', '/order/', '/orders', '/notifications', '/(tabs)'];
 
 function isAllowedNotificationScreen(screen: string): boolean {
   return NOTIFICATION_SCREEN_ALLOWLIST.some((prefix) => screen.startsWith(prefix));

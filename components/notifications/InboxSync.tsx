@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { INBOX_ORDERS_KEY, checkSavedItems } from '@/lib/inbox';
+import { INBOX_ORDERS_KEY, INBOX_SERVER_KEY, SERVER_PREFIX, checkSavedItems, useInboxActions } from '@/lib/inbox';
 import { addReceivedListener, addResponseListener, getPresentedNotifications } from '@/lib/notifications';
 import { useAuthStore } from '@/store/auth';
 import { useInboxStore, type InboxItem, type InboxKind } from '@/store/inbox';
@@ -38,14 +38,20 @@ function toItem(n: any): InboxItem {
 export function InboxSync() {
   const queryClient = useQueryClient();
   const userId = useAuthStore((s) => s.user?.id);
+  const actions = useInboxActions();
+  const actionsRef = useRef(actions);
+  actionsRef.current = actions;
 
-  // An order changed (payment confirmed, failed, …): refresh the derived updates.
+  // An order changed (payment confirmed, failed, …) or the server wrote a new notification: refresh.
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
-      .channel(`inbox-orders-${userId}`)
+      .channel(`inbox-${userId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, () => {
         void queryClient.invalidateQueries({ queryKey: [INBOX_ORDERS_KEY] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, () => {
+        void queryClient.invalidateQueries({ queryKey: [INBOX_SERVER_KEY] });
       })
       .subscribe();
     return () => {
@@ -56,9 +62,21 @@ export function InboxSync() {
   useEffect(() => {
     const { add, markRead } = useInboxStore.getState();
 
+    /** A push that carries a server notification id IS that inbox row: refresh it instead of adding a duplicate. */
+    function capture(n: any): { serverId?: string; itemId?: string } {
+      const serverId = n?.request?.content?.data?.notification_id as string | undefined;
+      if (serverId) {
+        void queryClient.invalidateQueries({ queryKey: [INBOX_SERVER_KEY] });
+        return { serverId };
+      }
+      const item = toItem(n);
+      add(item);
+      return { itemId: item.id };
+    }
+
     async function importTray() {
       const presented = await getPresentedNotifications();
-      presented.forEach((n) => add(toItem(n)));
+      presented.forEach((n) => capture(n));
     }
     void importTray();
     const t = setTimeout(() => void checkSavedItems(), 4000);
@@ -68,13 +86,14 @@ export function InboxSync() {
       void importTray();
       void checkSavedItems();
       void queryClient.invalidateQueries({ queryKey: [INBOX_ORDERS_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [INBOX_SERVER_KEY] });
     });
-    const offReceived = addReceivedListener((n) => add(toItem(n)));
+    const offReceived = addReceivedListener((n) => capture(n));
     // Tapping a push means they've seen it: file it as read.
     const offResponse = addResponseListener((r) => {
-      const item = toItem(r?.notification);
-      add(item);
-      markRead([item.id]);
+      const { serverId, itemId } = capture(r?.notification);
+      if (serverId) actionsRef.current.markRead([SERVER_PREFIX + serverId]);
+      else if (itemId) markRead([itemId]);
     });
 
     return () => {
