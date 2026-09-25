@@ -29,8 +29,8 @@ The app reads `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` and `E
 
 ```sh
 eas env:list preview                       # see what is set
-eas env:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://…" \
-    --environment preview --visibility plaintext   # add or change one
+eas env:set preview --name EXPO_PUBLIC_SUPABASE_URL --value "https://…" \
+    --visibility plaintext                     # add or change one
 ```
 
 If they are missing the app installs but cannot reach Supabase (empty screens, sign-in errors). `EXPO_PUBLIC_*` values end up inside the app anyway, so plaintext is right; never put a service-role key here.
