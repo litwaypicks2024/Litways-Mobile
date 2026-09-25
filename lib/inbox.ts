@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { shortOrderId } from '@/lib/orderStatus';
 import { formatCurrency } from '@/lib/currency';
 import { useAuthStore } from '@/store/auth';
-import { useInboxStore, type InboxItem } from '@/store/inbox';
+import { useInboxStore, type InboxItem, type InboxKind } from '@/store/inbox';
 import { useWishlistStore } from '@/store/wishlist';
 
 /* ── Order updates: read live from the server, one item per order ─────────────── */
@@ -55,7 +55,7 @@ export const INBOX_SERVER_KEY = 'inbox-server';
 
 interface ServerRow {
   id: string;
-  kind: InboxItem['kind'];
+  kind: string;
   title: string;
   body: string;
   href: string | null;
@@ -89,7 +89,7 @@ function useServerRows() {
     retry: false,
     queryFn: async (): Promise<ServerRow[] | null> => {
       const { data, error } = await supabase
-        .from('notifications' as any)
+        .from('notifications')
         .select('id, kind, title, body, href, image_url, created_at, read_at')
         .order('created_at', { ascending: false })
         .limit(100);
@@ -97,7 +97,7 @@ function useServerRows() {
         if (isMissingTable(error)) return null;
         throw error;
       }
-      return (data ?? []) as unknown as ServerRow[];
+      return (data ?? []) as ServerRow[];
     },
   });
 }
@@ -145,7 +145,7 @@ export function useInbox() {
   const entries = useMemoReact<InboxEntry[]>(() => {
     const fromServer: InboxEntry[] = (serverRows ?? []).map((r) => ({
       id: SERVER_PREFIX + r.id,
-      kind: r.kind,
+      kind: (r.kind as InboxKind),
       title: r.title,
       body: r.body,
       at: Date.parse(r.created_at),
@@ -194,7 +194,7 @@ export function useInboxActions() {
         const at = read ? new Date().toISOString() : null;
         patchCache((rows) => rows.map((r) => (server.includes(r.id) ? { ...r, read_at: at } : r)));
         void supabase
-          .from('notifications' as any)
+          .from('notifications')
           .update({ read_at: at })
           .in('id', server)
           .then(({ error }) => { if (error) resync(); });
@@ -209,7 +209,7 @@ export function useInboxActions() {
       const uuid = rawId(id);
       patchCache((rows) => rows.filter((r) => r.id !== uuid));
       void supabase
-        .from('notifications' as any)
+        .from('notifications')
         .delete()
         .eq('id', uuid)
         .then(({ error }) => { if (error) resync(); });
@@ -223,7 +223,7 @@ export function useInboxActions() {
       if (!userId) return;
       patchCache(() => []);
       void supabase
-        .from('notifications' as any)
+        .from('notifications')
         .delete()
         .eq('user_id', userId)
         .then(({ error }) => { if (error) resync(); });

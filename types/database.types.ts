@@ -89,6 +89,51 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          data: Json
+          dedupe_key: string | null
+          href: string | null
+          id: string
+          image_url: string | null
+          kind: string
+          pushed_at: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          data?: Json
+          dedupe_key?: string | null
+          href?: string | null
+          id?: string
+          image_url?: string | null
+          kind: string
+          pushed_at?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          data?: Json
+          dedupe_key?: string | null
+          href?: string | null
+          id?: string
+          image_url?: string | null
+          kind?: string
+          pushed_at?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount: number

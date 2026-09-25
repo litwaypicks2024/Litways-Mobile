@@ -33,10 +33,16 @@ the app's inbox (read / unread / delete write back to the row)
 * **send-push** (draft, `supabase/functions/send-push`): looks up the shopper's tokens, sends one Expo message per device with `data.screen` (the app's tap target) and `data.notification_id` (so the app links the push to the inbox row instead of showing it twice), removes tokens Expo reports as `DeviceNotRegistered`, stamps `pushed_at`.
 * **The app** reads `notifications` when the table exists and falls back to deriving order updates from `orders` when it doesn't, so the client can ship **before** the migration is applied. Once it is applied, the server rows replace the derived ones (no duplicates).
 
-## Rollout checklist (nothing below has been applied)
+## Status (2026-09-25)
 
-1. **Review, then apply** `20260925000003_notifications_inbox.sql` and `20260925000004_realtime_orders_notifications.sql` (Supabase SQL editor or `supabase db push`). Tested on a throwaway Postgres 17; see `supabase/tests/README.md`. Enabling realtime on `orders` also switches on checkout's live payment tracking, which has been running on polling alone.
-2. **Regenerate types**: `supabase gen types typescript` (or the MCP `generate_typescript_types`) so `notifications` is typed; the client currently casts the table name.
+**Applied to the live project:** `notifications_inbox`, `realtime_orders_notifications`, `notifications_backfill_bodies` (fills the backfilled rows' empty body) and `revoke_notification_trigger_execute` (the security advisor flagged the SECURITY DEFINER trigger function as callable via the REST API; trigger functions don't need EXECUTE). Verified afterwards: both tables in the realtime publication, both triggers present, RLS on with 3 policies, `authenticated` can update only `read_at`, the trigger still fires with EXECUTE revoked (checked inside a transaction that always rolled back), and the 2 backfilled rows are read, pushed and carry their bodies. Types were regenerated for `notifications`.
+
+**Not done:** deploying `send-push`, its secret and the webhook (steps 3–5 below). Until then the inbox fills and updates live, but no push is sent.
+
+## Rollout checklist
+
+1. ~~**Review, then apply**~~ (done) `20260925000003_notifications_inbox.sql` and `20260925000004_realtime_orders_notifications.sql` (Supabase SQL editor or `supabase db push`). Tested on a throwaway Postgres 17; see `supabase/tests/README.md`. Enabling realtime on `orders` also switches on checkout's live payment tracking, which has been running on polling alone.
+2. ~~**Regenerate types**~~ (done; `notifications` is typed in `types/database.types.ts`).
 3. **Deploy the sender**: `supabase secrets set PUSH_WEBHOOK_SECRET=<random>` then `supabase functions deploy send-push --no-verify-jwt`.
 4. **Create the webhook**: Dashboard → Database → Webhooks → table `notifications`, event `INSERT`, HTTP POST to the function URL, header `Authorization: Bearer <PUSH_WEBHOOK_SECRET>`.
 5. **Confirm with the web backend team** that the web app doesn't already push order updates. If it does, either drop that or set `data.push = false` on order rows so shoppers don't get two.
