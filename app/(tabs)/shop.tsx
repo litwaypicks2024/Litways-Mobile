@@ -30,7 +30,10 @@ import { useTabBarClearance } from '@/components/navigation/TabBar';
 import { ProductRail } from '@/components/shop/ProductRail';
 import { useTasteStore, rankedCategories } from '@/store/taste';
 import { usePickedForYou, likeSubtitle } from '@/lib/personalization';
-import type { Product, ProductFilters, SortOption, Category } from '@/types';
+import { fetchShopPage, fetchSearchCategoryCounts, PAGE_SIZE } from '@/lib/shopQuery';
+import { dedupeById, type CardProduct } from '@/lib/catalog';
+import { categoriesOptions } from '@/lib/homeFeed';
+import type { ProductFilters, SortOption } from '@/types';
 import { Text } from '@/components/ui/Text';
 
 const SORT_OPTIONS: { label: string; value: SortOption }[] = [
@@ -41,9 +44,16 @@ const SORT_OPTIONS: { label: string; value: SortOption }[] = [
   { label: 'Top Rated', value: 'rating' },
 ];
 
-const PAGE_SIZE = 24;
 const DEBOUNCE_MS = 350;
 
+
+// Module-level so the grid keeps stable references and skips re-renders.
+const gridKey = (item: CardProduct) => item.id ?? '';
+const renderGridItem = ({ item }: { item: CardProduct }) => (
+  <View style={{ flex: 1, margin: 5 }}>
+    <ProductCard product={item} />
+  </View>
+);
 
 export default function ShopScreen() {
   const insets = useSafeAreaInsets();
@@ -72,15 +82,7 @@ export default function ShopScreen() {
   const clearRecentlyViewed = useTasteStore((s) => s.clearRecentlyViewed);
   const picked = usePickedForYou();
 
-  const { data: allCategories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('categories').select('*').order('item_count', { ascending: false });
-      if (error) throw error;
-      return data as Category[];
-    },
-    staleTime: 5 * 60_000,
-  });
+  const { data: allCategories = [] } = useQuery(categoriesOptions);
 
   // The shopper's categories first (strongest interest leading), the rest by size.
   const orderedCategories = useMemo(() => {
@@ -138,59 +140,17 @@ export default function ShopScreen() {
   } = useInfiniteQuery({
     queryKey: ['products', query, sort, filters, category, saleOnly],
     initialPageParam: 0,
-    queryFn: async ({ pageParam }) => {
-      if (query) {
-        const { data, error } = await supabase.rpc('search_products', {
-          search_term: query,
-          page_limit: PAGE_SIZE,
-          page_offset: pageParam * PAGE_SIZE,
-        });
-        if (error) throw error;
-        const raw = (data ?? []) as Product[];
-        // rawLen tracks the *server* page size so pagination doesn't stop early
-        // when client-side filters shrink the visible list.
-        const scoped = raw.filter(
-          (p) => (!category || p.category_slug === category) && (!saleOnly || (p.sale_price != null && p.sale_price < (p.price ?? 0)))
-        );
-        // rawCats keeps the category breakdown of the whole page (before the
-        // category chip narrows it) so the chips stay switchable.
-        return { items: applyClientFilters(scoped, filters, sort), rawLen: raw.length, rawCats: raw.map((p) => ({ slug: p.category_slug, name: p.category_name })) };
-      }
-
-      let q = supabase
-        .from('products_with_categories')
-        .select('*')
-        .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
-
-      if (filters.minPrice != null) q = q.gte('price', filters.minPrice);
-      if (filters.maxPrice != null) q = q.lte('price', filters.maxPrice);
-      if (filters.brands?.length) q = q.in('brand', filters.brands);
-      if (category) q = q.eq('category_slug', category);
-      if (saleOnly) q = q.not('sale_price', 'is', null);
-
-      switch (sort) {
-        case 'price_asc': q = q.order('price', { ascending: true }); break;
-        case 'price_desc': q = q.order('price', { ascending: false }); break;
-        case 'newest': q = q.order('created_at', { ascending: false }); break;
-        case 'rating': q = q.order('rating', { ascending: false }); break;
-        default: q = q.order('featured', { ascending: false }).order('created_at', { ascending: false });
-      }
-
-      const { data, error } = await q;
-      if (error) throw error;
-      const raw = (data ?? []) as Product[];
-      // Client-side size filter (sizes are arrays in DB)
-      const items = filters.sizes?.length
-        ? raw.filter((p) => filters.sizes!.some((s) => p.sizes?.includes(s)))
-        : raw;
-      return { items, rawLen: raw.length, rawCats: [] as { slug: string | null; name: string | null }[] };
-    },
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.rawLen === PAGE_SIZE ? allPages.length : undefined,
+    // Filtering, sorting and paging all happen in the database (lib/shopQuery), so a
+    // full page always means "there may be more" and a sort covers the whole catalogue.
+    queryFn: ({ pageParam }) => fetchShopPage({ query, sort, filters, category, saleOnly }, pageParam),
+    getNextPageParam: (lastPage, allPages) => (lastPage.length === PAGE_SIZE ? allPages.length : undefined),
     staleTime: 30_000,
+    // Every distinct search is its own cache entry; let the throwaway ones go quickly.
+    gcTime: query ? 60_000 : 5 * 60_000,
   });
 
-  const products = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data]);
+  // Offset paging can repeat a row if the catalogue changes between page loads.
+  const products = useMemo(() => dedupeById(data?.pages.flat() ?? []), [data]);
 
   // A committed search tells us which category the shopper is really after:
   // credit the one that dominates its results (once per distinct search).
@@ -208,18 +168,15 @@ export default function ShopScreen() {
     if (top && top[1].n / products.length >= 0.4) useTasteStore.getState().bump(top[0], top[1].name, 'search');
   }, [query, isFetching, products]);
 
-  // While searching, the category chips describe the results (with counts) so
+  // While searching, the category chips describe the whole result set (with counts) so
   // a broad query like "black" can be narrowed to shoes / bags / tops.
-  const resultCategories = useMemo(() => {
-    if (!query) return [] as { slug: string; name: string; n: number }[];
-    const counts = new Map<string, { slug: string; name: string; n: number }>();
-    for (const p of data?.pages.flatMap((pg) => pg.rawCats) ?? []) {
-      if (!p.slug) continue;
-      const c = counts.get(p.slug);
-      counts.set(p.slug, { slug: p.slug, name: p.name ?? p.slug, n: (c?.n ?? 0) + 1 });
-    }
-    return [...counts.values()].sort((a, b) => b.n - a.n);
-  }, [data, query]);
+  const { data: resultCategories = [] } = useQuery({
+    queryKey: ['search-categories', query, filters, saleOnly],
+    queryFn: () => fetchSearchCategoryCounts({ query, filters, saleOnly }),
+    enabled: !!query,
+    staleTime: 30_000,
+    gcTime: 60_000,
+  });
 
   function handleCommitSearch(term = inputValue.trim()) {
     if (!term) return;
@@ -541,7 +498,7 @@ export default function ShopScreen() {
           data={products}
           numColumns={2}
           estimatedItemSize={290}
-          keyExtractor={(item) => item.id ?? ''}
+          keyExtractor={gridKey}
           contentContainerStyle={{ padding: 10, paddingBottom: tabBarClearance }}
           ListHeaderComponent={showRails ? (
             <View style={{ marginHorizontal: -10, marginBottom: 6 }}>
@@ -569,11 +526,7 @@ export default function ShopScreen() {
               tintColor={color.accent}
             />
           }
-          renderItem={({ item }) => (
-            <View style={{ flex: 1, margin: 5 }}>
-              <ProductCard product={item} />
-            </View>
-          )}
+          renderItem={renderGridItem}
           onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
           onEndReachedThreshold={0.4}
           ListFooterComponent={
@@ -595,18 +548,6 @@ export default function ShopScreen() {
       />
     </View>
   );
-}
-
-function applyClientFilters(data: Product[], filters: ProductFilters, sort: SortOption): Product[] {
-  let result = [...data];
-  if (filters.minPrice != null) result = result.filter((p) => (p.price ?? 0) >= filters.minPrice!);
-  if (filters.maxPrice != null) result = result.filter((p) => (p.price ?? 0) <= filters.maxPrice!);
-  if (filters.brands?.length) result = result.filter((p) => filters.brands!.includes(p.brand ?? ''));
-  if (filters.sizes?.length) result = result.filter((p) => filters.sizes!.some((s) => p.sizes?.includes(s)));
-  if (sort === 'price_asc') result.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-  if (sort === 'price_desc') result.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-  if (sort === 'rating') result.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-  return result;
 }
 
 function CategoryChip({ label, active, forYou, onPress }: { label: string; active: boolean; forYou?: boolean; onPress: () => void }) {

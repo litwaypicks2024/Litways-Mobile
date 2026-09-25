@@ -33,3 +33,17 @@ export function thumb(url: string | null | undefined, points: number): string | 
   const px = Math.ceil((points * Math.min(PixelRatio.get(), 3)) / 40) * 40;
   return /[?&]w=\d+/.test(url) ? url.replace(/([?&])w=\d+/, `$1w=${px}`) : url;
 }
+
+/** Keep the first occurrence of each id. Offset paging can repeat a row if the catalogue changes between two page loads. */
+export function dedupeById<T extends { id: string | null }>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const r of rows) {
+    if (r.id) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+    }
+    out.push(r);
+  }
+  return out;
+}
