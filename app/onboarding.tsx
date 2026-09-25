@@ -1,113 +1,89 @@
-import React, { useState } from 'react';
-import { View, TouchableOpacity, StatusBar } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
+import { BackHandler, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { color, radius, spacing } from '@/theme/tokens';
-import { Button } from '@/components/ui/Button';
-import { LogoMark } from '@/components/brand/LogoMark';
+import Animated, { FadeIn, FadeOut, ReduceMotion, SlideInRight } from 'react-native-reanimated';
+import { color } from '@/theme/tokens';
+import { IntroPager } from '@/components/onboarding/IntroPager';
+import { InterestPicker } from '@/components/onboarding/InterestPicker';
+import { NotificationPrimer } from '@/components/onboarding/NotificationPrimer';
+import { showToast } from '@/components/ui/Toast';
 import { onboarding } from '@/lib/storage';
-import { Text } from '@/components/ui/Text';
+import { registerForPushNotifications } from '@/lib/notifications';
+import { useTasteStore } from '@/store/taste';
+import type { Category } from '@/types';
 
-type Slide = {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  body: string;
-};
+type Step = 'intro' | 'interests' | 'notify';
 
-const SLIDES: Slide[] = [
-  {
-    icon: 'bag-handle-outline',
-    title: 'Everything you need,\nin one app',
-    body: 'Clothes, phones, home goods and more — from local sellers you can trust.',
-  },
-  {
-    icon: 'phone-portrait-outline',
-    title: 'Pay easily with\nMTN MoMo',
-    body: 'No card needed. Order in minutes and get it delivered to your door — anywhere in Liberia.',
-  },
-];
-
+/**
+ * First-launch flow: a three-slide animated intro, then "what are you into?"
+ * (seeds personalization), then a notification pre-prompt (asks in our own
+ * words before the system does), then Home. Every step after the intro can be
+ * skipped, and the sign-in link on the last slide leaves at once.
+ */
 export default function OnboardingScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [index, setIndex] = useState(0);
-  const isLast = index === SLIDES.length - 1;
-  const slide = SLIDES[index];
+  const [step, setStep] = useState<Step>('intro');
+  const [picked, setPicked] = useState<Category[]>([]);
+  // Back from a later step returns to the last slide, not the first.
+  const [introIndex, setIntroIndex] = useState(0);
 
-  async function finish() {
+  // Android back walks the steps backwards; on the intro it leaves the app as usual.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (step === 'notify') { setStep('interests'); return true; }
+      if (step === 'interests') { setIntroIndex(2); setStep('intro'); return true; }
+      return false;
+    });
+    return () => sub.remove();
+  }, [step]);
+
+  async function finish(destination: 'home' | 'signin' = 'home') {
     await onboarding.markSeen();
     router.replace('/(tabs)');
+    if (destination === 'signin') {
+      router.push('/(auth)/login');
+      return;
+    }
+    if (picked.length > 0) {
+      const names = picked.slice(0, 2).map((c) => c.name).join(' and ');
+      showToast({ title: "You're all set", detail: `Showing you ${names}${picked.length > 2 ? ' and more' : ''} first`, tone: 'success' });
+    }
   }
 
-  function next() {
-    if (isLast) finish();
-    else setIndex((i) => i + 1);
+  function seedAndContinue(chosen: Category[]) {
+    setPicked(chosen);
+    if (chosen.length) useTasteStore.getState().seedInterests(chosen.map((c) => ({ slug: c.slug, name: c.name })));
+    setStep('notify');
+  }
+
+  async function allowNotifications() {
+    // Shows the system prompt (a no-op in Expo Go). The token is cached and attached to the account at sign-in.
+    await registerForPushNotifications();
+    await finish();
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: color.bg, paddingTop: insets.top }}>
-      <StatusBar barStyle="dark-content" backgroundColor={color.bg} />
-
-      {/* Skip */}
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: spacing.xl, paddingTop: spacing.sm }}>
-        {!isLast && (
-          <TouchableOpacity onPress={finish} hitSlop={10}>
-            <Text variant="button" tone="muted">Skip</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Illustration — the brand mark leads; later slides keep their icons */}
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl }}>
-        <View style={{
-          width: 220, height: 260, borderRadius: radius['2xl'],
-          backgroundColor: color.accentFill,
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          {index === 0 ? (
-            <LogoMark size={150} variant="onOrange" />
-          ) : (
-            <Ionicons name={slide.icon} size={92} color={color.onAccent} />
-          )}
-        </View>
-      </View>
-
-      {/* Copy */}
-      <View style={{ paddingHorizontal: spacing.xl, alignItems: 'center' }}>
-        <Text variant="display" style={{ textAlign: 'center' }}>
-          {slide.title}
-        </Text>
-        <Text variant="bodyLg" tone="muted" style={{ textAlign: 'center', marginTop: spacing.md }}>
-          {slide.body}
-        </Text>
-      </View>
-
-      {/* Dots */}
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, paddingVertical: spacing.xl }}>
-        {SLIDES.map((_, i) => (
-          <View
-            key={i}
-            style={{
-              width: i === index ? 22 : 7,
-              height: 7,
-              borderRadius: radius.full,
-              backgroundColor: i === index ? color.accentFill : color.border,
-            }}
+    <>
+      <StatusBar barStyle="dark-content" backgroundColor={color.surface} />
+      {step === 'intro' && (
+        <Animated.View key="intro" style={{ flex: 1 }} exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}>
+          <IntroPager initialIndex={introIndex} onDone={() => setStep('interests')} onSignIn={() => finish('signin')} />
+        </Animated.View>
+      )}
+      {step === 'interests' && (
+        <Animated.View key="interests" style={{ flex: 1 }} entering={SlideInRight.duration(280).reduceMotion(ReduceMotion.System)} exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}>
+          <InterestPicker
+            onBack={() => { setIntroIndex(2); setStep('intro'); }}
+            onSkip={() => setStep('notify')}
+            onContinue={seedAndContinue}
           />
-        ))}
-      </View>
-
-      {/* CTA */}
-      <View style={{ paddingHorizontal: spacing.xl, paddingBottom: Math.max(insets.bottom + spacing.lg, spacing.xl) }}>
-        <Button
-          title={isLast ? 'Start shopping' : 'Next'}
-          onPress={next}
-          fullWidth
-          size="lg"
-          icon={<Ionicons name="arrow-forward" size={18} color={color.onAccent} />}
-        />
-      </View>
-    </View>
+        </Animated.View>
+      )}
+      {step === 'notify' && (
+        <Animated.View key="notify" style={{ flex: 1 }} entering={SlideInRight.duration(280).reduceMotion(ReduceMotion.System)} exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}>
+          <NotificationPrimer onBack={() => setStep('interests')} onAllow={allowNotifications} onLater={() => finish()} />
+        </Animated.View>
+      )}
+    </>
   );
 }
