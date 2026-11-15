@@ -58,7 +58,7 @@ export default function AboutScreen() {
             {[
               'Fast, reliable delivery across all 15 counties',
               'Secure payments via MTN MoMo',
-              '7-day return policy',
+              '48-hour return policy',
               '24/7 customer support',
               'Curated, quality-assured products',
             ].map((item) => (

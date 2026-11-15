@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { track } from '@/lib/analytics';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { CartItem } from '@/types';
 import { supabase } from '@/lib/supabase';
@@ -458,6 +459,7 @@ export const useCartStore = create<CartState>()(
       dismissSyncNotice: () => set({ syncNotice: null }),
 
       addItem: (newItem) => {
+        track('add_to_cart', newItem.productId);
         set((state) => {
           // Callers check cartHasRoomFor first to tell the shopper; this is the backstop.
           if (!cartHasRoomFor(state.items, newItem)) return state;

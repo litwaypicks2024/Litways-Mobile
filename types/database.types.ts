@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      app_events: {
+        Row: {
+          anon_id: string
+          created_at: string
+          event: string
+          id: number
+          platform: string
+          product_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          anon_id: string
+          created_at?: string
+          event: string
+          id?: never
+          platform: string
+          product_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          anon_id?: string
+          created_at?: string
+          event?: string
+          id?: never
+          platform?: string
+          product_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       carts: {
         Row: {
           items: Json

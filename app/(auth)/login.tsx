@@ -66,6 +66,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
   const lastNameRef = useRef<TextInput>(null);
@@ -117,10 +118,21 @@ export default function LoginScreen() {
     if (mode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       setLoading(false);
+      if (error && /email not confirmed/i.test(error.message)) {
+        // Signed up earlier but never entered the code — send a fresh one.
+        await supabase.auth.resend({ type: 'signup', email: email.trim() });
+        goToVerify(email.trim());
+        return;
+      }
       if (error) { alertDialog('Sign in failed', error.message); return; }
       navigateAfterAuth();
     } else {
       if (!firstName) { alertDialog('Missing fields', 'Please enter your first name.'); setLoading(false); return; }
+      if (!acceptedTerms) {
+        alertDialog('Terms required', 'Please accept the Terms of Service and Privacy Policy to create an account.');
+        setLoading(false);
+        return;
+      }
       // Pass the name via user metadata. A DB trigger on auth.users creates the
       // public.users profile row from this — the old client-side insert ran as the
       // anonymous role (no session yet, since email confirmation is on) and RLS
@@ -132,6 +144,7 @@ export default function LoginScreen() {
           data: {
             first_name: firstName,
             last_name: lastName || null,
+            terms_accepted_at: new Date().toISOString(),
           },
         },
       });
@@ -145,18 +158,17 @@ export default function LoginScreen() {
         navigateAfterAuth();
         return;
       }
-      // Coming from checkout (next=/checkout, see the optional sign-in card
-      // in checkout.tsx) — that order isn't blocked on verifying this new
-      // account, so say so instead of just "check your email".
-      const cameFromCheckout = next === '/checkout';
-      alertDialog(
-        'Account Created',
-        cameFromCheckout
-          ? 'Check your email to verify, then sign in here to finish your order.'
-          : 'Welcome to Litway Picks! Check your email to verify your account.'
-      );
-      navigateAfterAuth();
+      // Email confirmation is on: Supabase emailed a 6-digit code. Collect it
+      // on the verify screen, which signs them in once the code checks out.
+      goToVerify(email.trim());
     }
+  }
+
+  function goToVerify(address: string) {
+    router.replace({
+      pathname: '/(auth)/verify-email',
+      params: { email: address, ...(isAllowedNext(next) ? { next } : {}) },
+    } as any);
   }
 
   return (
@@ -306,6 +318,34 @@ export default function LoginScreen() {
               </TouchableOpacity>
             )}
 
+            {/* Terms must be actively accepted before an account is created */}
+            {mode === 'signup' && (
+              <TouchableOpacity
+                onPress={() => setAcceptedTerms((v) => !v)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: acceptedTerms }}
+                accessibilityLabel="I agree to the Terms of Service and Privacy Policy"
+                activeOpacity={0.7}
+                style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}
+              >
+                <Ionicons
+                  name={acceptedTerms ? 'checkbox' : 'square-outline'}
+                  size={22}
+                  color={acceptedTerms ? color.accent : color.textMuted}
+                />
+                <Text variant="small" tone="muted" style={{ flex: 1 }}>
+                  I have read and agree to the{' '}
+                  <Text variant="small" weight="semibold" tone="accent" onPress={() => router.push('/terms')}>
+                    Terms of Service
+                  </Text>
+                  {' '}and{' '}
+                  <Text variant="small" weight="semibold" tone="accent" onPress={() => router.push('/privacy')}>
+                    Privacy Policy
+                  </Text>
+                </Text>
+              </TouchableOpacity>
+            )}
+
             <Button
               title={mode === 'login' ? 'Sign In' : 'Create Account'}
               onPress={handleAuth}
@@ -317,6 +357,7 @@ export default function LoginScreen() {
             />
 
             {/* Legal note — belongs to the button ("by continuing"), not the screen edge */}
+            {mode === 'login' && (
             <Text variant="label" tone="muted" style={{ textAlign: 'center', marginTop: 12 }}>
               By continuing, you agree to our{' '}
               <Text weight="semibold" tone="muted" onPress={() => router.push('/terms')}>
@@ -327,6 +368,7 @@ export default function LoginScreen() {
                 Privacy Policy
               </Text>
             </Text>
+            )}
 
             {mode === 'login' && biometricAvailable && (
               <Button

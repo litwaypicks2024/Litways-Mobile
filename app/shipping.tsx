@@ -27,7 +27,7 @@ export default function ShippingScreen() {
           </View>
         </View>
         {[
-          { icon: 'time-outline', title: 'Delivery Timeline', body: 'Monrovia & Margibi: 1–2 business days\nOther counties: 2–4 business days' },
+          { icon: 'time-outline', title: 'Delivery Timeline', body: 'Montserrado: within 24 hours\nAll other counties: 2–7 business days' },
           { icon: 'shield-checkmark-outline', title: 'Order Tracking', body: 'You\'ll receive an email confirmation with your order details once payment is confirmed.' },
           { icon: 'call-outline', title: 'Delivery Support', body: 'Having trouble with a delivery? Contact us via WhatsApp at +231 888 640 502.' },
         ].map((item) => (
