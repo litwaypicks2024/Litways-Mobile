@@ -7,7 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/Text';
 
 const sections = [
-  { title: 'Information We Collect', body: 'We collect information you provide directly: name, email, phone number, delivery address, and payment details. We also collect usage data to improve your experience.' },
+  { title: 'Information We Collect', body: 'We collect information you provide directly: name, email, phone number, delivery address, and payment details. We also collect anonymous usage statistics (see below) to improve your experience.' },
+  { title: 'Usage Statistics', body: 'To understand how customers use the app and website, we record when the app is opened, which products are viewed, and when items are added to the cart or checkout is started. Each device is identified by a random code, linked to your account only while you are signed in. We do not record your name, email, phone number, or what you type. These statistics are seen only by the Litway Picks team as totals and are never sold or shared for advertising.' },
   { title: 'How We Use Your Information', body: 'Your information is used to process orders, send confirmations, deliver products, improve our services, and communicate offers (with your consent).' },
   { title: 'Data Security', body: 'We use industry-standard encryption and security measures. Payment data is processed securely via MTN Mobile Money and is never stored on our servers.' },
   { title: 'Your Rights', body: 'You have the right to access, correct, or delete your personal data at any time. Contact us at litwaypicks@gmail.com to exercise these rights.' },
@@ -25,7 +26,7 @@ export default function PrivacyScreen() {
         <Text variant="heading">Privacy Policy</Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <Text variant="meta" tone="muted" style={{ marginBottom: 20 }}>Last updated: May 2026</Text>
+        <Text variant="meta" tone="muted" style={{ marginBottom: 20 }}>Last updated: November 2026</Text>
         <View className="gap-4">
           {sections.map((s) => (
             <View key={s.title} className="bg-white rounded-2xl p-5 shadow-sm">

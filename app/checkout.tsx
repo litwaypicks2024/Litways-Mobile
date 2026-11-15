@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { track } from '@/lib/analytics';
 import {
   View,
   ScrollView,
@@ -110,6 +111,11 @@ export default function CheckoutScreen() {
   useEffect(() => {
     if (user) setSignInNudge(false);
   }, [user]);
+
+  // Funnel step for the admin Analytics page — once per checkout visit.
+  useEffect(() => {
+    track('checkout_start');
+  }, []);
 
   function scrollToTop() {
     scrollRef.current?.scrollTo({ y: 0, animated: true });

@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      app_events: {
+        Row: {
+          anon_id: string
+          created_at: string
+          event: string
+          id: number
+          platform: string
+          product_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          anon_id: string
+          created_at?: string
+          event: string
+          id?: never
+          platform: string
+          product_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          anon_id?: string
+          created_at?: string
+          event?: string
+          id?: never
+          platform?: string
+          product_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       carts: {
         Row: {
           items: Json
@@ -86,6 +116,51 @@ export type Database = {
           item_count?: number
           name?: string
           slug?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          data: Json
+          dedupe_key: string | null
+          href: string | null
+          id: string
+          image_url: string | null
+          kind: string
+          pushed_at: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          data?: Json
+          dedupe_key?: string | null
+          href?: string | null
+          id?: string
+          image_url?: string | null
+          kind: string
+          pushed_at?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          data?: Json
+          dedupe_key?: string | null
+          href?: string | null
+          id?: string
+          image_url?: string | null
+          kind?: string
+          pushed_at?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
         }
         Relationships: []
       }

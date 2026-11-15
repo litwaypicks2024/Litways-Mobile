@@ -10,10 +10,9 @@ import { alertDialog } from '@/components/ui/Dialog';
 import { LottiePlayer } from '@/components/motion/LottiePlayer';
 import { InboxRow } from '@/components/notifications/InboxRow';
 import { InboxNotice } from '@/components/notifications/InboxNotice';
-import { sectionOf, useInbox, type InboxEntry, type InboxSection } from '@/lib/inbox';
+import { sectionOf, useInbox, useInboxActions, type InboxEntry, type InboxSection } from '@/lib/inbox';
 import { getPermissionState, registerForPushNotifications, type PermissionState } from '@/lib/notifications';
 import { useAuthStore } from '@/store/auth';
-import { useInboxStore } from '@/store/inbox';
 import { color, gutter, radius, spacing } from '@/theme/tokens';
 
 type Filter = 'all' | 'unread' | 'order' | 'alerts';
@@ -47,7 +46,7 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const { entries, unreadCount } = useInbox();
-  const { markRead, markUnread, remove } = useInboxStore.getState();
+  const { markRead, markUnread, remove } = useInboxActions();
   const [filter, setFilter] = useState<Filter>('all');
   const [perm, setPerm] = useState<PermissionState>('unavailable');
   const [bannerDismissed, setBannerDismissed] = useState(false);

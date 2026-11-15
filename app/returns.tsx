@@ -9,8 +9,8 @@ import { Text } from '@/components/ui/Text';
 export default function ReturnsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const steps = ['Contact our support team within 7 days of delivery', 'Provide your order ID and reason for return', 'We\'ll arrange a pickup from your location', 'Refund processed within 3–5 business days'];
-  const conditions = ['Item is unused and in original condition', 'Original packaging is intact', 'Item is not in the non-returnable category', 'Return is initiated within 7 days of delivery'];
+  const steps = ['Contact our support team within 48 hours of delivery', 'Provide your order ID and reason for return', 'We\'ll arrange a pickup from your location', 'Refund (less a 10% deduction) processed within 72 hours after the item is received, inspected and confirmed'];
+  const conditions = ['Item is unused and in original condition', 'Original packaging is intact', 'Item is not in the non-returnable category', 'Return is initiated within 48 hours of delivery'];
   return (
     <View className="flex-1 bg-gray-50">
       <View className="bg-white border-b border-gray-100 px-5 pb-4 flex-row items-center gap-3" style={{ paddingTop: insets.top + 12 }}>
@@ -24,8 +24,8 @@ export default function ReturnsScreen() {
           <View className="w-14 h-14 bg-primary-50 rounded-2xl items-center justify-center mb-3">
             <Ionicons name="refresh" size={28} color={Colors.primary[600]} />
           </View>
-          <Text variant="title" style={{ marginBottom: 8 }}>7-Day Return Policy</Text>
-          <Text variant="bodyLg" tone="body">Not satisfied? We make returns simple and hassle-free. Return eligible items within 7 days of delivery.</Text>
+          <Text variant="title" style={{ marginBottom: 8 }}>48-Hour Return Policy</Text>
+          <Text variant="bodyLg" tone="body">Returns are accepted within 48 hours of delivery for unused items in their original condition. A 10% deduction of the original purchase amount will apply to all eligible refunds. Refunds will be processed within 72 hours after the returned item has been received, inspected, and confirmed.</Text>
         </View>
         <View className="bg-white rounded-2xl p-5 shadow-sm mb-4">
           <Text variant="heading" style={{ marginBottom: 12 }}>Return Process</Text>

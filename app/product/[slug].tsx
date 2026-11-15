@@ -26,6 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { track } from '@/lib/analytics';
 import { FlashList } from '@/components/ui/List';
 import { supabase } from '@/lib/supabase';
 import { color, radius } from '@/theme/tokens';
@@ -135,7 +136,10 @@ export default function ProductDetailScreen() {
   // once per product opened, not on every refetch.
   const viewedId = product?.id;
   useEffect(() => {
-    if (product && viewedId) useTasteStore.getState().recordView(product);
+    if (product && viewedId) {
+      useTasteStore.getState().recordView(product);
+      track('product_view', viewedId);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewedId]);
 

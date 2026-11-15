@@ -40,9 +40,9 @@ export default function ContactScreen() {
   ];
 
   const faqs = [
-    { q: 'How long does delivery take?', a: 'Delivery typically takes 1–3 business days depending on your county.' },
+    { q: 'How long does delivery take?', a: 'Montserrado orders arrive within 24 hours. All other counties take 2–7 business days.' },
     { q: 'What payment methods do you accept?', a: 'We currently accept MTN Mobile Money (MoMo).' },
-    { q: 'Can I return an item?', a: 'Yes! We have a 7-day return policy for unused items in original condition.' },
+    { q: 'Can I return an item?', a: 'Yes — returns are accepted within 48 hours of delivery for unused items in their original condition. A 10% deduction applies to eligible refunds.' },
     { q: 'Do you deliver to all counties?', a: 'Yes, we deliver to all 15 Liberian counties.' },
   ];
 

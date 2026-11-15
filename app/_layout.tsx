@@ -1,6 +1,7 @@
 import '../global.css';
 import React, { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
+import { trackAppOpen } from '@/lib/analytics';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
@@ -71,7 +72,7 @@ function parseDeepLink(url: string): { pathname: string; params?: Record<string,
 // Prefixes a notification's `data.screen` must match before we'll navigate —
 // a push payload is server/attacker-influenced, so route it like any other
 // untrusted deep link rather than pushing it blindly.
-const NOTIFICATION_SCREEN_ALLOWLIST = ['/product/', '/category/', '/confirmation', '/(tabs)'];
+const NOTIFICATION_SCREEN_ALLOWLIST = ['/product/', '/category/', '/confirmation', '/order/', '/orders', '/notifications', '/(tabs)'];
 
 function isAllowedNotificationScreen(screen: string): boolean {
   return NOTIFICATION_SCREEN_ALLOWLIST.some((prefix) => screen.startsWith(prefix));
@@ -186,7 +187,9 @@ function AppContent() {
   // reach AsyncStorage, not the shared `carts` row. Flush any pending write
   // immediately when the app leaves the foreground.
   useEffect(() => {
+    trackAppOpen();
     const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') trackAppOpen();
       if (state === 'background' || state === 'inactive') {
         const userId = useAuthStore.getState().user?.id;
         if (userId) void useCartStore.getState().flushSync(userId);
