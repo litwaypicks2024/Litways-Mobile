@@ -84,7 +84,12 @@ type Phase = 'verifying' | 'ready' | 'invalid';
 export default function NewPasswordScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const incomingUrl = Linking.useURL();
+  // useLinkingURL (not useURL): this screen usually mounts *because* a reset
+  // link just resumed the app from the background. useURL only sees the
+  // cold-start URL plus events after mount, so it missed that link and the
+  // screen wrongly showed "invalid or expired". useLinkingURL reads the most
+  // recent link straight from the OS, whenever the screen mounts.
+  const incomingUrl = Linking.useLinkingURL();
 
   const [phase, setPhase] = useState<Phase>('verifying');
   const [password, setPassword] = useState('');
@@ -126,7 +131,7 @@ export default function NewPasswordScreen() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const url = incomingUrl ?? (await Linking.getInitialURL());
+      const url = incomingUrl ?? Linking.getLinkingURL();
       if (url && (await establishRecoverySession(url))) {
         if (!cancelled) {
           recoverySessionRef.current = true;
