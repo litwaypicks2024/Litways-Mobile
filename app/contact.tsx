@@ -9,6 +9,14 @@ import { submitContactForm } from '@/lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { alertDialog } from '@/components/ui/Dialog';
 import { Text } from '@/components/ui/Text';
+import {
+  CONTACT_EMAIL,
+  CONTACT_EMAIL_URL,
+  CONTACT_PHONE_DISPLAY,
+  CONTACT_PHONE_URL,
+  CONTACT_WHATSAPP_URL,
+  openContactUrl,
+} from '@/constants/contact';
 
 export default function ContactScreen() {
   const router = useRouter();
@@ -33,9 +41,10 @@ export default function ContactScreen() {
     }
   }
 
-  const contacts = [
-    { icon: 'mail-outline', label: 'Email', value: 'litwaypicks@gmail.com' },
-    { icon: 'logo-whatsapp', label: 'WhatsApp', value: '+231 888 640 502' },
+  const contacts: { icon: string; label: string; value: string; url?: string }[] = [
+    { icon: 'call-outline', label: 'Phone', value: CONTACT_PHONE_DISPLAY, url: CONTACT_PHONE_URL },
+    { icon: 'logo-whatsapp', label: 'WhatsApp', value: CONTACT_PHONE_DISPLAY, url: CONTACT_WHATSAPP_URL },
+    { icon: 'mail-outline', label: 'Email', value: CONTACT_EMAIL, url: CONTACT_EMAIL_URL },
     { icon: 'time-outline', label: 'Hours', value: 'Mon–Sat, 8am–6pm' },
   ];
 
@@ -59,15 +68,23 @@ export default function ContactScreen() {
         {/* Contact info */}
         <View className="bg-white rounded-2xl p-5 shadow-sm mb-5">
           {contacts.map((c, i) => (
-            <View key={c.label} className={`flex-row items-center gap-3 ${i < contacts.length - 1 ? 'mb-4' : ''}`}>
+            <TouchableOpacity
+              key={c.label}
+              disabled={!c.url}
+              onPress={() => c.url && openContactUrl(c.url)}
+              accessibilityRole={c.url ? 'link' : undefined}
+              accessibilityLabel={`${c.label}: ${c.value}`}
+              className={`flex-row items-center gap-3 ${i < contacts.length - 1 ? 'mb-4' : ''}`}
+            >
               <View className="w-10 h-10 bg-primary-50 rounded-full items-center justify-center">
                 <Ionicons name={c.icon as any} size={18} color={Colors.primary[600]} />
               </View>
-              <View>
+              <View className="flex-1">
                 <Text variant="metaStrong" tone="muted">{c.label}</Text>
-                <Text variant="bodyStrong">{c.value}</Text>
+                <Text variant="bodyStrong" tone={c.url ? 'accent' : undefined}>{c.value}</Text>
               </View>
-            </View>
+              {c.url && <Ionicons name="open-outline" size={16} color={Colors.gray[400]} />}
+            </TouchableOpacity>
           ))}
         </View>
 

@@ -517,7 +517,7 @@ export function normalizeLiberianPhone(input: string): string {
   return '231' + digits;
 }
 ```
-`0888640502`, `+231 888 640 502`, `231-888-640-502` all become `231888640502`. Every caller goes through this one function, so if MTN ever wants a different wire format, exactly one function changes.
+`0886123456`, `+231 886 123 456`, `231-886-123-456` all become `231886123456`. Every caller goes through this one function, so if MTN ever wants a different wire format, exactly one function changes.
 
 **When you'd touch `lib/`:** changing an endpoint, adding a new outside service, changing a formatting rule.
 
@@ -1894,7 +1894,7 @@ function validateDelivery(): boolean {
     return false;
   }
   if (!isValidLiberianMobile(form.phone)) {
-    Alert.alert('Invalid phone number', 'Enter a valid Liberian mobile number, e.g. 0888 640 502.');
+    Alert.alert('Invalid phone number', 'Enter a valid Liberian mobile number, e.g. 0886 123 456.');
     return false;
   }
   return true;

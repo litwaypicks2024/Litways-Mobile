@@ -6,6 +6,7 @@ import { Colors } from '@/constants/Colors';
 import { LIBERIAN_COUNTIES } from '@/constants/counties';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/Text';
+import { CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP_URL, openContactUrl } from '@/constants/contact';
 
 export default function ShippingScreen() {
   const router = useRouter();
@@ -29,15 +30,27 @@ export default function ShippingScreen() {
         {[
           { icon: 'time-outline', title: 'Delivery Timeline', body: 'Montserrado: within 24 hours\nAll other counties: 2–7 business days' },
           { icon: 'shield-checkmark-outline', title: 'Order Tracking', body: 'You\'ll receive an email confirmation with your order details once payment is confirmed.' },
-          { icon: 'call-outline', title: 'Delivery Support', body: 'Having trouble with a delivery? Contact us via WhatsApp at +231 888 640 502.' },
-        ].map((item) => (
-          <View key={item.title} className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+          { icon: 'call-outline', title: 'Delivery Support', body: `Having trouble with a delivery? Contact us via WhatsApp at ${CONTACT_PHONE_DISPLAY}.`, url: CONTACT_WHATSAPP_URL, cta: 'Chat on WhatsApp' },
+        ].map((item: { icon: string; title: string; body: string; url?: string; cta?: string }) => (
+          <TouchableOpacity
+            key={item.title}
+            disabled={!item.url}
+            onPress={() => item.url && openContactUrl(item.url)}
+            accessibilityRole={item.url ? 'link' : undefined}
+            className="bg-white rounded-2xl p-5 shadow-sm mb-4"
+          >
             <View className="flex-row items-center gap-2 mb-3">
               <Ionicons name={item.icon as any} size={20} color={Colors.primary[600]} />
               <Text variant="heading">{item.title}</Text>
             </View>
             <Text variant="bodyLg" tone="body">{item.body}</Text>
-          </View>
+            {item.cta && (
+              <View className="flex-row items-center gap-1.5 mt-3">
+                <Ionicons name="logo-whatsapp" size={16} color={Colors.primary[600]} />
+                <Text variant="bodyStrong" tone="accent">{item.cta}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         ))}
         <View className="bg-white rounded-2xl p-5 shadow-sm">
           <Text variant="heading" style={{ marginBottom: 12 }}>Coverage — All 15 Counties</Text>

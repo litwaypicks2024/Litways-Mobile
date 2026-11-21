@@ -335,7 +335,7 @@ export default function CheckoutScreen() {
     if (!form.email.trim()) next.email = 'Enter your email';
     else if (!/\S+@\S+\.\S+/.test(form.email)) next.email = 'Enter a valid email address';
     if (!form.phone.trim()) next.phone = 'Enter your phone number';
-    else if (!isValidLiberianMobile(form.phone)) next.phone = 'Enter a valid Liberian mobile number, e.g. 0888 640 502';
+    else if (!isValidLiberianMobile(form.phone)) next.phone = 'Enter a valid Liberian mobile number, e.g. 0886 123 456';
     // MoMo collection requests only reach MTN (Lonestar) numbers — the server
     // rejects other operators, so say so here instead of after the overlay.
     else if (!isMtnMobile(form.phone)) next.phone = 'MoMo needs an MTN number (starting 055 or 088)';
