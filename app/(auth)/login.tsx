@@ -151,6 +151,21 @@ export default function LoginScreen() {
       });
       if (error) { setLoading(false); alertDialog('Sign up failed', error.message); return; }
       setLoading(false);
+      // Email already registered. With "Confirm email" on, Supabase hides this
+      // (no error, no email sent) and returns a placeholder user whose
+      // identities list is empty. Without this check the shopper would wait on
+      // the code screen for a code that never comes.
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        alertDialog(
+          'Email already registered',
+          'An account with this email already exists. Sign in instead, or reset your password if you have forgotten it.',
+          [
+            { text: 'Reset password', onPress: () => router.push('/(auth)/reset-password') },
+            { text: 'Sign in', onPress: () => setMode('login') },
+          ],
+        );
+        return;
+      }
       // Setting-agnostic: with email confirmation OFF, signUp returns a live
       // session — the user is signed in right now, so welcome them and move on.
       // With confirmation ON there's no session yet, so route them to their inbox.
