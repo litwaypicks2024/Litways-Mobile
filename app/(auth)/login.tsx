@@ -4,6 +4,7 @@ import {
   ScrollView,
   TouchableOpacity,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   TextInput,
   Dimensions,
@@ -165,6 +166,12 @@ export default function LoginScreen() {
   }
 
   function goToVerify(address: string) {
+    // Android: never swap screens while a field on this one still holds focus
+    // with the keyboard up. The outgoing ScrollView/KeyboardAvoidingView resizes
+    // mid-transition with a focused child that is being detached, which can
+    // crash natively ("Litway Picks has stopped").
+    TextInput.State.currentlyFocusedInput()?.blur();
+    Keyboard.dismiss();
     router.replace({
       pathname: '/(auth)/verify-email',
       params: { email: address, ...(isAllowedNext(next) ? { next } : {}) },

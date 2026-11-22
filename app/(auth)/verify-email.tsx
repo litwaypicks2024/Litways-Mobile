@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  InteractionManager,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -33,6 +35,21 @@ export default function VerifyEmailScreen() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const codeRef = useRef<TextInput>(null);
+
+  // Focus the code field only after the screen transition has finished. A
+  // mount-time autoFocus opens the keyboard while login.tsx is still animating
+  // out, which is the Android crash this replaces.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const task = InteractionManager.runAfterInteractions(() => {
+      timer = setTimeout(() => codeRef.current?.focus(), 150);
+    });
+    return () => {
+      task.cancel();
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
 
   function leave() {
     // login.tsx replaced itself with this screen, so back() lands on whatever
@@ -100,6 +117,7 @@ export default function VerifyEmailScreen() {
             </Text>
 
             <Input
+              ref={codeRef}
               label="Verification code"
               leftIcon="keypad-outline"
               value={code}
@@ -108,7 +126,6 @@ export default function VerifyEmailScreen() {
               textContentType="oneTimeCode"
               autoComplete="one-time-code"
               maxLength={6}
-              autoFocus
               returnKeyType="done"
               onSubmitEditing={handleVerify}
             />
