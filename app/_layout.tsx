@@ -1,4 +1,6 @@
 import '../global.css';
+// Test builds only: show fatal JS errors on screen instead of closing the app.
+import '@/lib/diagnostics';
 import React, { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { trackAppOpen } from '@/lib/analytics';

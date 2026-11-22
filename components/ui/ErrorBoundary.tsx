@@ -1,4 +1,5 @@
 import React, { Component, type ReactNode } from 'react';
+import { showDiagnosticError } from '@/lib/diagnostics';
 import { View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
@@ -26,6 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[ErrorBoundary]', error, info);
+    showDiagnosticError('screen', error);
   }
 
   retry = () => this.setState({ hasError: false, error: null });
