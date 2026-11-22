@@ -23,6 +23,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { LogoMark } from '@/components/brand/LogoMark';
 import { alertDialog } from '@/components/ui/Dialog';
 import { Text } from '@/components/ui/Text';
+import { friendlyError } from '@/lib/friendlyError';
 
 type Mode = 'login' | 'signup';
 
@@ -95,7 +96,7 @@ export default function LoginScreen() {
     if (result.success) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) navigateAfterAuth();
-      else alertDialog('Session expired', 'Please sign in with your email and password.');
+      else alertDialog('Please sign in again', 'For your security, sign in with your email and password.');
       return;
     }
     // User-initiated cancels are a platform convention — no alert needed.
@@ -111,7 +112,7 @@ export default function LoginScreen() {
 
   async function handleAuth() {
     if (!email || !password) {
-      alertDialog('Missing fields', 'Please fill in all required fields.');
+      alertDialog('Enter your email and password', 'Both are needed to continue.');
       return;
     }
     setLoading(true);
@@ -125,10 +126,10 @@ export default function LoginScreen() {
         goToVerify(email.trim());
         return;
       }
-      if (error) { alertDialog('Sign in failed', error.message); return; }
+      if (error) { alertDialog("Couldn't sign you in", friendlyError(error, "We couldn't sign you in. Please try again.")); return; }
       navigateAfterAuth();
     } else {
-      if (!firstName) { alertDialog('Missing fields', 'Please enter your first name.'); setLoading(false); return; }
+      if (!firstName) { alertDialog('What should we call you?', 'Please enter your first name.'); setLoading(false); return; }
       if (!acceptedTerms) {
         alertDialog('Terms required', 'Please accept the Terms of Service and Privacy Policy to create an account.');
         setLoading(false);
@@ -149,7 +150,7 @@ export default function LoginScreen() {
           },
         },
       });
-      if (error) { setLoading(false); alertDialog('Sign up failed', error.message); return; }
+      if (error) { setLoading(false); alertDialog("Couldn't create your account", friendlyError(error, "We couldn't create your account. Please try again.")); return; }
       setLoading(false);
       // Email already registered. With "Confirm email" on, Supabase hides this
       // (no error, no email sent) and returns a placeholder user whose

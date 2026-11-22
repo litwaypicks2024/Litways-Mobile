@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/Text';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { alertDialog } from '@/components/ui/Dialog';
 import { showToast } from '@/components/ui/Toast';
+import { friendlyError } from '@/lib/friendlyError';
 
 /**
  * Edit personal details on their own screen (back arrow, grouped fields, a
@@ -90,7 +91,7 @@ export default function EditProfileScreen() {
       // no row (RLS filtered it, or the profile row is missing) returns no error.
       const { data, error } = await supabase.from('users').update(trimmed).eq('id', user.id).select('id');
       if (error) {
-        alertDialog("Couldn't save changes", error.message);
+        alertDialog("Couldn't save changes", friendlyError(error, "We couldn't save your changes. Please try again."));
         return;
       }
       if (!data?.length) {

@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { InkHeader } from '@/components/auth/InkHeader';
 import { alertDialog } from '@/components/ui/Dialog';
 import { Text } from '@/components/ui/Text';
+import { friendlyError } from '@/lib/friendlyError';
 
 // Same allowlist as login.tsx — `next` is a caller-supplied route param.
 const CONFIRMATION_NEXT = /^\/confirmation\?referenceId=[A-Za-z0-9_-]{6,64}$/;
@@ -78,7 +79,7 @@ export default function VerifyEmailScreen() {
     setResending(true);
     const { error } = await supabase.auth.resend({ type: 'signup', email });
     setResending(false);
-    if (error) { alertDialog("Couldn't resend", error.message); return; }
+    if (error) { alertDialog("Couldn't send a new code", friendlyError(error, "We couldn't send a new code. Please try again in a minute.")); return; }
     alertDialog('Code sent', `A new code is on its way to ${email}.`);
   }
 

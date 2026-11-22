@@ -33,6 +33,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { describePaymentFailure } from '@/lib/paymentFailure';
 
 interface ReviewState {
   order: Order;
@@ -620,8 +621,7 @@ function OrderCard({
               numberOfLines={2}
               style={{ marginTop: 2 }}
             >
-              {order.failure_reason ||
-                "This payment did not go through. You were not charged."}
+              {describePaymentFailure(order.failure_reason)}
             </Text>
           )}
         </View>

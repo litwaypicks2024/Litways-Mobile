@@ -26,7 +26,7 @@ export default function ContactScreen() {
 
   async function handleSubmit() {
     if (!form.name || !form.email || !form.message) {
-      alertDialog('Missing fields', 'Please fill in all required fields.');
+      alertDialog('A few details are missing', 'Please add your name, email and message so we can get back to you.');
       return;
     }
     setLoading(true);
@@ -35,7 +35,7 @@ export default function ContactScreen() {
       alertDialog('Message Sent!', "We'll get back to you within 24 hours.");
       setForm({ name: '', email: '', subject: '', message: '' });
     } catch {
-      alertDialog('Error', 'Failed to send message. Please try again.');
+      alertDialog("Message not sent", "We couldn't send your message. Check your connection and try again, or chat with us on WhatsApp.");
     } finally {
       setLoading(false);
     }

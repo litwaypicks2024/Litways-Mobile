@@ -10,6 +10,7 @@ import { Text } from '@/components/ui/Text';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { alertDialog } from '@/components/ui/Dialog';
 import { showToast } from '@/components/ui/Toast';
+import { friendlyError } from '@/lib/friendlyError';
 
 const MIN_LENGTH = 8;
 
@@ -30,7 +31,7 @@ export default function ChangePasswordScreen() {
     const { error } = await supabase.auth.updateUser({ password: pw });
     setSaving(false);
     if (error) {
-      alertDialog("Couldn't update password", error.message);
+      alertDialog("Couldn't update password", friendlyError(error, "We couldn't update your password. Please try again."));
       return;
     }
     showToast({ title: 'Password updated', tone: 'success' });

@@ -68,7 +68,7 @@ export const momoAPI = {
     if (!res.ok) {
       if (res.status >= 500) throw new PaymentUncertainError();
       const err = await res.json().catch(() => ({}));
-      throw new Error((err as any).error ?? (err as any).message ?? 'Payment initiation failed');
+      throw new Error((err as any).error ?? (err as any).message ?? "We couldn't start the payment");
     }
     try {
       return (await res.json()) as { success: boolean; referenceId: string; orderId: string; amount: number };
@@ -105,6 +105,6 @@ export async function submitContactForm(payload: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error('Failed to send message');
+  if (!res.ok) throw new Error("We couldn't send your message");
   return res.json();
 }

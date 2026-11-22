@@ -44,7 +44,7 @@ export class ErrorBoundary extends Component<Props, State> {
             Something went wrong
           </Text>
           <Text variant="body" tone="muted" style={{ textAlign: 'center', marginBottom: 32 }}>
-            {this.state.error?.message ?? 'An unexpected error occurred.'}
+            This screen hit a problem. Tap below to try again. If it keeps happening, close and reopen the app.
           </Text>
           <TouchableOpacity
             onPress={this.retry}

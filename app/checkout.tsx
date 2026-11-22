@@ -32,6 +32,7 @@ import { paymentAttempt, pendingPayment } from '@/lib/storage';
 import type { CheckoutForm } from '@/types';
 import { alertDialog } from '@/components/ui/Dialog';
 import { Text } from '@/components/ui/Text';
+import { friendlyError } from '@/lib/friendlyError';
 
 // 'checking' = the pay request's reply was lost and we're looking for the order it may have created.
 type PaymentStatus = 'idle' | 'processing' | 'checking' | 'polling' | 'success' | 'failed';
@@ -562,7 +563,7 @@ export default function CheckoutScreen() {
         lines: [
           looksOffline(err?.message)
             ? "You appear to be offline. Nothing was charged. Reconnect and try again."
-            : `${err?.message ?? 'Something went wrong.'} Nothing was charged.`,
+            : `${friendlyError(err, 'We couldn\'t start the payment.', { passthrough: true })} Nothing was charged.`,
         ],
       });
       scrollToTop();

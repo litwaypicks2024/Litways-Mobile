@@ -18,7 +18,7 @@ const STATUS: Record<PermissionState, { title: string; body: string }> = {
   granted: { title: 'Push notifications are on', body: 'You will hear about payments, deliveries and saved items as they happen.' },
   undetermined: { title: 'Push notifications are off', body: 'Turn them on to hear about payments and deliveries the moment they happen.' },
   denied: { title: 'Push notifications are off', body: 'They are switched off for Litway Picks in your phone settings.' },
-  unavailable: { title: 'Push notifications are unavailable', body: "This build can't receive push notifications (Expo Go and some simulators can't)." },
+  unavailable: { title: 'Notifications aren\'t available', body: "This device can't receive Litway Picks notifications right now. You'll still find every update in your inbox." },
 };
 
 export default function NotificationSettingsScreen() {

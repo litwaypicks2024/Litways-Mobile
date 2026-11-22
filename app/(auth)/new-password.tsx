@@ -17,6 +17,7 @@ import { BrokenLinkIllustration } from '@/components/illustrations';
 import { BrandLoader } from '@/components/motion/BrandLoader';
 import { alertDialog } from '@/components/ui/Dialog';
 import { Text } from '@/components/ui/Text';
+import { friendlyError } from '@/lib/friendlyError';
 
 // Extract key=value pairs from BOTH the query string and the hash fragment of a
 // deep link. Implicit-flow recovery links (our default) put tokens after '#',
@@ -164,7 +165,7 @@ export default function NewPasswordScreen() {
     const { error } = await supabase.auth.updateUser({ password });
     setSaving(false);
     if (error) {
-      alertDialog('Could not update password', error.message);
+      alertDialog("Couldn't update password", friendlyError(error, "We couldn't update your password. Please request a new reset link and try again."));
       return;
     }
     alertDialog('Password updated', 'You can now sign in with your new password.', [

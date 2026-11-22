@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { InkHeader } from '@/components/auth/InkHeader';
 import { alertDialog } from '@/components/ui/Dialog';
 import { Text } from '@/components/ui/Text';
+import { friendlyError } from '@/lib/friendlyError';
 
 export default function ResetPasswordScreen() {
   const insets = useSafeAreaInsets();
@@ -31,7 +32,7 @@ export default function ResetPasswordScreen() {
       redirectTo: 'litwaypicks://new-password',
     });
     setLoading(false);
-    if (error) { alertDialog('Error', error.message); return; }
+    if (error) { alertDialog("Couldn't send reset link", friendlyError(error, "We couldn't send the reset link. Please try again in a moment.")); return; }
     setSent(true);
   }
 

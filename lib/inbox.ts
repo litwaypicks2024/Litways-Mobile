@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/currency';
 import { useAuthStore } from '@/store/auth';
 import { useInboxStore, type InboxItem, type InboxKind } from '@/store/inbox';
 import { useWishlistStore } from '@/store/wishlist';
+import { describePaymentFailure } from '@/lib/paymentFailure';
 
 /* ── Order updates: read live from the server, one item per order ─────────────── */
 
@@ -38,7 +39,7 @@ export function orderEvent(o: OrderRow): InboxItem | null {
     case 'COMPLETED':
       return { ...base, at: updated, title: 'Order complete', body: `Order ${ref} is complete. Tell us how it was.` };
     case 'FAILED':
-      return { ...base, at: updated, title: "Payment didn't go through", body: o.failure_reason ? `${o.failure_reason}. Nothing was charged.` : `Order ${ref} wasn't paid, so nothing was charged.` };
+      return { ...base, at: updated, title: "Payment didn't go through", body: describePaymentFailure(o.failure_reason, `order ${ref}`) };
     case 'REFUNDED':
       return { ...base, at: updated, title: 'Order refunded', body: `Order ${ref} was refunded.` };
     case 'DISPUTED':
