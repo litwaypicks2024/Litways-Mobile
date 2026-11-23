@@ -24,6 +24,7 @@ import { LogoMark } from '@/components/brand/LogoMark';
 import { alertDialog } from '@/components/ui/Dialog';
 import { Text } from '@/components/ui/Text';
 import { friendlyError } from '@/lib/friendlyError';
+import { signUpWithEmail } from '@/lib/signUp';
 
 type Mode = 'login' | 'signup';
 
@@ -139,24 +140,17 @@ export default function LoginScreen() {
       // public.users profile row from this — the old client-side insert ran as the
       // anonymous role (no session yet, since email confirmation is on) and RLS
       // rejected it, leaving new users without a profile.
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName || null,
-            terms_accepted_at: new Date().toISOString(),
-          },
-        },
+      const result = await signUpWithEmail(email.trim(), password, {
+        first_name: firstName,
+        last_name: lastName || null,
+        terms_accepted_at: new Date().toISOString(),
       });
-      if (error) { setLoading(false); alertDialog("Couldn't create your account", friendlyError(error, "We couldn't create your account. Please try again.")); return; }
       setLoading(false);
-      // Email already registered. With "Confirm email" on, Supabase hides this
-      // (no error, no email sent) and returns a placeholder user whose
-      // identities list is empty. Without this check the shopper would wait on
-      // the code screen for a code that never comes.
-      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      if (result.kind === 'error') {
+        alertDialog("Couldn't create your account", friendlyError(result.error, "We couldn't create your account. Please try again."));
+        return;
+      }
+      if (result.kind === 'exists') {
         alertDialog(
           'Email already registered',
           'An account with this email already exists. Sign in instead, or reset your password if you have forgotten it.',
@@ -167,16 +161,14 @@ export default function LoginScreen() {
         );
         return;
       }
-      // Setting-agnostic: with email confirmation OFF, signUp returns a live
-      // session — the user is signed in right now, so welcome them and move on.
-      // With confirmation ON there's no session yet, so route them to their inbox.
-      if (data.session) {
+      if (result.kind === 'signed_in') {
+        // Email confirmation is off: the account is live and signed in.
         alertDialog('Welcome to Litway Picks!', 'Your account is ready.');
         navigateAfterAuth();
         return;
       }
-      // Email confirmation is on: Supabase emailed a 6-digit code. Collect it
-      // on the verify screen, which signs them in once the code checks out.
+      // New account: Supabase emailed a 6-digit code. Collect it on the verify
+      // screen, which signs them in once the code checks out.
       goToVerify(email.trim());
     }
   }
@@ -188,7 +180,11 @@ export default function LoginScreen() {
     // crash natively ("Litway Picks has stopped").
     TextInput.State.currentlyFocusedInput()?.blur();
     Keyboard.dismiss();
-    router.replace({
+    // push, not replace: tearing this screen (with a filled password field)
+    // down in a replace crashed the app natively on some Android phones —
+    // likely their autofill/password-save service. Every flow that works on
+    // those phones (sign in, reset) navigates forward/back like this.
+    router.push({
       pathname: '/(auth)/verify-email',
       params: { email: address, ...(isAllowedNext(next) ? { next } : {}) },
     } as any);

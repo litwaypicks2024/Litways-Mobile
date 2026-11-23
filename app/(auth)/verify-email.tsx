@@ -53,10 +53,14 @@ export default function VerifyEmailScreen() {
   }, []);
 
   function leave() {
-    // login.tsx replaced itself with this screen, so back() lands on whatever
-    // opened sign-in (e.g. the in-progress checkout) — same as a normal sign-in.
-    if (next && CONFIRMATION_NEXT.test(next)) router.replace(next as any);
-    else router.back();
+    if (next && CONFIRMATION_NEXT.test(next)) {
+      router.replace(next as any);
+      return;
+    }
+    // The stack is [opener, login, verify-email]. Go back past the sign-up
+    // form to whatever opened sign-in (e.g. the in-progress checkout).
+    if (router.canDismiss()) router.dismissAll();
+    router.back();
   }
 
   async function handleVerify() {
