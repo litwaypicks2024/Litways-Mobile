@@ -420,11 +420,16 @@ export const useCartStore = create<CartState>()(
       // attempt still returns false even though a retry is now pending) —
       // manualSync uses that to decide its own success/failure notice.
       async function performSync(userId: string, isRetry = false): Promise<boolean> {
-        const ok = await writeCartRow(userId, get().items);
+        // Snapshot what we write: once the server has it, this exact list is
+        // the new three-way merge BASE. Without updating the base here, the
+        // next loadFromDb (e.g. opening the Cart tab right after adding an
+        // item) saw the item as added on BOTH sides and doubled it.
+        const written = get().items;
+        const ok = await writeCartRow(userId, written);
 
         if (ok) {
           retryTimers.delete(userId);
-          set({ syncFailed: false });
+          set({ syncFailed: false, lastSyncedItems: written, lastSyncedUserId: userId });
           return true;
         }
 
